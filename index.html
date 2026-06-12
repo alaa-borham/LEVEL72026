@@ -71,10 +71,10 @@ body.ltr .lang-btn{left:auto;right:18px}
 .dash-nav .nav-actions{display:flex;gap:8px}
 .nav-icon-btn{background:rgba(255,255,255,.14);backdrop-filter:blur(8px);color:white;border:1px solid rgba(255,255,255,.3);border-radius:24px;padding:7px 16px;font-size:.85rem;font-weight:bold;cursor:pointer;font-family:inherit;transition:all .15s}
 .nav-icon-btn:hover{background:rgba(255,255,255,.25)}
-.dash-hero{max-width:1150px;margin:0 auto 26px;position:relative;z-index:1;background:linear-gradient(120deg,rgba(124,179,66,.22),rgba(38,198,218,.14));border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(14px);border-radius:22px;padding:26px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
-.dash-hero h1{color:white;font-size:1.5rem;font-weight:800}
-.dash-hero p{color:rgba(255,255,255,.6);font-size:.88rem;margin-top:5px}
-.hero-cta{background:linear-gradient(135deg,#7cb342,#26c6da);color:white;border:none;border-radius:14px;padding:12px 26px;font-size:.95rem;font-weight:bold;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(124,179,66,.35);transition:transform .15s}
+.dash-hero{max-width:1150px;margin:0 auto 16px;position:relative;z-index:1;background:linear-gradient(120deg,rgba(124,179,66,.18),rgba(38,198,218,.1));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);border-radius:14px;padding:13px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.dash-hero h1{color:white;font-size:1.08rem;font-weight:800}
+.dash-hero p{color:rgba(255,255,255,.55);font-size:.74rem;margin-top:2px}
+.hero-cta{background:linear-gradient(135deg,#7cb342,#26c6da);color:white;border:none;border-radius:10px;padding:8px 15px;font-size:.8rem;font-weight:bold;cursor:pointer;font-family:inherit;box-shadow:0 5px 16px rgba(124,179,66,.3);transition:transform .15s}
 .hero-cta:hover{transform:translateY(-2px)}
 .dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:11px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
 .dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
@@ -90,11 +90,11 @@ body.ltr .dash-card::after{content:'›'}
 .dash-card:nth-child(6n) .icon{background:linear-gradient(135deg,rgba(66,165,245,.32),rgba(38,198,218,.24))}
 .dash-card h3{color:white;font-size:.9rem;font-weight:700}
 .dash-card p{color:rgba(255,255,255,.42);font-size:.69rem;margin-top:2px}
-.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:1150px;margin:20px auto 0;position:relative;z-index:1}
-.stat-box{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border-radius:16px;padding:16px 18px;color:white;text-align:center;border:1px solid rgba(255,255,255,.12);transition:all .2s}
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;max-width:1150px;margin:14px auto 0;position:relative;z-index:1}
+.stat-box{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border-radius:11px;padding:9px 10px;color:white;text-align:center;border:1px solid rgba(255,255,255,.1);transition:all .2s}
 .stat-box:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
-.stat-box .num{font-size:1.9rem;font-weight:800;background:linear-gradient(135deg,#aed581,#4dd0e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.stat-box .lbl{font-size:.74rem;opacity:.6;margin-top:3px;letter-spacing:.3px}
+.stat-box .num{font-size:1.25rem;font-weight:800;background:linear-gradient(135deg,#aed581,#4dd0e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-box .lbl{font-size:.66rem;opacity:.6;margin-top:1px;letter-spacing:.2px}
 /* SHARED */
 .page-wrap{min-height:100vh;background:#eef2f7;padding:16px}
 .page-header{background:linear-gradient(90deg,#2e7d32,#43a047);color:white;padding:13px 16px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;box-shadow:0 3px 10px rgba(46,125,50,.3);flex-wrap:wrap;gap:8px}
@@ -495,7 +495,7 @@ const fbDB   = firebase.firestore();
       <button class="hero-cta" style="background:linear-gradient(135deg,#26a69a,#1565c0);box-shadow:0 8px 24px rgba(38,166,154,.35)" onclick="openReceiptPicker()" data-perm="customers">🧾 سند قبض</button>
     </div>
   </div>
-  <div class="dash-stats" id="dash-stats" style="margin:0 auto 22px"></div>
+  <div class="dash-stats" id="dash-stats" style="margin:0 auto 14px"></div>
   <div class="dash-cards">
     <div class="dash-card" onclick="showCustomers()" data-perm="customers"><div class="icon">👥</div><h3 data-i18n="customers">العملاء</h3><p data-i18n="customersSub">بيانات العملاء</p></div>
     <div class="dash-card" onclick="showMeasurements()" data-perm="tailoring"><div class="icon">📐</div><h3>القياسات</h3><p>قياسات الخياطة وقوالبها</p></div>
