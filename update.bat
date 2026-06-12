@@ -5,7 +5,7 @@ echo.
 echo ====== LEVEL7 ======
 echo جارٍ تنزيل أحدث نسخة من الموقع...
 echo.
-set BASE=https://alaa-borham.github.io/alaa202601
+set BASE=https://alaa-borham.github.io/LEVEL72026
 curl -sL -o index.html    "%BASE%/index.html"    && echo [OK] index.html
 curl -sL -o admin.html    "%BASE%/admin.html"    && echo [OK] admin.html
 curl -sL -o sw.js         "%BASE%/sw.js"         && echo [OK] sw.js
