@@ -76,14 +76,20 @@ body.ltr .lang-btn{left:auto;right:18px}
 .dash-hero p{color:rgba(255,255,255,.6);font-size:.88rem;margin-top:5px}
 .hero-cta{background:linear-gradient(135deg,#7cb342,#26c6da);color:white;border:none;border-radius:14px;padding:12px 26px;font-size:.95rem;font-weight:bold;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(124,179,66,.35);transition:transform .15s}
 .hero-cta:hover{transform:translateY(-2px)}
-.dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
-.dash-card{background:rgba(255,255,255,.08);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:24px 18px;text-align:center;cursor:pointer;transition:all .25s cubic-bezier(.2,.8,.3,1);position:relative;overflow:hidden}
-.dash-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent 55%);opacity:0;transition:opacity .25s}
-.dash-card:hover{transform:translateY(-6px) scale(1.02);border-color:rgba(124,179,66,.55);box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 24px rgba(124,179,66,.18)}
-.dash-card:hover::before{opacity:1}
-.dash-card .icon{width:54px;height:54px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;border-radius:16px;background:linear-gradient(135deg,rgba(124,179,66,.25),rgba(38,198,218,.2));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-.dash-card h3{color:white;font-size:.93rem;font-weight:600}
-.dash-card p{color:rgba(255,255,255,.45);font-size:.73rem;margin-top:4px}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:11px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
+.dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
+.dash-card::after{content:'‹';color:rgba(255,255,255,.25);font-size:1.2rem;margin-inline-start:auto;transition:all .2s}
+body.ltr .dash-card::after{content:'›'}
+.dash-card:hover{transform:translateY(-3px);background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28);box-shadow:0 10px 28px rgba(0,0,0,.3)}
+.dash-card:hover::after{color:#aed581;margin-inline-end:-3px}
+.dash-card .icon{width:46px;height:46px;margin:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:1.35rem;border-radius:13px;background:linear-gradient(135deg,rgba(124,179,66,.3),rgba(38,198,218,.22));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.dash-card:nth-child(6n+2) .icon{background:linear-gradient(135deg,rgba(126,87,194,.34),rgba(63,81,181,.26))}
+.dash-card:nth-child(6n+3) .icon{background:linear-gradient(135deg,rgba(255,179,0,.32),rgba(255,112,67,.24))}
+.dash-card:nth-child(6n+4) .icon{background:linear-gradient(135deg,rgba(38,166,154,.34),rgba(0,172,193,.26))}
+.dash-card:nth-child(6n+5) .icon{background:linear-gradient(135deg,rgba(236,64,122,.3),rgba(171,71,188,.24))}
+.dash-card:nth-child(6n) .icon{background:linear-gradient(135deg,rgba(66,165,245,.32),rgba(38,198,218,.24))}
+.dash-card h3{color:white;font-size:.9rem;font-weight:700}
+.dash-card p{color:rgba(255,255,255,.42);font-size:.69rem;margin-top:2px}
 .dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:1150px;margin:20px auto 0;position:relative;z-index:1}
 .stat-box{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border-radius:16px;padding:16px 18px;color:white;text-align:center;border:1px solid rgba(255,255,255,.12);transition:all .2s}
 .stat-box:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
@@ -205,10 +211,18 @@ body.ltr .lang-btn{left:auto;right:18px}
 /* MODALS */
 .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;padding:16px}
 .moverlay.open{display:flex}
-.mbox{background:white;border-radius:14px;overflow:hidden;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)}
-.mhdr{background:linear-gradient(90deg,#5d9e3f,#388e3c);color:white;padding:13px 17px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-.mhdr h3{font-size:.98rem}
-.mcls{background:transparent;border:none;color:white;font-size:1.3rem;cursor:pointer}
+.mbox{background:#fbfcfa;border-radius:22px;overflow:hidden;width:100%;max-width:700px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.35);animation:mpop .22s cubic-bezier(.2,.9,.3,1)}
+@keyframes mpop{from{opacity:0;transform:translateY(26px) scale(.98)}to{opacity:1;transform:none}}
+.mhdr{background:white;color:#1b3a26;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid #edf1ea}
+.mhdr h3{font-size:1.05rem;font-weight:800}
+.mcls{background:#f1f4ee;border:none;color:#666;font-size:1rem;cursor:pointer;width:32px;height:32px;border-radius:50%;line-height:1;transition:all .15s}
+.mcls:hover{background:#ffebee;color:#c62828}
+/* جداول النوافذ: رؤوس فاتحة هادئة وصفوف مريحة بدل الأخضر الصارخ */
+.mlist table th{background:#f3f7f0 !important;color:#33691e !important;font-weight:800;font-size:.78rem;padding:10px 8px !important;border-bottom:2px solid #dcedc8 !important;position:sticky;top:0;z-index:2}
+.mlist table td{padding:10px 8px !important;font-size:.86rem}
+.mlist table tbody tr{transition:background .12s}
+.mlist table tbody tr:hover{background:#f7faf5}
+.mlist{scrollbar-width:thin}
 .msearch{padding:10px 14px;border-bottom:1px solid #eee;flex-shrink:0}
 .msearch input{width:100%;padding:7px 11px;border:1.5px solid #ddd;border-radius:7px;font-size:.87rem;font-family:inherit}
 .msearch input:focus{outline:none;border-color:#5d9e3f}
@@ -1024,7 +1038,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: CUSTOMERS -->
 <div class="moverlay" id="customers-modal">
-  <div class="mbox" style="max-width:680px">
+  <div class="mbox" style="max-width:1000px">
     <div class="mhdr"><h3 data-i18n="customersTitle">👥 إدارة العملاء</h3><button class="mcls" onclick="closeCustomers()">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center">
       <button class="btn btn-success" onclick="openCustomerPanel()">＋ إضافة عميل جديد</button>
@@ -1048,7 +1062,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: MEASUREMENTS (سجل القياسات) -->
 <div class="moverlay" id="measurements-modal">
-  <div class="mbox" style="max-width:780px">
+  <div class="mbox" style="max-width:1050px">
     <div class="mhdr"><h3>📐 سجل القياسات</h3><button class="mcls" onclick="closeModal('measurements-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openMeasurePanel()">＋ قياس جديد</button>
@@ -1144,7 +1158,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: APPOINTMENTS (المواعيد) -->
 <div class="moverlay" id="appointments-modal">
-  <div class="mbox" style="max-width:780px">
+  <div class="mbox" style="max-width:1050px">
     <div class="mhdr"><h3>📅 المواعيد</h3><button class="mcls" onclick="closeModal('appointments-modal')">✕</button></div>
     <div style="padding:13px;border-bottom:1px solid #eee">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-items:end">
@@ -1195,7 +1209,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: FABRICS (إدارة الأقمشة) -->
 <div class="moverlay" id="fabrics-modal">
-  <div class="mbox" style="max-width:840px">
+  <div class="mbox" style="max-width:1080px">
     <div class="mhdr"><h3>🧵 إدارة الأقمشة</h3><button class="mcls" onclick="closeModal('fabrics-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openFabricPanel()">＋ إضافة قماش</button>
@@ -1258,7 +1272,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: PRODUCTION (الإنتاج) -->
 <div class="moverlay" id="production-modal">
-  <div class="mbox" style="max-width:880px">
+  <div class="mbox" style="max-width:1080px">
     <div class="mhdr"><h3>🏭 الإنتاج — أوامر العمل</h3><button class="mcls" onclick="closeModal('production-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openProdPanel()">＋ أمر إنتاج جديد</button>
@@ -1383,7 +1397,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: EXPENSES (المصروفات) -->
 <div class="moverlay" id="expenses-modal">
-  <div class="mbox" style="max-width:740px">
+  <div class="mbox" style="max-width:1000px">
     <div class="mhdr"><h3>💸 المصروفات</h3><button class="mcls" onclick="closeModal('expenses-modal')">✕</button></div>
     <div style="padding:13px;border-bottom:1px solid #eee">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end">
@@ -1426,7 +1440,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: VOUCHERS LOG (سجل السندات) -->
 <div class="moverlay" id="vouchers-modal">
-  <div class="mbox" style="max-width:760px">
+  <div class="mbox" style="max-width:1000px">
     <div class="mhdr"><h3>📒 سجل السندات</h3><button class="mcls" onclick="closeModal('vouchers-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <select id="vlog-type" onchange="renderVouchersLog()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
@@ -1456,7 +1470,7 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: SUPPLIERS (الموردون) -->
 <div class="moverlay" id="suppliers-modal">
-  <div class="mbox" style="max-width:700px">
+  <div class="mbox" style="max-width:1000px">
     <div class="mhdr"><h3>🚚 الموردون والمشتريات</h3><button class="mcls" onclick="closeModal('suppliers-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openSupplierPanel()">＋ إضافة مورد</button>
