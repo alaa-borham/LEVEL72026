@@ -118,6 +118,7 @@ body.ltr .lang-btn{left:auto;right:18px}
 /* نموذج العميل يُفتح فوق نافذة قائمة العملاء (z-index أعلى من .moverlay) */
 #customer-panel{z-index:350}
 #measure-panel{z-index:350}
+#fabric-panel{z-index:350}
 /* نافذتا الفروع وQR تُفتحان فوق نوافذ أخرى */
 #branches-modal,#qr-modal,#sup-stmt-modal{z-index:355}
 #supplier-panel{z-index:365}
@@ -430,6 +431,7 @@ const fbDB   = firebase.firestore();
     <div class="dash-card" onclick="showCustomers()" data-perm="customers"><div class="icon">👥</div><h3 data-i18n="customers">العملاء</h3><p data-i18n="customersSub">بيانات العملاء</p></div>
     <div class="dash-card" onclick="showMeasurements()" data-perm="tailoring"><div class="icon">📐</div><h3>القياسات</h3><p>قياسات الخياطة وقوالبها</p></div>
     <div class="dash-card" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
+    <div class="dash-card" onclick="showFabrics()" data-perm="fabrics"><div class="icon">🧵</div><h3>الأقمشة</h3><p>أنواع وخصائص ومخزون</p></div>
     <div class="dash-card" onclick="showExpenses()" data-perm="expenses"><div class="icon">💸</div><h3>المصروفات</h3><p>إيجار، رواتب، تشغيل</p></div>
     <div class="dash-card" onclick="showVouchersLog()"><div class="icon">📒</div><h3>سجل السندات</h3><p>قبض وصرف — بحث وطباعة</p></div>
     <div class="dash-card" onclick="showSuppliers()" data-perm="purchases"><div class="icon">🚚</div><h3>المشتريات</h3><p>الموردون وفواتير الشراء</p></div>
@@ -853,6 +855,7 @@ const fbDB   = firebase.firestore();
         <div>✂️ القالب: <b id="mp-template" style="color:#1b5e20"></b></div>
       </div>
       <div class="mp-grid" id="mp-grid"></div>
+      <div id="mp-model" style="background:#ede7f6;border:1.5px solid #b39ddb;border-radius:8px;padding:9px 13px;font-size:.88rem;margin-bottom:8px;display:none"></div>
       <div id="mp-notes" style="background:#f9fbe7;border:1.5px dashed #c0ca33;border-radius:8px;padding:9px 13px;font-size:.88rem;display:none"></div>
       <div style="display:flex;justify-content:space-between;margin-top:26px;font-size:.85rem;color:#444">
         <div style="text-align:center;min-width:170px"><div style="height:34px"></div><div style="border-top:1.5px solid #777;padding-top:4px;font-weight:700">القصّاص / الخياط</div></div>
@@ -1029,7 +1032,23 @@ const fbDB   = firebase.firestore();
       <div style="font-size:.78rem;color:#888;margin-bottom:6px">القياسات بالسنتيمتر — اترك أي حقل لا تحتاجه فارغاً</div>
       <div id="ms-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px"></div>
       <div id="ms-warnings" style="margin-top:8px"></div>
-      <div class="fg" style="margin-top:8px"><label>ملاحظات الموديل (الياقة، الجيب، الكبك، التطريز...)</label><textarea id="ms-notes" rows="2"></textarea></div>
+      <div style="background:#ede7f6;border-radius:10px;padding:10px 12px;margin-top:8px">
+        <div style="font-size:.8rem;font-weight:700;color:#4527a0;margin-bottom:8px">✂️ موديل التفصيل (اختياري)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px">
+          <div class="fg" style="margin:0"><label>الياقة</label>
+            <select id="mm-collar"><option value=""></option><option>ملكي</option><option>صيني</option><option>مربع</option><option>فرنسي</option></select></div>
+          <div class="fg" style="margin:0"><label>القلاب</label>
+            <select id="mm-placket"><option value=""></option><option>ملكي</option><option>مفتوح</option><option>فرنسي</option></select></div>
+          <div class="fg" style="margin:0"><label>الجيب</label>
+            <select id="mm-pocket"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيبان</option></select></div>
+          <div class="fg" style="margin:0"><label>الكم</label>
+            <select id="mm-cuff"><option value=""></option><option>سادة</option><option>كبك</option></select></div>
+          <div class="fg" style="margin:0;grid-column:span 2"><label>القماش (من مخزون الأقمشة)</label><select id="mm-fabric"></select></div>
+          <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons"></div>
+          <div class="fg" style="margin:0"><label>التطريز</label><input type="text" id="mm-embroidery"></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label>ملاحظات إضافية</label><textarea id="ms-notes" rows="2"></textarea></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-success" style="flex:1" onclick="saveMeasurement()">✔ حفظ القياس</button>
         <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('measure-panel')">إلغاء</button>
@@ -1085,6 +1104,69 @@ const fbDB   = firebase.firestore();
         <tbody id="appts-tbody"></tbody>
       </table>
       <div id="ap-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد مواعيد — احجز أول موعد من النموذج بالأعلى</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: FABRICS (إدارة الأقمشة) -->
+<div class="moverlay" id="fabrics-modal">
+  <div class="mbox" style="max-width:840px">
+    <div class="mhdr"><h3>🧵 إدارة الأقمشة</h3><button class="mcls" onclick="closeModal('fabrics-modal')">✕</button></div>
+    <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="openFabricPanel()">＋ إضافة قماش</button>
+      <select id="fb-filter-type" onchange="renderFabrics()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+        <option value="">— كل الأنواع —</option>
+      </select>
+      <input type="text" id="fb-search" placeholder="🔍 بحث بالاسم أو الكود أو اللون..." oninput="renderFabrics()"
+        style="flex:1;min-width:150px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+    </div>
+    <div class="mlist">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الكود</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">القماش</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">النوع</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">اللون</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العرض (سم)</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المتاح (متر)</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">السعر/متر</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">إجراءات</th>
+        </tr></thead>
+        <tbody id="fabrics-tbody"></tbody>
+      </table>
+      <div id="fb-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد أقمشة بعد — اضغط "إضافة قماش"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SIDE PANEL: FABRIC (إضافة / تعديل قماش) -->
+<div class="side-panel" id="fabric-panel">
+  <div class="spb">
+    <div class="sph"><h3 id="fb-panel-title">🧵 إضافة قماش</h3><button class="spc" onclick="closeModal2('fabric-panel')">✕</button></div>
+    <div class="spbody">
+      <input type="hidden" id="fb-edit-id">
+      <div style="display:grid;grid-template-columns:110px 1fr;gap:10px">
+        <div class="fg"><label>الكود</label><input type="text" id="fb-code" placeholder="تلقائي" style="direction:ltr;text-align:center"></div>
+        <div class="fg"><label>اسم القماش <span class="req">*</span></label><input type="text" id="fb-name"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px">
+        <div class="fg" style="margin:0"><label>النوع</label><select id="fb-type"></select></div>
+        <div class="fg" style="margin:0"><label>اللون</label><input type="text" id="fb-color"></div>
+        <div class="fg" style="margin:0"><label>العرض (سم)</label><input type="number" id="fb-width" min="0" step="1"></div>
+        <div class="fg" style="margin:0"><label>الوزن (جم/م²)</label><input type="number" id="fb-weight" min="0" step="1"></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label>التركيب (مثال: 100% قطن)</label><input type="text" id="fb-comp"></div>
+      <div class="fg"><label>المورد</label><select id="fb-supplier"></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 10px">
+        <div class="fg" style="margin:0"><label>سعر المتر</label><input type="number" id="fb-price" min="0" step="0.01"></div>
+        <div class="fg" style="margin:0"><label>المتاح (متر)</label><input type="number" id="fb-qty" min="0" step="0.5"></div>
+        <div class="fg" style="margin:0"><label>حد التنبيه</label><input type="number" id="fb-min" min="0" step="0.5"></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label>ملاحظات</label><textarea id="fb-notes" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-success" style="flex:1" onclick="saveFabric()">✔ حفظ القماش</button>
+        <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('fabric-panel')">إلغاء</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1484,7 +1566,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments'];
+                    'measurements','appointments','fabrics'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -1537,7 +1619,7 @@ function _dailyBackup(uid, data) {
 }
 
 // ═══════════════ STATE (loaded per account)
-let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[];
+let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[];
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
 const DEF_SETTINGS = {
@@ -1567,6 +1649,7 @@ function loadAccountData() {
   expenses        = JSON.parse(lsGet('expenses','[]'));
   measurements    = JSON.parse(lsGet('measurements','[]'));
   appointments    = JSON.parse(lsGet('appointments','[]'));
+  fabrics         = JSON.parse(lsGet('fabrics','[]'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -3198,13 +3281,14 @@ const PERM_DEFS = [
   ['customers', '👥 العملاء والكشوف والدفعات'],
   ['tailoring', '📐 القياسات (الخياطة)'],
   ['appointments', '📅 المواعيد'],
+  ['fabrics', '🧵 الأقمشة'],
   ['purchases', '🚚 المشتريات والموردون'],
   ['expenses',  '💸 المصروفات'],
   ['analytics', '📊 التحليلات والتقارير'],
   ['archive',   '🗂️ الأرشيف'],
   ['settings',  '⚙️ الإعدادات والشعار (حساس)'],
 ];
-const DEFAULT_PERMS = { invoices:true, products:true, customers:true, tailoring:true, appointments:true, purchases:true, expenses:true, analytics:true, archive:true, settings:false };
+const DEFAULT_PERMS = { invoices:true, products:true, customers:true, tailoring:true, appointments:true, fabrics:true, purchases:true, expenses:true, analytics:true, archive:true, settings:false };
 const PERM_SCREENS = {
   'invoice-list':'invoices', 'invoice-form-screen':'invoices', 'print-screen':'invoices',
   'receipt-screen':'customers',
@@ -3603,6 +3687,15 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
     Object.keys(MEAS_TEMPLATES).map(t=>`<option ${src && src.template===t?'selected':''}>${t}</option>`).join('');
   document.getElementById('ms-date').value = m ? isoToDMY(m.date) : todayDMY();
   document.getElementById('ms-notes').value = src ? (src.notes||'') : '';
+  const mod = (src && src.model) || {};
+  document.getElementById('mm-collar').value  = mod.collar||'';
+  document.getElementById('mm-placket').value = mod.placket||'';
+  document.getElementById('mm-pocket').value  = mod.pocket||'';
+  document.getElementById('mm-cuff').value    = mod.cuffType||'';
+  document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
+    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('');
+  document.getElementById('mm-buttons').value    = mod.buttons||'';
+  document.getElementById('mm-embroidery').value = mod.embroidery||'';
   renderMeasFields(src ? src.values : null);
   document.getElementById('measure-panel').classList.add('open');
 }
@@ -3644,6 +3737,15 @@ function saveMeasurement() {
     clientId, date,
     template: document.getElementById('ms-template').value,
     values,
+    model: {
+      collar:     document.getElementById('mm-collar').value,
+      placket:    document.getElementById('mm-placket').value,
+      pocket:     document.getElementById('mm-pocket').value,
+      cuffType:   document.getElementById('mm-cuff').value,
+      fabricId:   document.getElementById('mm-fabric').value || null,
+      buttons:    document.getElementById('mm-buttons').value.trim(),
+      embroidery: document.getElementById('mm-embroidery').value.trim(),
+    },
     notes: document.getElementById('ms-notes').value.trim(),
   };
   const editId = document.getElementById('ms-edit-id').value;
@@ -3665,7 +3767,7 @@ function deleteMeasurement(id) {
 // قياس جديد بنفس قيم قياس سابق (يحافظ على سجل القياسات بدل تعديل القديم)
 function copyMeasurement(id) {
   const m = measurements.find(x=>x.id===id); if (!m) return;
-  openMeasurePanel(null, null, { clientId:m.clientId, template:m.template, values:{...m.values}, notes:m.notes });
+  openMeasurePanel(null, null, { clientId:m.clientId, template:m.template, values:{...m.values}, model:{...(m.model||{})}, notes:m.notes });
 }
 function printMeasurement(id) {
   const m = measurements.find(x=>x.id===id); if (!m) return;
@@ -3681,14 +3783,129 @@ function printMeasurement(id) {
   const keys = MEAS_TEMPLATES[m.template]||Object.keys(m.values||{});
   document.getElementById('mp-grid').innerHTML = keys.filter(k=>m.values && m.values[k]).map(k=>`
     <div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
+  const mod = m.model || {};
+  const fab = mod.fabricId ? _fabricById(mod.fabricId) : null;
+  const modParts = [
+    ['الياقة', mod.collar], ['القلاب', mod.placket], ['الجيب', mod.pocket], ['الكم', mod.cuffType],
+    ['القماش', fab ? _fabricLabel(fab) : ''], ['الأزرار', mod.buttons], ['التطريز', mod.embroidery],
+  ].filter(([,v])=>v);
+  const modelEl = document.getElementById('mp-model');
+  modelEl.style.display = modParts.length ? 'block' : 'none';
+  modelEl.innerHTML = modParts.length
+    ? '✂️ <b>الموديل:</b> ' + modParts.map(([k,v])=>k+': <b>'+escHtml(v)+'</b>').join(' • ') : '';
   const notesEl = document.getElementById('mp-notes');
   notesEl.style.display = m.notes ? 'block' : 'none';
-  notesEl.innerHTML = m.notes ? '📝 <b>الموديل:</b> ' + escHtml(m.notes) : '';
+  notesEl.innerHTML = m.notes ? '📝 <b>ملاحظات:</b> ' + escHtml(m.notes) : '';
   const logo = lsGet('logoImg', null);
   const img = document.getElementById('mp-hdr-img'), svg = document.getElementById('mp-hdr-svg');
   if (logo) { img.src = logo; img.style.display='block'; svg.style.display='none'; }
   else { img.style.display='none'; svg.style.display='none'; }
   showScreen('meas-print-screen');
+}
+
+// ═══════════════ FABRIC MANAGEMENT — إدارة الأقمشة (أنواع + خصائص + مخزون بالمتر)
+const FABRIC_TYPES = ['ياباني','كوري','إنجليزي','مصري','هندي','أخرى'];
+function _fabricById(id){ return fabrics.find(f=>String(f.id)===String(id)); }
+function _fabricLabel(f){ return f.name + (f.color ? ' — ' + f.color : '') + (f.code ? ' ('+f.code+')' : ''); }
+function getNextFabricCode(){
+  const nums = fabrics.map(f=>parseInt(String(f.code||'').replace(/\D/g,''))).filter(n=>!isNaN(n));
+  return 'F-' + String(nums.length ? Math.max(...nums)+1 : 1).padStart(3,'0');
+}
+function showFabrics() {
+  if (!canAccess('fabrics')) { permDenied('fabrics'); return; }
+  document.getElementById('fb-filter-type').innerHTML =
+    '<option value="">— كل الأنواع —</option>' + FABRIC_TYPES.map(t=>`<option>${t}</option>`).join('');
+  renderFabrics();
+  document.getElementById('fabrics-modal').classList.add('open');
+}
+function renderFabrics() {
+  const ft = document.getElementById('fb-filter-type').value;
+  const q  = (document.getElementById('fb-search').value||'').trim().toLowerCase();
+  const list = fabrics
+    .filter(f => (!ft || f.type===ft))
+    .filter(f => !q || (f.name||'').toLowerCase().includes(q)
+      || (f.code||'').toLowerCase().includes(q) || (f.color||'').toLowerCase().includes(q));
+  document.getElementById('fb-empty').style.display = list.length ? 'none' : 'block';
+  document.getElementById('fabrics-tbody').innerHTML = list.map(f=>{
+    const low = (f.minQty||0) > 0 && (f.qty||0) <= f.minQty;
+    const sup = suppliers.find(s=>String(s.id)===String(f.supplierId));
+    return `
+    <tr style="${low?'background:#fff3e0':''}">
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;direction:ltr">${escHtml(f.code||'-')}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">
+        <div style="font-weight:600">${escHtml(f.name)}</div>
+        ${[f.comp, f.weight?f.weight+' جم/م²':'', sup?'المورد: '+sup.name:''].filter(Boolean).map(escHtml).join(' • ')
+          ? `<div style="font-size:.72rem;color:#888;margin-top:2px">${[f.comp, f.weight?f.weight+' جم/م²':'', sup?'المورد: '+sup.name:''].filter(Boolean).map(escHtml).join(' • ')}</div>` : ''}
+      </td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(f.type||'-')}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(f.color||'-')}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${f.width?formatNum(f.width):'-'}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:700${low?';color:#e65100':''}">${formatNum(f.qty||0)}${low?' ⚠️':''}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${f.price?formatNum(f.price):'-'}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openFabricPanel(${f.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFabric(${f.id})">🗑</button>
+      </td>
+    </tr>`;}).join('');
+}
+function openFabricPanel(id) {
+  const f = id ? _fabricById(id) : null;
+  document.getElementById('fb-panel-title').textContent = f ? '✏️ تعديل قماش' : '🧵 إضافة قماش';
+  document.getElementById('fb-edit-id').value = f ? f.id : '';
+  document.getElementById('fb-code').value   = f ? (f.code||'') : '';
+  document.getElementById('fb-name').value   = f ? f.name : '';
+  document.getElementById('fb-type').innerHTML = FABRIC_TYPES.map(t=>`<option ${f && f.type===t?'selected':''}>${t}</option>`).join('');
+  document.getElementById('fb-color').value  = f ? (f.color||'') : '';
+  document.getElementById('fb-width').value  = f ? (f.width||'') : '';
+  document.getElementById('fb-weight').value = f ? (f.weight||'') : '';
+  document.getElementById('fb-comp').value   = f ? (f.comp||'') : '';
+  document.getElementById('fb-supplier').innerHTML = '<option value="">— بدون —</option>' +
+    suppliers.map(s=>`<option value="${s.id}" ${f && String(f.supplierId)===String(s.id)?'selected':''}>${escHtml(s.name)}</option>`).join('');
+  document.getElementById('fb-price').value  = f ? (f.price||'') : '';
+  document.getElementById('fb-qty').value    = f ? (f.qty||'') : '';
+  document.getElementById('fb-min').value    = f ? (f.minQty||'') : '';
+  document.getElementById('fb-notes').value  = f ? (f.notes||'') : '';
+  document.getElementById('fabric-panel').classList.add('open');
+}
+function saveFabric() {
+  const name = document.getElementById('fb-name').value.trim();
+  if (!name) { alert('أدخل اسم القماش'); return; }
+  const editId = document.getElementById('fb-edit-id').value;
+  let code = document.getElementById('fb-code').value.trim();
+  if (code && fabrics.find(f=>String(f.code)===code && String(f.id)!==editId)) {
+    alert('كود القماش مستخدم لقماش آخر'); return;
+  }
+  if (!code) code = getNextFabricCode();
+  const data = {
+    code, name,
+    type:   document.getElementById('fb-type').value,
+    color:  document.getElementById('fb-color').value.trim(),
+    width:  parseFloat(document.getElementById('fb-width').value)||0,
+    weight: parseFloat(document.getElementById('fb-weight').value)||0,
+    comp:   document.getElementById('fb-comp').value.trim(),
+    supplierId: document.getElementById('fb-supplier').value || null,
+    price:  parseFloat(document.getElementById('fb-price').value)||0,
+    qty:    parseFloat(document.getElementById('fb-qty').value)||0,
+    minQty: parseFloat(document.getElementById('fb-min').value)||0,
+    notes:  document.getElementById('fb-notes').value.trim(),
+  };
+  if (editId) {
+    const f = fabrics.find(x=>String(x.id)===editId);
+    if (f) Object.assign(f, data);
+  } else {
+    fabrics.push({ id: Date.now(), ...data });
+  }
+  save('fabrics');
+  closeModal2('fabric-panel');
+  renderFabrics();
+}
+function deleteFabric(id) {
+  if (measurements.some(m=>m.model && String(m.model.fabricId)===String(id))) {
+    alert('لا يمكن حذف قماش مرتبط بقياسات محفوظة — يمكنك تعديل بياناته فقط'); return;
+  }
+  if (!confirm('حذف القماش نهائياً؟')) return;
+  fabrics = fabrics.filter(f=>f.id!==id);
+  save('fabrics'); renderFabrics();
 }
 
 // ═══════════════ APPOINTMENTS — المواعيد (قياس / بروفة / استلام)
@@ -4346,7 +4563,7 @@ function applyBranding() {
 // ═══════════════ UTILS — English numerals everywhere
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function save(key) {
-  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments};
+  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics};
   lsSet(key, JSON.stringify(map[key]));
 }
 function formatNum(n) { return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2}); }
@@ -4495,8 +4712,18 @@ function exportToExcel() {
     const measRows = measurements.map(m=>{
       const row = { 'التاريخ':m.date, 'العميل':_custName(m.clientId), 'القالب':m.template };
       Object.keys(m.values||{}).forEach(k=>{ row[MEAS_DICT[k]||k] = m.values[k]; });
-      row['ملاحظات الموديل'] = m.notes||'';
+      const mod = m.model||{};
+      const fab = mod.fabricId ? _fabricById(mod.fabricId) : null;
+      row['الياقة']=mod.collar||''; row['القلاب']=mod.placket||''; row['الجيب']=mod.pocket||'';
+      row['الكم']=mod.cuffType||''; row['القماش']=fab?_fabricLabel(fab):''; row['الأزرار']=mod.buttons||''; row['التطريز']=mod.embroidery||'';
+      row['ملاحظات'] = m.notes||'';
       return row;
+    });
+    const fabRows = fabrics.map(f=>{
+      const sup = suppliers.find(s=>String(s.id)===String(f.supplierId));
+      return { 'الكود':f.code, 'القماش':f.name, 'النوع':f.type||'', 'اللون':f.color||'',
+        'العرض سم':f.width||'', 'الوزن جم/م²':f.weight||'', 'التركيب':f.comp||'',
+        'المورد':sup?sup.name:'', 'سعر المتر':f.price||0, 'المتاح متر':f.qty||0, 'ملاحظات':f.notes||'' };
     });
     const apRows = appointments.map(a=>({ 'التاريخ':a.date, 'الوقت':a.time||'', 'العميل':_custName(a.clientId),
       'النوع':a.type, 'الحالة':a.status, 'ملاحظات':a.notes||'' }));
@@ -4510,7 +4737,7 @@ function exportToExcel() {
     const supRows = suppliers.map(s=>({ 'رقم المورد':s.num, 'الاسم':s.name, 'الهاتف':s.phone||'', 'الرقم الضريبي':s.taxNo||'', 'المستحق له':supplierBalance(s.id) }));
     const supPayRows = supPayments.map(p=>{ const s=suppliers.find(x=>String(x.id)===String(p.supplierId)); return { 'رقم السند':p.dsbNum||'', 'التاريخ':p.date, 'المورد':s?s.name:'', 'المبلغ':p.amount, 'الطريقة':p.method||'', 'ملاحظات':p.notes||'' }; });
     const exRows = expenses.map(e=>({ 'التاريخ':e.date, 'الفئة':e.category, 'البيان':e.desc||'', 'الفرع':e.branchName||'المركز', 'المبلغ':e.amount }));
-    [[invRows,'الفواتير'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
+    [[invRows,'الفواتير'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[fabRows,'الأقمشة'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
       .forEach(([rows,name])=>{
         const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'لا توجد بيانات':''}]);
         if (!wb.Workbook) wb.Workbook = {};
