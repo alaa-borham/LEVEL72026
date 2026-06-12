@@ -1,7 +1,7 @@
 {
-  "name": "LEVEL7 - نظام الفواتير",
-  "short_name": "LEVEL7",
-  "description": "نظام إدارة الفواتير والمستودع",
+  "name": "LEVEL7 Tailor — نظام الخياطة والتفصيل",
+  "short_name": "L7 Tailor",
+  "description": "نظام إدارة محلات الخياطة والتفصيل",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
