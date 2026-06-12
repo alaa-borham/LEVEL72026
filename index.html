@@ -1458,12 +1458,22 @@ const fbDB   = firebase.firestore();
     <div class="spbody">
       <input type="hidden" id="c2-edit-id">
       <div style="display:grid;grid-template-columns:110px 1fr;gap:10px">
+        <div class="fg"><label>نوع الحساب</label>
+          <select id="c2-type" onchange="document.getElementById('c2-company-wrap').style.display=this.value==='شركة'?'block':'none'">
+            <option>فرد</option><option>شركة</option>
+          </select></div>
         <div class="fg"><label>رقم العميل</label><input type="number" id="c2-num" placeholder="تلقائي"></div>
-        <div class="fg"><label>اسم العميل <span class="req">*</span></label><input type="text" id="c2-name"></div>
       </div>
+      <div class="fg"><label>الاسم الكامل <span class="req">*</span></label><input type="text" id="c2-name"></div>
+      <div class="fg" id="c2-company-wrap" style="display:none"><label>اسم الشركة</label><input type="text" id="c2-company"></div>
       <div class="fg"><label>رقم الهاتف / الجوال</label><input type="text" id="c2-phone" style="direction:ltr" placeholder="05xxxxxxxx"></div>
       <div class="fg"><label>البريد الإلكتروني</label><input type="email" id="c2-email" style="direction:ltr" placeholder="name@example.com"></div>
       <div class="fg"><label>العنوان</label><input type="text" id="c2-address" placeholder="المدينة - الحي - الشارع"></div>
+      <div class="fg"><label>رابط الموقع (خرائط Google)</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="c2-maplink" style="direction:ltr;flex:1" placeholder="https://maps.app.goo.gl/...">
+          <button type="button" class="btn btn-info btn-sm" onclick="openCustMap()" title="فتح الموقع على الخريطة">📍</button>
+        </div></div>
       <div class="fg"><label>الرقم الضريبي (إن وجد)</label><input type="text" id="c2-tax" style="direction:ltr"></div>
       <div style="background:#f1f8e9;border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div style="font-size:.8rem;font-weight:700;color:#2e7d32;margin-bottom:8px">📐 بيانات الخياطة (اختيارية)</div>
@@ -3489,6 +3499,10 @@ function openCustomerPanel(id) {
   document.getElementById('cust-panel-title').textContent = c ? 'تعديل بيانات العميل' : 'إضافة عميل جديد';
   document.getElementById('c2-edit-id').value = c ? c.id : '';
   document.getElementById('c2-num').value     = c ? (c.num||'') : '';
+  document.getElementById('c2-type').value    = c ? (c.type||'فرد') : 'فرد';
+  document.getElementById('c2-company').value = c ? (c.company||'') : '';
+  document.getElementById('c2-company-wrap').style.display = (c && c.type==='شركة') ? 'block' : 'none';
+  document.getElementById('c2-maplink').value = c ? (c.mapLink||'') : '';
   document.getElementById('c2-name').value    = c ? c.name : '';
   document.getElementById('c2-phone').value   = c ? (c.phone||'') : '';
   document.getElementById('c2-email').value   = c ? (c.email||'') : '';
@@ -3503,6 +3517,11 @@ function openCustomerPanel(id) {
   document.getElementById('customer-panel').classList.add('open');
 }
 function closeCustomerPanel() { document.getElementById('customer-panel').classList.remove('open'); }
+function openCustMap() {
+  const url = document.getElementById('c2-maplink').value.trim();
+  if (!url) { alert('ألصق رابط الموقع من تطبيق خرائط Google أولاً'); return; }
+  window.open(url, '_blank');
+}
 function saveCustomerFull() {
   const ar = lang==='ar';
   const editId = document.getElementById('c2-edit-id').value;
@@ -3515,6 +3534,9 @@ function saveCustomerFull() {
   if (!num) num = getNextCustomerNum();
   const data = {
     num, name,
+    type:    document.getElementById('c2-type').value,
+    company: document.getElementById('c2-company').value.trim(),
+    mapLink: document.getElementById('c2-maplink').value.trim(),
     phone:   document.getElementById('c2-phone').value.trim(),
     email:   document.getElementById('c2-email').value.trim(),
     address: document.getElementById('c2-address').value.trim(),
@@ -3558,13 +3580,14 @@ function renderCustomers() {
     || (c.phone||'').includes(q));
   document.getElementById('cust-empty').style.display = list.length ? 'none' : 'block';
   document.getElementById('customers-tbody').innerHTML = list.map(c=>{
-    const extra = [c.email, c.address, c.taxNo ? (ar?'ضريبي: ':'Tax: ')+c.taxNo : '']
+    const extra = [c.type==='شركة' && c.company ? '🏢 '+c.company : '', c.email, c.address, c.taxNo ? (ar?'ضريبي: ':'Tax: ')+c.taxNo : '']
       .filter(Boolean).map(escHtml).join(' • ');
+    const mapA = c.mapLink ? ` <a href="${escHtml(c.mapLink)}" target="_blank" style="font-size:.72rem;text-decoration:none">📍</a>` : '';
     return `
     <tr>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${c.num||'-'}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">
-        <div style="font-weight:600">${escHtml(c.name)}</div>
+        <div style="font-weight:600">${escHtml(c.name)}${mapA}</div>
         ${extra?`<div style="font-size:.72rem;color:#888;margin-top:2px">${extra}</div>`:''}
       </td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;direction:ltr">${escHtml(c.phone||'-')}</td>
@@ -4707,10 +4730,10 @@ function exportToExcel() {
     const itemRows = [];
     invoices.forEach(i=>i.items.forEach(it=>itemRows.push({ 'رقم الفاتورة':i.invNum, 'التاريخ':i.date,
       'الصنف':it.desc, 'الكمية':it.qty, 'السعر':it.price, 'الخصم':it.disc||0, 'الإجمالي':it.total })));
-    const custRows = customers.map(c=>({ 'رقم العميل':c.num, 'الاسم':c.name, 'الهاتف':c.phone||'',
+    const custRows = customers.map(c=>({ 'رقم العميل':c.num, 'النوع':c.type||'فرد', 'الاسم':c.name, 'اسم الشركة':c.company||'', 'الهاتف':c.phone||'',
       'البريد':c.email||'', 'العنوان':c.address||'', 'الرقم الضريبي':c.taxNo||'',
       'الجنسية':c.nationality||'', 'الجنس':c.gender||'', 'العمر':c.age||'', 'الطول':c.height||'', 'الوزن':c.weight||'',
-      'ملاحظات':c.notes||'' }));
+      'رابط الموقع':c.mapLink||'', 'ملاحظات':c.notes||'' }));
     const measRows = measurements.map(m=>{
       const row = { 'التاريخ':m.date, 'العميل':_custName(m.clientId), 'القالب':m.template };
       Object.keys(m.values||{}).forEach(k=>{ row[MEAS_DICT[k]||k] = m.values[k]; });
