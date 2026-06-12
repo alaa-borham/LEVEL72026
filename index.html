@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#1b4d2e">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>نظام الفواتير - LEVEL7</title>
+<title>LEVEL7 Tailor — نظام إدارة الخياطة والتفصيل</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#eef2f7;direction:rtl}
@@ -415,31 +415,32 @@ const fbDB   = firebase.firestore();
   <div id="sub-notice" style="display:none;max-width:1150px;margin:0 auto 16px;background:#fff8e1;border:1.5px solid #ffb300;color:#e65100;border-radius:12px;padding:11px 18px;font-size:.92rem;font-weight:600;position:relative;z-index:1;text-align:center"></div>
   <div class="dash-hero">
     <div>
-      <h1 data-i18n="heroTitle">مرحباً بك في نظام LEVEL7 👋</h1>
-      <p data-i18n="appSubtitle">نظام إدارة الفواتير والمستودع</p>
+      <h1 data-i18n="heroTitle">مرحباً بك في LEVEL7 Tailor ✂️</h1>
+      <p data-i18n="appSubtitle">نظام إدارة الخياطة والتفصيل</p>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="hero-cta" style="background:linear-gradient(135deg,#7e57c2,#4527a0);box-shadow:0 8px 24px rgba(126,87,194,.35)" onclick="openMeasurePanel()" data-perm="tailoring">📐 قياس جديد</button>
       <button class="hero-cta" onclick="newInvoice()" data-i18n="heroCta" data-perm="invoices">➕ فاتورة جديدة</button>
       <button class="hero-cta" style="background:linear-gradient(135deg,#26a69a,#1565c0);box-shadow:0 8px 24px rgba(38,166,154,.35)" onclick="openReceiptPicker()" data-perm="customers">🧾 سند قبض</button>
     </div>
   </div>
   <div class="dash-stats" id="dash-stats" style="margin:0 auto 22px"></div>
   <div class="dash-cards">
-    <div class="dash-card" onclick="showScreen('invoice-list')" data-perm="invoices"><div class="icon">📋</div><h3 data-i18n="invoices">الفواتير</h3><p data-i18n="invoicesSub">قائمة الفواتير</p></div>
-    <div class="dash-card" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
-    <div class="dash-card" onclick="showScreen('products-screen')" data-perm="products"><div class="icon">📦</div><h3 data-i18n="warehouse">المستودع</h3><p data-i18n="warehouseSub">الأصناف والمخزون</p></div>
     <div class="dash-card" onclick="showCustomers()" data-perm="customers"><div class="icon">👥</div><h3 data-i18n="customers">العملاء</h3><p data-i18n="customersSub">بيانات العملاء</p></div>
     <div class="dash-card" onclick="showMeasurements()" data-perm="tailoring"><div class="icon">📐</div><h3>القياسات</h3><p>قياسات الخياطة وقوالبها</p></div>
     <div class="dash-card" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
     <div class="dash-card" onclick="showFabrics()" data-perm="fabrics"><div class="icon">🧵</div><h3>الأقمشة</h3><p>أنواع وخصائص ومخزون</p></div>
+    <div class="dash-card" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
+    <div class="dash-card" onclick="showScreen('invoice-list')" data-perm="invoices"><div class="icon">📋</div><h3 data-i18n="invoices">الفواتير</h3><p data-i18n="invoicesSub">قائمة الفواتير</p></div>
+    <div class="dash-card" onclick="showScreen('products-screen')" data-perm="products"><div class="icon">📦</div><h3 data-i18n="warehouse">المستودع</h3><p data-i18n="warehouseSub">الأصناف والمخزون</p></div>
+    <div class="dash-card" onclick="showSuppliers()" data-perm="purchases"><div class="icon">🚚</div><h3>المشتريات</h3><p>الموردون وفواتير الشراء</p></div>
     <div class="dash-card" onclick="showExpenses()" data-perm="expenses"><div class="icon">💸</div><h3>المصروفات</h3><p>إيجار، رواتب، تشغيل</p></div>
     <div class="dash-card" onclick="showVouchersLog()"><div class="icon">📒</div><h3>سجل السندات</h3><p>قبض وصرف — بحث وطباعة</p></div>
-    <div class="dash-card" onclick="showSuppliers()" data-perm="purchases"><div class="icon">🚚</div><h3>المشتريات</h3><p>الموردون وفواتير الشراء</p></div>
     <div class="dash-card" id="card-members" onclick="showMembers()"><div class="icon">🧑‍💼</div><h3>المستخدمون</h3><p>الموظفون وصلاحياتهم</p></div>
     <div class="dash-card" id="card-branches" onclick="showBranches()"><div class="icon">🏬</div><h3>الفروع</h3><p>فروع المنشأة وبياناتها</p></div>
     <div class="dash-card" onclick="showScreen('analytics-screen')" data-perm="analytics"><div class="icon">📊</div><h3 data-i18n="analytics">التحليلات</h3><p data-i18n="analyticsSub">إحصائيات وتقارير</p></div>
     <div class="dash-card" onclick="showScreen('archive-screen')" data-perm="archive"><div class="icon">🗂️</div><h3 data-i18n="archive">الأرشيف</h3><p data-i18n="archiveSub">الفواتير المحذوفة</p></div>
-    <div class="dash-card" onclick="openBranding()" data-perm="settings"><div class="icon">🎨</div><h3 data-i18n="branding">الشعار والخلفية</h3><p data-i18n="brandingSub">صور وقياسات</p></div>
+    <div class="dash-card" onclick="openBranding()" data-perm="settings"><div class="icon">🎨</div><h3>الشعار والخلفية</h3><p>شعار المنشأة وخلفية الفاتورة</p></div>
     <div class="dash-card" onclick="showScreen('settings-screen')" data-perm="settings"><div class="icon">⚙️</div><h3 data-i18n="settings">الإعدادات</h3><p data-i18n="settingsSub">ضبط النظام</p></div>
   </div>
 </div>
@@ -2016,7 +2017,7 @@ let editingInvId=null, editingProdId=null, returnForInvId=null, rowCount=0, stmt
 // ═══════════════ I18N
 const T = {
   ar: {
-    appSubtitle:'نظام إدارة الفواتير والمستودع', invoices:'الفواتير', invoicesSub:'قائمة الفواتير',
+    appSubtitle:'نظام إدارة الخياطة والتفصيل', invoices:'الفواتير', invoicesSub:'قائمة الفواتير',
     newInvoice:'فاتورة جديدة', newInvoiceSub:'إنشاء فاتورة', warehouse:'المستودع', warehouseSub:'الأصناف والمخزون',
     customers:'العملاء', customersSub:'بيانات العملاء', analytics:'التحليلات', analyticsSub:'إحصائيات وتقارير',
     archive:'الأرشيف', archiveSub:'الفواتير المحذوفة', analyticsTitle:'لوحة التحليلات', backHome:'← الرئيسية',
@@ -2041,10 +2042,10 @@ const T = {
     lblMoveType:'نوع الحركة', lblAmount:'المبلغ *',
     logout:'خروج', authLogin:'تسجيل الدخول', authRegister:'حساب جديد', authUser:'اسم المستخدم',
     authPass:'كلمة المرور', authBiz:'اسم المنشأة / الشركة', authBtnLogin:'دخول ←', authBtnRegister:'إنشاء الحساب ✔',
-    authNote:'كل حساب مستقل تماماً ببياناته: فواتير، عملاء، مستودع، إعدادات',
+    authNote:'كل حساب مستقل تماماً ببياناته: قياسات، فواتير، عملاء، أقمشة',
     authFillAll:'الرجاء تعبئة جميع الحقول', authUserExists:'اسم المستخدم موجود مسبقاً', authBadLogin:'اسم المستخدم أو كلمة المرور غير صحيحة',
     settings:'الإعدادات', settingsSub:'ضبط النظام', settingsTitle:'إعدادات النظام',
-    heroTitle:'مرحباً بك في نظام LEVEL7 👋', heroCta:'➕ فاتورة جديدة',
+    heroTitle:'مرحباً بك في LEVEL7 Tailor ✂️', heroCta:'➕ فاتورة جديدة',
     setCompany:'🏢 بيانات الشركة', setCoName:'اسم الشركة (يظهر في الفاتورة)', setCoSub:'الوصف / السطر الثاني',
     setCoWeb:'الموقع الإلكتروني', setInvoicing:'🧾 الفواتير', setTax:'نسبة الضريبة الافتراضية %',
     setNextInv:'رقم الفاتورة العام التالي', setDefPay:'طريقة الدفع الافتراضية', setGeneral:'🌐 عام',
@@ -2052,7 +2053,7 @@ const T = {
     setDanger:'⚠️ منطقة الخطر', setReset:'🗑 مسح جميع البيانات',
   },
   en: {
-    appSubtitle:'Invoice & Warehouse Management System', invoices:'Invoices', invoicesSub:'Invoice list',
+    appSubtitle:'Tailoring & Bespoke Management System', invoices:'Invoices', invoicesSub:'Invoice list',
     newInvoice:'New Invoice', newInvoiceSub:'Create invoice', warehouse:'Warehouse', warehouseSub:'Products & stock',
     customers:'Customers', customersSub:'Customer data', analytics:'Analytics', analyticsSub:'Stats & reports',
     archive:'Archive', archiveSub:'Deleted invoices', analyticsTitle:'Analytics Dashboard', backHome:'← Home',
@@ -2080,7 +2081,7 @@ const T = {
     authNote:'Each account is fully independent: invoices, customers, warehouse, settings',
     authFillAll:'Please fill in all fields', authUserExists:'Username already exists', authBadLogin:'Wrong username or password',
     settings:'Settings', settingsSub:'System setup', settingsTitle:'System Settings',
-    heroTitle:'Welcome to LEVEL7 System 👋', heroCta:'➕ New Invoice',
+    heroTitle:'Welcome to LEVEL7 Tailor ✂️', heroCta:'➕ New Invoice',
     setCompany:'🏢 Company Info', setCoName:'Company name (shown on invoice)', setCoSub:'Description / second line',
     setCoWeb:'Website', setInvoicing:'🧾 Invoicing', setTax:'Default tax rate %',
     setNextInv:'Next global invoice no.', setDefPay:'Default payment method', setGeneral:'🌐 General',
