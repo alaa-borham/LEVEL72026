@@ -1038,15 +1038,23 @@ const fbDB   = firebase.firestore();
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px">
           <div class="fg" style="margin:0"><label>الياقة</label>
             <select id="mm-collar"><option value=""></option><option>ملكي</option><option>صيني</option><option>مربع</option><option>فرنسي</option></select></div>
-          <div class="fg" style="margin:0"><label>القلاب</label>
-            <select id="mm-placket"><option value=""></option><option>ملكي</option><option>مفتوح</option><option>فرنسي</option></select></div>
-          <div class="fg" style="margin:0"><label>الجيب</label>
-            <select id="mm-pocket"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيبان</option></select></div>
-          <div class="fg" style="margin:0"><label>الكم</label>
+          <div class="fg" style="margin:0"><label>الجبزور (القلاب)</label>
+            <select id="mm-placket"><option value=""></option><option>ملكي</option><option>مفتوح</option><option>فرنسي</option><option>مخفي</option></select></div>
+          <div class="fg" style="margin:0"><label>الأكمام</label>
             <select id="mm-cuff"><option value=""></option><option>سادة</option><option>كبك</option></select></div>
-          <div class="fg" style="margin:0;grid-column:span 2"><label>القماش (من مخزون الأقمشة)</label><select id="mm-fabric"></select></div>
-          <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons"></div>
+          <div class="fg" style="margin:0"><label>جيب الصدر</label>
+            <select id="mm-pocket"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيب بقلم</option><option>جيبان</option></select></div>
+          <div class="fg" style="margin:0"><label>الجيوب الجانبية</label>
+            <select id="mm-sidepockets"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيبان</option></select></div>
+          <div class="fg" style="margin:0"><label>التكتك</label><input type="text" id="mm-taktak"></div>
+          <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية / معدنية..."></div>
           <div class="fg" style="margin:0"><label>التطريز</label><input type="text" id="mm-embroidery"></div>
+          <div class="fg" style="margin:0;grid-column:span 2"><label>شعارات / إكسسوارات معدنية</label><input type="text" id="mm-metal"></div>
+          <div class="fg" style="margin:0;grid-column:span 2"><label>القماش (من مخزون الأقمشة)</label><select id="mm-fabric"></select></div>
+          <div class="fg" style="margin:0"><label>قماش خارجي من العميل — النوع</label><input type="text" id="mm-extfabric"></div>
+          <div class="fg" style="margin:0"><label>عرض القماش الخارجي (سم)</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
+          <div class="fg" style="margin:0"><label>عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
+          <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:4px"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="mm-proofa" style="width:auto"> يحتاج بروفة</label></div>
         </div>
       </div>
       <div class="fg" style="margin-top:8px"><label>ملاحظات إضافية</label><textarea id="ms-notes" rows="2"></textarea></div>
@@ -3672,6 +3680,13 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
     fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('');
   document.getElementById('mm-buttons').value    = mod.buttons||'';
   document.getElementById('mm-embroidery').value = mod.embroidery||'';
+  document.getElementById('mm-sidepockets').value = mod.sidePockets||'';
+  document.getElementById('mm-taktak').value     = mod.taktak||'';
+  document.getElementById('mm-metal').value      = mod.metal||'';
+  document.getElementById('mm-extfabric').value  = mod.extFabric||'';
+  document.getElementById('mm-extfabricw').value = mod.extFabricW||'';
+  document.getElementById('mm-qty').value        = mod.qty||1;
+  document.getElementById('mm-proofa').checked   = !!mod.proofa;
   renderMeasFields(src ? src.values : null);
   document.getElementById('measure-panel').classList.add('open');
 }
@@ -3721,6 +3736,13 @@ function saveMeasurement() {
       fabricId:   document.getElementById('mm-fabric').value || null,
       buttons:    document.getElementById('mm-buttons').value.trim(),
       embroidery: document.getElementById('mm-embroidery').value.trim(),
+      sidePockets: document.getElementById('mm-sidepockets').value,
+      taktak:     document.getElementById('mm-taktak').value.trim(),
+      metal:      document.getElementById('mm-metal').value.trim(),
+      extFabric:  document.getElementById('mm-extfabric').value.trim(),
+      extFabricW: parseFloat(document.getElementById('mm-extfabricw').value)||0,
+      qty:        parseInt(document.getElementById('mm-qty').value)||1,
+      proofa:     document.getElementById('mm-proofa').checked,
     },
     notes: document.getElementById('ms-notes').value.trim(),
   };
@@ -3761,9 +3783,13 @@ function printMeasurement(id) {
     <div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
   const mod = m.model || {};
   const fab = mod.fabricId ? _fabricById(mod.fabricId) : null;
+  const extFab = mod.extFabric ? mod.extFabric + (mod.extFabricW ? ' (عرض '+mod.extFabricW+' سم)' : '') : '';
   const modParts = [
-    ['الياقة', mod.collar], ['القلاب', mod.placket], ['الجيب', mod.pocket], ['الكم', mod.cuffType],
-    ['القماش', fab ? _fabricLabel(fab) : ''], ['الأزرار', mod.buttons], ['التطريز', mod.embroidery],
+    ['الياقة', mod.collar], ['الجبزور', mod.placket], ['الأكمام', mod.cuffType],
+    ['جيب الصدر', mod.pocket], ['الجيوب الجانبية', mod.sidePockets], ['التكتك', mod.taktak],
+    ['القماش', fab ? _fabricLabel(fab) : ''], ['قماش العميل', extFab],
+    ['الأزرار', mod.buttons], ['التطريز', mod.embroidery], ['معدنيات', mod.metal],
+    ['عدد القطع', mod.qty > 1 ? mod.qty : ''], ['بروفة', mod.proofa ? 'نعم' : ''],
   ].filter(([,v])=>v);
   const modelEl = document.getElementById('mp-model');
   modelEl.style.display = modParts.length ? 'block' : 'none';
@@ -4690,8 +4716,11 @@ function exportToExcel() {
       Object.keys(m.values||{}).forEach(k=>{ row[MEAS_DICT[k]||k] = m.values[k]; });
       const mod = m.model||{};
       const fab = mod.fabricId ? _fabricById(mod.fabricId) : null;
-      row['الياقة']=mod.collar||''; row['القلاب']=mod.placket||''; row['الجيب']=mod.pocket||'';
-      row['الكم']=mod.cuffType||''; row['القماش']=fab?_fabricLabel(fab):''; row['الأزرار']=mod.buttons||''; row['التطريز']=mod.embroidery||'';
+      row['الياقة']=mod.collar||''; row['الجبزور']=mod.placket||''; row['الأكمام']=mod.cuffType||'';
+      row['جيب الصدر']=mod.pocket||''; row['الجيوب الجانبية']=mod.sidePockets||''; row['التكتك']=mod.taktak||'';
+      row['القماش']=fab?_fabricLabel(fab):''; row['قماش العميل']=mod.extFabric||''; row['عرض قماش العميل']=mod.extFabricW||'';
+      row['الأزرار']=mod.buttons||''; row['التطريز']=mod.embroidery||''; row['معدنيات']=mod.metal||'';
+      row['عدد القطع']=mod.qty||1; row['بروفة']=mod.proofa?'نعم':'';
       row['ملاحظات'] = m.notes||'';
       return row;
     });
