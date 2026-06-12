@@ -1771,15 +1771,9 @@ function registerAccount() {
                       subEnd: subEnd.toISOString().split('T')[0], suspended:false };
     return fbDB.collection('accounts').doc(cred.user.uid).set(profile)
       .then(()=>fbDB.collection('usernames').doc(user).set({ email, uid: cred.user.uid }))
-      .then(()=>_sendVerify(cred.user))
-      .then(()=>{
-        document.getElementById('verify-email-show').textContent = email;
-        document.getElementById('demo-code-box').innerHTML =
-          '📬 أرسلنا <b>رابط تفعيل</b> إلى بريدك.<br>افتح الرسالة (تحقق من Spam أيضاً) واضغط الرابط،<br>ثم ارجع هنا واضغط الزر بالأسفل.';
-        document.getElementById('tab-login').classList.remove('active');
-        document.getElementById('tab-register').classList.remove('active');
-        showAuthTab('verify');
-      });
+      // رابط التفعيل يُرسل للتوثيق فقط — الدخول لا يتوقف عليه (رسائل Firebase قد تتأخر)
+      .then(()=>_sendVerify(cred.user).catch(()=>{}))
+      .then(()=>_afterFirebaseLogin(cred.user));
   }).catch(e=>{ if (e!=='_handled') err.textContent = _fbErrMsg(e); });
 }
 
@@ -1794,13 +1788,9 @@ function confirmVerifyCode() {
     return;
   }
   err.textContent = '⏳ جارٍ التحقق...';
+  // الدخول لا يتوقف على التفعيل — يكفي أن الجلسة صحيحة
   u.reload().then(()=>{
     const cu = fbAuth.currentUser;
-    if (!cu.emailVerified) {
-      err.textContent = 'لم يُفعَّل بعد — افتح رابط التفعيل في بريدك أولاً';
-      return;
-    }
-    // تجديد رمز الجلسة حتى تعرف Firestore أن البريد أصبح مفعّلاً
     return cu.getIdToken(true).then(()=>_afterFirebaseLogin(cu));
   }).catch(e=>err.textContent=_fbErrMsg(e));
 }
@@ -1845,22 +1835,7 @@ function login() {
         .then(s=> s.exists ? s.data().email : Promise.reject({code:'user-not-found'}));
   getEmail
     .then(email=>fbAuth.signInWithEmailAndPassword(email, pass))
-    .then(cred=>{
-      if (!cred.user.emailVerified) {
-        // الموظفون التابعون لمنشأة لا يحتاجون تفعيل بريد — صاحب المنشأة أنشأ حسابهم بنفسه
-        return fbDB.collection('members').doc(cred.user.uid).get()
-          .then(s => s.exists, ()=>false)
-          .then(isMember => {
-            if (isMember) return _afterFirebaseLogin(cred.user);
-            document.getElementById('verify-email-show').textContent = cred.user.email;
-            document.getElementById('demo-code-box').innerHTML =
-              '📬 حسابك غير مفعَّل — افتح رابط التفعيل المرسل لبريدك ثم اضغط الزر بالأسفل.';
-            err.textContent='';
-            showAuthTab('verify');
-          });
-      }
-      return _afterFirebaseLogin(cred.user);
-    })
+    .then(cred=>_afterFirebaseLogin(cred.user))
     .catch(e=>err.textContent=_fbErrMsg(e));
 }
 
@@ -4794,21 +4769,9 @@ if (location.hash === '#admin') {
     if (_booted) return;
     _booted = true;
     if (!u) return;
-    if (u.emailVerified) {
-      _afterFirebaseLogin(u).catch(e=>{
-        document.getElementById('auth-err').textContent = '⚠ تعذر استئناف الجلسة: ' + (e && (e.message||e.code) || '');
-      });
-      return;
-    }
-    // الحالة المحفوظة قد تكون قديمة (فعّل بريده بعد آخر زيارة) — حدّثها من الخادم
-    u.reload().then(()=>{
-      const cu = fbAuth.currentUser;
-      if (cu && cu.emailVerified)
-        return cu.getIdToken(true).then(()=>_afterFirebaseLogin(cu));
-      // الموظفون التابعون لمنشأة يدخلون دون تفعيل بريد
-      if (cu) return fbDB.collection('members').doc(cu.uid).get()
-        .then(s => { if (s.exists) return _afterFirebaseLogin(cu); }, ()=>{});
-    }).catch(()=>{});
+    _afterFirebaseLogin(u).catch(e=>{
+      document.getElementById('auth-err').textContent = '⚠ تعذر استئناف الجلسة: ' + (e && (e.message||e.code) || '');
+    });
   });
 }
 window.addEventListener('hashchange', ()=>location.reload());
