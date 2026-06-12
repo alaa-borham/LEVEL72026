@@ -1052,6 +1052,7 @@ const fbDB   = firebase.firestore();
     <div class="mhdr"><h3>📐 سجل القياسات</h3><button class="mcls" onclick="closeModal('measurements-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openMeasurePanel()">＋ قياس جديد</button>
+      <button class="btn btn-info" onclick="openMeasSettings()">⚙️ إعدادات الحقول</button>
       <select id="ms-filter-client" onchange="renderMeasurements()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;min-width:170px">
         <option value="">— كل العملاء —</option>
       </select>
@@ -1074,6 +1075,23 @@ const fbDB   = firebase.firestore();
       </table>
       <div id="ms-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد قياسات بعد — اضغط "قياس جديد"</div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: MEASUREMENT FIELD SETTINGS (إعدادات حقول القياس) -->
+<div class="moverlay" id="meas-settings-modal" style="z-index:360">
+  <div class="mbox" style="max-width:600px">
+    <div class="mhdr"><h3>⚙️ إعدادات حقول القياس</h3><button class="mcls" onclick="closeModal('meas-settings-modal')">✕</button></div>
+    <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:.85rem;font-weight:600">القالب:</label>
+      <select id="mset-template" onchange="renderMeasSettings()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;flex:1;min-width:140px"></select>
+      <button class="btn btn-success btn-sm" onclick="measSetAll(true)">✔ إظهار الكل</button>
+      <button class="btn btn-warning btn-sm" onclick="measSetAll(false)">إخفاء الكل</button>
+    </div>
+    <div style="padding:7px 16px;background:#f1f8e9;font-size:.78rem;color:#33691e">
+      أزل العلامة عن أي مقاس لإخفائه من شاشة القياس — الإعداد يُحفظ فوراً لكل قالب على حدة
+    </div>
+    <div class="mlist" id="mset-list" style="padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px"></div>
   </div>
 </div>
 
@@ -1744,7 +1762,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -1799,6 +1817,7 @@ function _dailyBackup(uid, data) {
 // ═══════════════ STATE (loaded per account)
 let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[];
 let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة — أساس التوزيع التلقائي للمهام
+let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
 const DEF_SETTINGS = {
@@ -1831,6 +1850,7 @@ function loadAccountData() {
   fabrics         = JSON.parse(lsGet('fabrics','[]'));
   prodOrders      = JSON.parse(lsGet('prodOrders','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
+  measVisible     = JSON.parse(lsGet('measVisible','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -3773,17 +3793,62 @@ function renderCustomers() {
 // ═══════════════ MEASUREMENT ENGINE — محرك القياسات (قاموس + قوالب + قواعد تحقق)
 // قاموس القياسات: مفتاح ثابت → التسمية العربية (كل القيم بالسنتيمتر)
 const MEAS_DICT = {
+  // ── قائمة الثوب السعودي المعتمدة (بالتسلسل 0-41)
+  frontLength:'الطول الكلي الأمامي', backLength:'الطول الكلي الخلفي',
+  thobeShoulder:'مقاس الكتف', downShoulderR:'نزول كتف يمين', downShoulderL:'نزول كتف يسار',
+  downShoulderB:'نزول الكتف خلف', sleeveSada:'طول الكم الساده', sleeveKabak:'طول الكم الكبك',
+  fullChest:'مقاس الصدر كامل', waist:'مقاس الوسط', hips:'مقاس الهيب', bottom:'مقاس أسفل',
+  bFoldWidth:'مقاس عرض كفه أسفل', upperChest:'مقاس الصدر العلوي', frontChest:'مقاس نصف الصدر',
+  backYoke:'مقاس الظهر الخلفي', armhole:'مقاس أعلى الكم', elbowWidth:'مقاس نصف الكم',
+  halfSleeve2:'مقاس نصف الكم 2', sadaRound:'مقاس اليد الساده', sadaWidth:'مقاس عرض اليد الساده',
+  kabakRound:'مقاس طول الكبك', kabakWidth:'مقاس عرض الكبك', collarSada:'مقاس الرقبه الساده',
+  collarGallab:'مقاس الرقبه القلاب', gallabFrontH:'ارتفاع القلاب الأمام', gallabBackH:'ارتفاع القلاب الخلف',
+  gallabOpen:'فتحه القلاب الأماميه', collarSadaH:'ارتفاع الرقبه الساده',
+  jabzourLen:'طول الجبزور', jabzourWidth:'عرض الجبزور',
+  pocketDown:'نزول جيب الصدر', chestPocketLen:'طول جيب الصدر', chestPocketW:'عرض جيب الصدر',
+  ashtackLen:'طول الاشتك', ashtackW:'عرض الاشتك',
+  sidePocketDown:'نزول جيب الجنب', sidePocketOpen:'فتحه جيب الجنب',
+  sidePocketLen:'طول جيب الجنب', sidePocketW:'عرض جيب الجنب',
+  mobilePocketLen:'طول جيب الجوال', mobilePocketW:'عرض جيب الجوال',
+  // ── مقاسات القوالب الأخرى (قميص، بنطلون، بدلة، عباية)
   length:'الطول الكلي', shoulder:'الكتف', sleeve:'طول الكم', neck:'الرقبة',
-  chest:'الصدر', waist:'الخصر', hip:'الأرداف', armhole:'فتحة الإبط',
-  upperArm:'محيط العضد', cuff:'وسع الكبك', bottom:'وسع الأسفل',
+  chest:'الصدر', hip:'الأرداف', upperArm:'محيط العضد', cuff:'وسع الكبك',
   back:'عرض الظهر', wrist:'المعصم', jacketLen:'طول الجاكيت',
   outseam:'طول البنطلون (خارجي)', inseam:'الطول الداخلي', rise:'الارتفاع (الحجاب)',
   thigh:'الفخذ', knee:'الركبة', legOpen:'فتحة الرجل',
 };
+const MEAS_EN = {
+  frontLength:'Front Length', backLength:'Back Length', thobeShoulder:'Thobe Shoulder',
+  downShoulderR:'Down Shoulder R', downShoulderL:'Down Shoulder L', downShoulderB:'Down Shoulder Back',
+  sleeveSada:'S Sada Length', sleeveKabak:'S Kabak Length', fullChest:'Full Chest',
+  waist:'Waist', hips:'Hips', bottom:'Bottom', bFoldWidth:'B Folding Width',
+  upperChest:'Upper Chest Size', frontChest:'Front Chest', backYoke:'Back Yoke',
+  armhole:'Arm Hole', elbowWidth:'Elbow Width', halfSleeve2:'Half Sleeve 2',
+  sadaRound:'Sada Round', sadaWidth:'Sada Width', kabakRound:'Kabak Round', kabakWidth:'Kabak Width',
+  collarSada:'Collar Sadaa', collarGallab:'Collar Gallab', gallabFrontH:'Gallab Width',
+  gallabBackH:'Back Collar Height', gallabOpen:'Collar Opening in Front', collarSadaH:'Collar Sadaa Width',
+  jabzourLen:'Jabzour Length', jabzourWidth:'Jabzour Width',
+  pocketDown:'Pocket Height', chestPocketLen:'Chest Pocket Length', chestPocketW:'Chest Pocket Width',
+  ashtackLen:'Ashtack Length', ashtackW:'Ashtack Width',
+  sidePocketDown:'Down Side Pocket', sidePocketOpen:'Side Pocket Opening',
+  sidePocketLen:'Side Pocket Length', sidePocketW:'Side Pocket Width',
+  mobilePocketLen:'Mobile Pocket Length', mobilePocketW:'Mobile Pocket Width',
+  length:'Full Length', shoulder:'Shoulder', sleeve:'Sleeve Length', neck:'Neck',
+  chest:'Chest', hip:'Hip', upperArm:'Upper Arm', cuff:'Cuff Width',
+  back:'Back Width', wrist:'Wrist', jacketLen:'Jacket Length',
+  outseam:'Outseam', inseam:'Inseam', rise:'Rise', thigh:'Thigh', knee:'Knee', legOpen:'Leg Opening',
+};
+// القائمة المعتمدة للثوب بالتسلسل 0-41
+const THOBE_KEYS = ['frontLength','backLength','thobeShoulder','downShoulderR','downShoulderL','downShoulderB',
+  'sleeveSada','sleeveKabak','fullChest','waist','hips','bottom','bFoldWidth','upperChest','frontChest',
+  'backYoke','armhole','elbowWidth','halfSleeve2','sadaRound','sadaWidth','kabakRound','kabakWidth',
+  'collarSada','collarGallab','gallabFrontH','gallabBackH','gallabOpen','collarSadaH','jabzourLen','jabzourWidth',
+  'pocketDown','chestPocketLen','chestPocketW','ashtackLen','ashtackW','sidePocketDown','sidePocketOpen',
+  'sidePocketLen','sidePocketW','mobilePocketLen','mobilePocketW'];
 // قوالب القياس: نوع الملبس → مفاتيح القياسات المطلوبة
 const MEAS_TEMPLATES = {
-  'ثوب سعودي': ['length','shoulder','sleeve','neck','chest','waist','hip','armhole','upperArm','cuff','bottom'],
-  'ثوب أطفال': ['length','shoulder','sleeve','neck','chest','waist','hip','armhole','upperArm','cuff','bottom'],
+  'ثوب سعودي': [...THOBE_KEYS],
+  'ثوب أطفال': [...THOBE_KEYS],
   'قميص':      ['length','shoulder','sleeve','neck','chest','waist','hip','armhole','cuff'],
   'بنطلون':    ['outseam','inseam','rise','waist','hip','thigh','knee','legOpen'],
   'بدلة':      ['jacketLen','shoulder','sleeve','chest','waist','hip','back','upperArm','wrist','outseam','inseam','thigh','legOpen'],
@@ -3799,6 +3864,11 @@ const MEAS_RULES = [
   v => v.waist && v.chest && v.waist > v.chest*1.4 && 'الخصر أكبر من الصدر بفارق كبير — تأكد من القياس',
   v => v.knee && v.thigh && v.knee > v.thigh && 'الركبة أوسع من الفخذ — تأكد من القياس',
   v => v.inseam && v.outseam && v.inseam >= v.outseam && 'الطول الداخلي يجب أن يكون أقل من الطول الخارجي',
+  // قواعد قائمة الثوب المعتمدة
+  v => v.hips && v.waist && v.hips < v.waist && 'الهيب أصغر من الوسط — تأكد من القياس',
+  v => v.sleeveSada && v.frontLength && (v.sleeveSada < v.frontLength*0.3 || v.sleeveSada > v.frontLength*0.6) && 'طول الكم الساده غير متناسب مع الطول الكلي',
+  v => v.collarSada && v.fullChest && v.collarSada >= v.fullChest && 'الرقبه أكبر من الصدر — غير منطقي',
+  v => v.frontLength && v.backLength && Math.abs(v.frontLength - v.backLength) > 12 && 'فرق كبير بين الطول الأمامي والخلفي — تأكد',
 ];
 function _custById(id){ return customers.find(c=>String(c.id)===String(id)); }
 function _custName(id){ const c=_custById(id); return c ? c.name : '(عميل محذوف)'; }
@@ -3884,14 +3954,46 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
 }
 function renderMeasFields(values) {
   const tpl = document.getElementById('ms-template').value;
-  const keys = MEAS_TEMPLATES[tpl] || [];
-  document.getElementById('ms-fields').innerHTML = keys.map(k=>`
+  const hidden = measVisible[tpl] || {};
+  const keys = (MEAS_TEMPLATES[tpl] || []).filter(k => hidden[k] !== false);
+  document.getElementById('ms-fields').innerHTML = keys.map((k,i)=>`
     <div class="fg" style="margin:0">
-      <label style="font-size:.78rem">${MEAS_DICT[k]||k}</label>
+      <label style="font-size:.76rem"><span style="color:#bbb">${i}.</span> ${MEAS_DICT[k]||k}
+        ${MEAS_EN[k]?`<span style="color:#aaa;font-size:.62rem;direction:ltr;display:inline-block">${MEAS_EN[k]}</span>`:''}</label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
         value="${values && values[k] != null ? values[k] : ''}" oninput="validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
+}
+function openMeasSettings() {
+  document.getElementById('mset-template').innerHTML =
+    Object.keys(MEAS_TEMPLATES).map(t=>`<option>${t}</option>`).join('');
+  renderMeasSettings();
+  document.getElementById('meas-settings-modal').classList.add('open');
+}
+function renderMeasSettings() {
+  const tpl = document.getElementById('mset-template').value;
+  const hidden = measVisible[tpl] || {};
+  document.getElementById('mset-list').innerHTML = (MEAS_TEMPLATES[tpl]||[]).map((k,i)=>`
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:.8rem;padding:3px 0">
+      <input type="checkbox" ${hidden[k]===false?'':'checked'} onchange="toggleMeasField('${tpl}','${k}',this.checked)" style="width:auto">
+      <span style="color:#bbb;min-width:18px">${i}</span>
+      <span style="flex:1">${MEAS_DICT[k]||k}</span>
+      <span style="color:#aaa;font-size:.66rem;direction:ltr">${MEAS_EN[k]||''}</span>
+    </label>`).join('');
+}
+function toggleMeasField(tpl, k, show) {
+  measVisible[tpl] = measVisible[tpl] || {};
+  if (show) delete measVisible[tpl][k];
+  else measVisible[tpl][k] = false;
+  lsSet('measVisible', JSON.stringify(measVisible));
+}
+function measSetAll(show) {
+  const tpl = document.getElementById('mset-template').value;
+  measVisible[tpl] = {};
+  if (!show) (MEAS_TEMPLATES[tpl]||[]).forEach(k=>measVisible[tpl][k]=false);
+  lsSet('measVisible', JSON.stringify(measVisible));
+  renderMeasSettings();
 }
 function _readMeasValues() {
   const tpl = document.getElementById('ms-template').value;
@@ -3972,7 +4074,7 @@ function printMeasurement(id) {
   document.getElementById('mp-template').textContent = m.template;
   const keys = MEAS_TEMPLATES[m.template]||Object.keys(m.values||{});
   document.getElementById('mp-grid').innerHTML = keys.filter(k=>m.values && m.values[k]).map(k=>`
-    <div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
+    <div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}${MEAS_EN[k]?`<br><span style="font-size:.58rem;color:#999">${MEAS_EN[k]}</span>`:''}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
   const mod = m.model || {};
   const fab = mod.fabricId ? _fabricById(mod.fabricId) : null;
   const extFab = mod.extFabric ? mod.extFabric + (mod.extFabricW ? ' (عرض '+mod.extFabricW+' سم)' : '') : '';
