@@ -1163,7 +1163,7 @@ const fbDB   = firebase.firestore();
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <div id="mset-model-prev" style="width:120px;height:150px;border:2px dashed #c5e1a5;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;color:#bbb;font-size:.75rem">لا صورة</div>
           <div>
-            <input type="file" id="mset-model-file" accept="image/*" onchange="uploadTmplModel()" style="font-size:.82rem;max-width:230px">
+            <input type="file" id="mset-model-file" accept="image/*,.svg" onchange="uploadTmplModel()" style="font-size:.82rem;max-width:230px">
             <div style="font-size:.72rem;color:#999;margin-top:6px">تظهر هذه الصورة أعلى شاشة الأوردر. يُفضّل صورة واضحة للثوب/الموديل.</div>
             <button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="removeTmplModel()">حذف الصورة</button>
           </div>
@@ -4426,10 +4426,22 @@ function msetTab(which) {
   if (which==='imgs') renderTmplImages();
   if (which==='spots') renderHotspotEditor();
 }
+function _readImage(file, maxDim, quality, cb) {
+  // ملفات SVG: تُخزَّن كما هي (متجهة وخفيفة) دون تحويل لـ canvas
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    if (file.size > 1.5*1024*1024) { alert('ملف SVG كبير جداً'); return; }
+    const r = new FileReader();
+    r.onload = e => cb(e.target.result);
+    r.onerror = ()=>alert('تعذّرت قراءة الملف');
+    r.readAsDataURL(file);
+    return;
+  }
+  _resizeImg(file, maxDim, quality, cb);
+}
 function uploadTmplModel() {
   const tpl = document.getElementById('mset-template').value;
   const file = document.getElementById('mset-model-file').files[0]; if (!file) return;
-  _resizeImg(file, 520, 0.7, dataURL => { _tplImgObj(tpl).model = dataURL; _saveTmplImages(); renderTmplImages(); });
+  _readImage(file, 520, 0.7, dataURL => { _tplImgObj(tpl).model = dataURL; _saveTmplImages(); renderTmplImages(); renderHotspotEditor(); });
 }
 function removeTmplModel() {
   const tpl = document.getElementById('mset-template').value;
@@ -4438,7 +4450,7 @@ function removeTmplModel() {
 function uploadPartImg(part, opt, inputId) {
   const tpl = document.getElementById('mset-template').value;
   const file = document.getElementById(inputId).files[0]; if (!file) return;
-  _resizeImg(file, 240, 0.65, dataURL => {
+  _readImage(file, 240, 0.65, dataURL => {
     const o = _tplImgObj(tpl); o.parts[part] = o.parts[part]||{}; o.parts[part][opt] = dataURL;
     _saveTmplImages(); renderTmplImages();
   });
@@ -4468,7 +4480,7 @@ function renderTmplImages() {
               <div style="width:78px;height:78px;border:1.5px solid ${img?'#66bb6a':'#ddd'};border-radius:10px;overflow:hidden;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
                 ${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover">`:'➕'}
               </div>
-              <input type="file" accept="image/*" id="${iid}" onchange="uploadPartImg('${part}','${opt.replace(/'/g,"\\'")}','${iid}')" style="display:none">
+              <input type="file" accept="image/*,.svg" id="${iid}" onchange="uploadPartImg('${part}','${opt.replace(/'/g,"\\'")}','${iid}')" style="display:none">
             </label>
             <div style="font-size:.68rem;margin-top:2px">${opt}</div>
             ${img?`<span style="font-size:.62rem;color:#c62828;cursor:pointer" onclick="removePartImg('${part}','${opt.replace(/'/g,"\\'")}')">حذف</span>`:''}
