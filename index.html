@@ -67,16 +67,16 @@ body.ltr .lang-menu{left:auto;right:18px}
 .lang-btn{position:fixed;bottom:18px;left:18px;z-index:600;background:#1b5e20;color:white;border:none;border-radius:50px;padding:10px 16px;font-weight:bold;font-size:.82rem;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:all .15s;opacity:.85}
 .lang-btn:hover{opacity:1;transform:scale(1.06)}
 body.ltr .lang-btn{left:auto;right:18px}
-.dash-nav{display:flex;justify-content:space-between;align-items:center;max-width:1150px;margin:0 auto 26px;position:relative;z-index:1}
+.dash-nav{display:flex;justify-content:space-between;align-items:center;max-width:1500px;margin:0 auto 26px;position:relative;z-index:1}
 .dash-nav .nav-actions{display:flex;gap:8px}
 .nav-icon-btn{background:rgba(255,255,255,.14);backdrop-filter:blur(8px);color:white;border:1px solid rgba(255,255,255,.3);border-radius:24px;padding:7px 16px;font-size:.85rem;font-weight:bold;cursor:pointer;font-family:inherit;transition:all .15s}
 .nav-icon-btn:hover{background:rgba(255,255,255,.25)}
-.dash-hero{max-width:1150px;margin:0 auto 10px;position:relative;z-index:1;background:linear-gradient(120deg,rgba(124,179,66,.18),rgba(38,198,218,.1));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);border-radius:11px;padding:7px 13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px}
+.dash-hero{max-width:1500px;margin:0 auto 10px;position:relative;z-index:1;background:linear-gradient(120deg,rgba(124,179,66,.18),rgba(38,198,218,.1));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);border-radius:11px;padding:7px 13px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px}
 .dash-hero h1{color:white;font-size:.9rem;font-weight:800;display:inline}
 .dash-hero p{color:rgba(255,255,255,.5);font-size:.64rem;margin-top:0;display:inline;margin-inline-start:8px}
 .hero-cta{background:linear-gradient(135deg,#7cb342,#26c6da);color:white;border:none;border-radius:8px;padding:5px 11px;font-size:.7rem;font-weight:bold;cursor:pointer;font-family:inherit;box-shadow:0 5px 16px rgba(124,179,66,.3);transition:transform .15s}
 .hero-cta:hover{transform:translateY(-2px)}
-.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;max-width:1500px;margin:0 auto;position:relative;z-index:1}
 .dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:13px;padding:9px 12px;display:flex;align-items:center;gap:10px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
 .dash-card::after{content:'‹';color:rgba(255,255,255,.25);font-size:1.2rem;margin-inline-start:auto;transition:all .2s}
 body.ltr .dash-card::after{content:'›'}
@@ -90,35 +90,47 @@ body.ltr .dash-card::after{content:'›'}
 .dash-card:nth-child(6n) .icon{background:linear-gradient(135deg,rgba(66,165,245,.32),rgba(38,198,218,.24))}
 .dash-card h3{color:white;font-size:.84rem;font-weight:700}
 .dash-card p{color:rgba(255,255,255,.4);font-size:.64rem;margin-top:1px;line-height:1.2}
-.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:6px;max-width:1150px;margin:8px auto 0;position:relative;z-index:1}
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:6px;max-width:1500px;margin:8px auto 0;position:relative;z-index:1}
 /* ═══ لوحة التحليل الحديثة */
-.dash-analytics{max-width:1150px;margin:18px auto 0;position:relative;z-index:1}
-.da-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.da-head h2{color:#fff;font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.dash-analytics{max-width:1500px;margin:20px auto 0;position:relative;z-index:1}
+.da-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.da-head h2{color:#fff;font-size:1.12rem;font-weight:800;display:flex;align-items:center;gap:9px}
 .da-gear{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:10px;padding:6px 13px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit}
 .da-gear:hover{background:rgba(255,255,255,.24)}
-.da-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:14px}
-.da-kpi{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:14px 16px;position:relative;overflow:hidden}
-.da-kpi .v{font-size:1.7rem;font-weight:900;color:#fff;line-height:1}
-.da-kpi .l{font-size:.74rem;color:rgba(255,255,255,.6);margin-top:5px}
-.da-kpi .ic{position:absolute;top:10px;inset-inline-end:12px;font-size:1.3rem;opacity:.5}
-.da-kpi.g{background:linear-gradient(135deg,rgba(102,187,106,.28),rgba(38,166,154,.16))}
-.da-kpi.b{background:linear-gradient(135deg,rgba(66,165,245,.28),rgba(38,198,218,.16))}
-.da-kpi.o{background:linear-gradient(135deg,rgba(255,167,38,.28),rgba(255,112,67,.16))}
-.da-kpi.p{background:linear-gradient(135deg,rgba(126,87,194,.28),rgba(171,71,188,.16))}
-.da-kpi.r{background:linear-gradient(135deg,rgba(239,83,80,.3),rgba(236,64,122,.16))}
-.da-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
-.da-card{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px 17px}
-.da-card h3{color:#fff;font-size:.92rem;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:7px}
-.da-bar-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
-.da-bar-row .bl{font-size:.76rem;color:rgba(255,255,255,.75);min-width:78px;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.da-bar-track{flex:1;height:16px;background:rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
-.da-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#7cb342,#26c6da);min-width:3px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
-.da-bar-row .bv{font-size:.78rem;color:#fff;font-weight:700;min-width:42px;text-align:end}
-.da-li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:.8rem;color:rgba(255,255,255,.85)}
+.da-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:16px}
+.da-kpi{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px 16px 15px 18px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:3px;transition:transform .18s}
+.da-kpi:hover{transform:translateY(-3px)}
+.da-kpi::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:5px;background:var(--ac,#7cb342)}
+.da-kpi .ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:rgba(255,255,255,.1);margin-bottom:5px}
+.da-kpi .v{font-size:1.85rem;font-weight:900;color:#fff;line-height:1;letter-spacing:.5px}
+.da-kpi .l{font-size:.75rem;color:rgba(255,255,255,.62);font-weight:600}
+.da-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:13px}
+.da-card{background:rgba(255,255,255,.055);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px 18px}
+.da-card h3{color:#fff;font-size:.94rem;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+/* أعمدة رأسية */
+.da-cols{display:flex;align-items:flex-end;justify-content:space-around;gap:8px;height:150px;padding-top:10px}
+.da-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px}
+.da-col .cbar{width:100%;max-width:42px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#aed581,#26c6da);min-height:4px;transition:height .6s cubic-bezier(.2,.9,.3,1);position:relative}
+.da-col .cval{font-size:.66rem;color:#fff;font-weight:700}
+.da-col .clbl{font-size:.66rem;color:rgba(255,255,255,.55)}
+/* حلقة دائرية */
+.da-donut-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center}
+.da-donut{width:130px;height:130px;border-radius:50%;flex:none;position:relative;display:flex;align-items:center;justify-content:center}
+.da-donut::after{content:'';position:absolute;width:78px;height:78px;border-radius:50%;background:#173a26}
+.da-donut .dc{position:relative;z-index:1;text-align:center;color:#fff}
+.da-donut .dc b{font-size:1.5rem;font-weight:900;display:block;line-height:1}
+.da-donut .dc span{font-size:.62rem;color:rgba(255,255,255,.6)}
+.da-legend{display:flex;flex-direction:column;gap:7px;font-size:.78rem;color:rgba(255,255,255,.85)}
+.da-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:7px;vertical-align:middle}
+.da-bar-row{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.da-bar-row .bl{font-size:.78rem;color:rgba(255,255,255,.78);min-width:80px;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.da-bar-track{flex:1;height:15px;background:rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
+.da-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#7cb342,#26c6da);min-width:4px;transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.da-bar-row .bv{font-size:.8rem;color:#fff;font-weight:800;min-width:40px;text-align:end}
+.da-li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:.82rem;color:rgba(255,255,255,.85)}
 .da-li:last-child{border-bottom:none}
 .da-li b{color:#fff}
-.da-empty{color:rgba(255,255,255,.4);font-size:.82rem;text-align:center;padding:14px}
+.da-empty{color:rgba(255,255,255,.4);font-size:.82rem;text-align:center;padding:22px 14px}
 .stat-box{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border-radius:8px;padding:5px 7px;color:white;text-align:center;border:1px solid rgba(255,255,255,.1);transition:all .2s}
 .stat-box:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
 .stat-box .num{font-size:.98rem;font-weight:800;background:linear-gradient(135deg,#aed581,#4dd0e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -567,7 +579,7 @@ const fbDB   = firebase.firestore();
       <button class="nav-icon-btn" onclick="logout()">🚪 <span data-i18n="logout">خروج</span></button>
     </div>
   </div>
-  <div id="sub-notice" style="display:none;max-width:1150px;margin:0 auto 16px;background:#fff8e1;border:1.5px solid #ffb300;color:#e65100;border-radius:12px;padding:11px 18px;font-size:.92rem;font-weight:600;position:relative;z-index:1;text-align:center"></div>
+  <div id="sub-notice" style="display:none;max-width:1500px;margin:0 auto 16px;background:#fff8e1;border:1.5px solid #ffb300;color:#e65100;border-radius:12px;padding:11px 18px;font-size:.92rem;font-weight:600;position:relative;z-index:1;text-align:center"></div>
   <div class="dash-hero">
     <div>
       <h1 data-i18n="heroTitle">مرحباً بك في LEVEL7 Tailor ✂️</h1>
@@ -580,7 +592,7 @@ const fbDB   = firebase.firestore();
     </div>
   </div>
   <div class="dash-stats" id="dash-stats" style="margin:0 auto 10px"></div>
-  <div style="max-width:1150px;margin:0 auto 7px;display:flex;justify-content:flex-end;position:relative;z-index:1">
+  <div style="max-width:1500px;margin:0 auto 7px;display:flex;justify-content:flex-end;position:relative;z-index:1">
     <button onclick="openCardSettings()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:9px;padding:5px 12px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit">⚙️ تخصيص الأيقونات</button>
   </div>
   <div class="dash-cards">
@@ -2925,7 +2937,7 @@ function renderDashboard(){
   const now = new Date(); const ym = now.toISOString().slice(0,7);
   let h = '<div class="da-head"><h2>📊 لوحة تحليل النظام</h2><button class="da-gear" onclick="openDashSettings()">⚙️ تخصيص</button></div>';
 
-  // المؤشرات السريعة
+  // ── المؤشرات السريعة
   if (dwOn('kpis')) {
     const salesMonth = invoices.filter(i=>isSaleInv(i) && (i.date||'').slice(0,7)===ym).reduce((s,i)=>s+i.grand,0);
     const ordersMonth = prodOrders.filter(o=>(o.createdAt||'').slice(0,7)===ym).length;
@@ -2933,53 +2945,68 @@ function renderDashboard(){
     const ready = prodOrders.filter(o=>o.done&&!o.delivered).length + tailorJobs.filter(j=>j.status==='جاهز').length;
     const apToday = appointments.filter(a=>a.date===today && a.status!=='ملغي').length;
     const late = prodOrders.filter(o=>!o.done && o.due && o.due<today).length;
+    const kpi = (ac,ic,v,l)=>`<div class="da-kpi" style="--ac:${ac}"><div class="ic">${ic}</div><div class="v">${v}</div><div class="l">${l}</div></div>`;
     h += '<div class="da-kpis">'
-      + `<div class="da-kpi g"><div class="ic">💰</div><div class="v">${formatNum(salesMonth)}</div><div class="l">مبيعات هذا الشهر (${curName()})</div></div>`
-      + `<div class="da-kpi b"><div class="ic">🧾</div><div class="v">${ordersMonth}</div><div class="l">أوامر إنتاج هذا الشهر</div></div>`
-      + `<div class="da-kpi p"><div class="ic">🏭</div><div class="v">${inProd}</div><div class="l">تحت الإنتاج</div></div>`
-      + `<div class="da-kpi g"><div class="ic">✅</div><div class="v">${ready}</div><div class="l">جاهز للتسليم</div></div>`
-      + `<div class="da-kpi o"><div class="ic">📅</div><div class="v">${apToday}</div><div class="l">مواعيد اليوم</div></div>`
-      + `<div class="da-kpi r"><div class="ic">⏰</div><div class="v">${late}</div><div class="l">أوامر متأخرة</div></div>`
+      + kpi('#66bb6a','💰',formatNum(salesMonth),'مبيعات هذا الشهر ('+curName()+')')
+      + kpi('#42a5f5','🧾',ordersMonth,'أوامر إنتاج هذا الشهر')
+      + kpi('#7e57c2','🏭',inProd,'تحت الإنتاج')
+      + kpi('#26a69a','✅',ready,'جاهز للتسليم')
+      + kpi('#ffa726','📅',apToday,'مواعيد اليوم')
+      + kpi('#ef5350','⏰',late,'أوامر متأخرة')
       + '</div>';
   }
 
   let cards = '';
-  // مبيعات آخر 6 أشهر
+  // ── مبيعات آخر 6 أشهر (أعمدة رأسية)
   if (dwOn('sales6')) {
     const items = [];
     for (let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const k=d.toISOString().slice(0,7);
-      items.push({ label:AR_MONTHS[d.getMonth()], value:invoices.filter(x=>isSaleInv(x)&&(x.date||'').slice(0,7)===k).reduce((s,x)=>s+x.grand,0) }); }
-    cards += `<div class="da-card"><h3>📈 مبيعات آخر 6 أشهر</h3>${_hbars(items)}</div>`;
+      items.push({ label:AR_MONTHS[d.getMonth()].slice(0,4), value:invoices.filter(x=>isSaleInv(x)&&(x.date||'').slice(0,7)===k).reduce((s,x)=>s+x.grand,0) }); }
+    const max = Math.max(1, ...items.map(i=>i.value));
+    const any = items.some(i=>i.value);
+    cards += `<div class="da-card"><h3>📈 مبيعات آخر 6 أشهر</h3>${any?
+      `<div class="da-cols">${items.map(i=>`<div class="da-col"><span class="cval">${i.value?formatNum(i.value):''}</span><div class="cbar" style="height:${Math.round(i.value/max*100)}%"></div><span class="clbl">${i.label}</span></div>`).join('')}</div>`
+      :'<div class="da-empty">لا توجد مبيعات بعد</div>'}</div>`;
   }
-  // توزيع مراحل الإنتاج
+  // ── حالة الأوامر (حلقة دائرية)
   if (dwOn('stages')) {
-    const items = PROD_STAGES.map(st=>({ label:L(st), value:prodOrders.filter(o=>!o.done && PROD_STAGES[o.stageIdx]===st).length }));
-    cards += `<div class="da-card"><h3>🏭 توزيع مراحل الإنتاج</h3>${_hbars(items, ()=>'linear-gradient(90deg,#7e57c2,#26c6da)')}</div>`;
+    const inProd = prodOrders.filter(o=>!o.done).length;
+    const ready = prodOrders.filter(o=>o.done&&!o.delivered).length;
+    const delivered = prodOrders.filter(o=>o.delivered).length;
+    const total = inProd+ready+delivered;
+    const segs = [['#7e57c2','تحت الإنتاج',inProd],['#26a69a','جاهز',ready],['#66bb6a','مُسلّم',delivered]];
+    let acc=0, grad=[];
+    segs.forEach(([c,,v])=>{ if(total){ const a=acc/total*360, b=(acc+v)/total*360; grad.push(`${c} ${a}deg ${b}deg`); acc+=v; } });
+    const donut = total
+      ? `<div class="da-donut" style="background:conic-gradient(${grad.join(',')})"><div class="dc"><b>${total}</b><span>أمر إنتاج</span></div></div>`
+      : `<div class="da-donut" style="background:rgba(255,255,255,.1)"><div class="dc"><b>0</b><span>أمر</span></div></div>`;
+    cards += `<div class="da-card"><h3>🏭 حالة أوامر الإنتاج</h3><div class="da-donut-wrap">${donut}
+      <div class="da-legend">${segs.map(([c,l,v])=>`<div><i style="background:${c}"></i>${l}: <b style="color:#fff">${v}</b></div>`).join('')}</div></div></div>`;
   }
-  // أكثر القوالب طلباً
+  // ── أكثر القوالب طلباً
   if (dwOn('templates')) {
-    const cnt = {};
-    measurements.forEach(m=>{ cnt[m.template]=(cnt[m.template]||0)+1; });
+    const cnt = {}; measurements.forEach(m=>{ cnt[m.template]=(cnt[m.template]||0)+1; });
     const items = Object.keys(cnt).map(t=>({label:L(t),value:cnt[t]})).sort((a,b)=>b.value-a.value).slice(0,6);
-    cards += `<div class="da-card"><h3>🧵 أكثر القوالب طلباً</h3>${_hbars(items, ()=>'linear-gradient(90deg,#26a69a,#7cb342)')}</div>`;
+    const max = Math.max(1, ...items.map(i=>i.value));
+    cards += `<div class="da-card"><h3>🧵 أكثر القوالب طلباً</h3>${items.length?items.map(i=>`<div class="da-bar-row"><span class="bl">${escHtml(i.label)}</span><span class="da-bar-track"><span class="da-bar-fill" style="width:${Math.round(i.value/max*100)}%;background:linear-gradient(90deg,#26a69a,#7cb342)"></span></span><span class="bv">${i.value}</span></div>`).join(''):'<div class="da-empty">لا قياسات بعد</div>'}</div>`;
   }
-  // التعديل والتطريز
+  // ── التعديل والتطريز
   if (dwOn('jobs')) {
-    const st = ['قيد التنفيذ','جاهز','تم التسليم'];
-    const items = st.map(x=>({label:L(x),value:tailorJobs.filter(j=>j.status===x).length}));
-    cards += `<div class="da-card"><h3>✂️ أعمال التعديل والتطريز</h3>${_hbars(items, ()=>'linear-gradient(90deg,#ec407a,#ab47bc)')}</div>`;
+    const st = [['قيد التنفيذ','#ffa726'],['جاهز','#26a69a'],['تم التسليم','#7e57c2']];
+    const max = Math.max(1, ...st.map(([x])=>tailorJobs.filter(j=>j.status===x).length));
+    cards += `<div class="da-card"><h3>✂️ أعمال التعديل والتطريز</h3>${tailorJobs.length?st.map(([x,c])=>{const v=tailorJobs.filter(j=>j.status===x).length;return `<div class="da-bar-row"><span class="bl">${L(x)}</span><span class="da-bar-track"><span class="da-bar-fill" style="width:${Math.round(v/max*100)}%;background:${c}"></span></span><span class="bv">${v}</span></div>`;}).join(''):'<div class="da-empty">لا أعمال بعد</div>'}</div>`;
   }
-  // المواعيد القادمة
+  // ── المواعيد القادمة
   if (dwOn('appts')) {
     const up = appointments.filter(a=>a.date>=today && a.status==='قادم').sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||''))).slice(0,5);
     cards += `<div class="da-card"><h3>📅 المواعيد القادمة</h3>${up.length?up.map(a=>`<div class="da-li"><span>${escHtml(_custName(a.clientId))} — ${escHtml(L(a.type))}</span><b>${isoToDMY(a.date)}${a.time?' '+a.time:''}</b></div>`).join(''):'<div class="da-empty">لا مواعيد قادمة</div>'}</div>`;
   }
-  // أوامر متأخرة
+  // ── أوامر متأخرة
   if (dwOn('late')) {
     const lt = prodOrders.filter(o=>!o.done && o.due && o.due<today).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0,5);
     cards += `<div class="da-card"><h3>⏰ أوامر متأخرة</h3>${lt.length?lt.map(o=>`<div class="da-li"><span>#${o.num} ${escHtml(_custName(o.clientId))}</span><b style="color:#ff8a80">${isoToDMY(o.due)}</b></div>`).join(''):'<div class="da-empty">لا أوامر متأخرة 👍</div>'}</div>`;
   }
-  // أحدث أوامر الإنتاج
+  // ── أحدث أوامر الإنتاج
   if (dwOn('recent')) {
     const rc = [...prodOrders].sort((a,b)=>b.id-a.id).slice(0,5);
     cards += `<div class="da-card"><h3>🆕 أحدث أوامر الإنتاج</h3>${rc.length?rc.map(o=>`<div class="da-li"><span>#${o.num} ${escHtml(_custName(o.clientId))}</span><b>${o.done?L('جاهز'):L(PROD_STAGES[o.stageIdx])}</b></div>`).join(''):'<div class="da-empty">لا أوامر بعد</div>'}</div>`;
