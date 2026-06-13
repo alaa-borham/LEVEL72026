@@ -5022,7 +5022,20 @@ function saveMeasurement() {
     const m = measurements.find(x=>String(x.id)===editId);
     if (m) Object.assign(m, data);
   } else {
-    measurements.push({ id: Date.now(), ...data });
+    const nid = Date.now();
+    measurements.push({ id: nid, ...data });
+    save('measurements');
+    if (canAccess('production') && confirm('✔ حُفظ الطلب.\nهل تريد إنشاء أمر إنتاج من هذا الطلب الآن؟')) {
+      const m = measurements.find(x=>x.id===nid);
+      const mod = m.model||{};
+      const parts = (mod.partsSel||[]).map(p=>p.value).filter(Boolean).slice(0,3).join('، ');
+      const desc = L(m.template) + (parts?' — '+parts:'') + (mod.qty>1?' ×'+mod.qty:'');
+      showScreen('dashboard');
+      openProdPanel(null, { clientId:m.clientId, measId:m.id, desc, qty:(mod.qty||1) });
+      return;
+    }
+    closeMeasure();
+    return;
   }
   save('measurements');
   closeMeasure();
@@ -5743,16 +5756,16 @@ function renderProduction() {
       </td>
     </tr>`;}).join('');
 }
-function openProdPanel(editId) {
+function openProdPanel(editId, prefill) {
   if (!customers.length) { alert('أضف عميلاً أولاً من شاشة العملاء'); return; }
   const o = editId ? prodOrders.find(x=>x.id===editId) : null;
   document.getElementById('po-panel-title').textContent = o ? '✏️ تعديل أمر إنتاج #'+o.num : '🏭 أمر إنتاج جديد';
   _prodEditing = !!o;
   document.getElementById('po-edit-id').value = o ? o.id : '';
-  document.getElementById('po-client').innerHTML = _custOptions(o ? o.clientId : null);
-  fillProdMeas(o ? o.measId : null);
-  document.getElementById('po-desc').value = o ? o.desc : '';
-  document.getElementById('po-qty').value  = o ? (o.qty||1) : 1;
+  document.getElementById('po-client').innerHTML = _custOptions(o ? o.clientId : (prefill&&prefill.clientId));
+  fillProdMeas(o ? o.measId : (prefill&&prefill.measId));
+  document.getElementById('po-desc').value = o ? o.desc : (prefill&&prefill.desc||'');
+  document.getElementById('po-qty').value  = o ? (o.qty||1) : ((prefill&&prefill.qty)||1);
   document.getElementById('po-due').value  = o && o.due ? isoToDMY(o.due) : isoToDMY(_addDays(_todayISO(), leadFor(o ? null : _linkedTemplate())));
   document.getElementById('po-notes').value = o ? (o.notes||'') : '';
   // توزيع المهام: من الأمر عند التعديل — أو تلقائياً من آخر توزيع محفوظ
