@@ -329,6 +329,9 @@ body.ltr .dash-card::after{content:'›'}
 .ord-page{height:100vh;display:flex;flex-direction:column;padding:10px 16px;overflow:hidden}
 .ord-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #e6ece0;margin-bottom:10px;flex-shrink:0}
 .ord-head select,.ord-head input{padding:6px 9px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;font-size:.84rem;background:#fff}
+.unit-tog{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:8px;overflow:hidden}
+.unit-tog button{border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;color:#666}
+.unit-tog button.active{background:#2e7d32;color:#fff}
 .ord-body{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;flex:1;min-height:0}
 .ord-meas{min-width:0;overflow:auto;padding-inline-end:4px}
 .ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:10px;display:flex;flex-direction:column;align-items:center}
@@ -1196,6 +1199,7 @@ const fbDB   = firebase.firestore();
         <div class="fg" style="margin:0"><select id="ms-client" style="min-width:140px"></select></div>
         <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
         <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:120px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="unit-tog"><button id="unit-cm" class="active" onclick="setOrderUnit('cm')">سم</button><button id="unit-in" onclick="setOrderUnit('inch')">إنش</button></div>
         <button class="btn btn-success" onclick="saveMeasurement()">✔ حفظ</button>
         <button class="btn btn-outline" onclick="closeMeasure()">← رجوع</button>
       </div>
@@ -4250,7 +4254,9 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   document.getElementById('mm-extfabricw').value = mod.extFabricW||'';
   document.getElementById('mm-qty').value        = mod.qty||1;
   document.getElementById('mm-proofa').checked   = !!mod.proofa;
+  _orderUnit = (src && src.unit) || 'cm';
   renderMeasFields(src ? src.values : null);
+  _refreshUnitUI();
   renderOrderVisual();
   closeModal('measurements-modal');
   showScreen('measure-panel');
@@ -4259,10 +4265,9 @@ function renderMeasFields(values) {
   const tpl = document.getElementById('ms-template').value;
   const hidden = measVisible[tpl] || {};
   const keys = (MEAS_TEMPLATES[tpl] || []).filter(k => hidden[k] !== false);
-  document.getElementById('ms-fields').innerHTML = keys.map((k,i)=>`
+  document.getElementById('ms-fields').innerHTML = keys.map(k=>`
     <div class="fg" style="margin:0">
-      <label style="font-size:.76rem"><span style="color:#bbb">${i}.</span> ${MEAS_DICT[k]||k}
-        ${MEAS_EN[k]?`<span style="color:#aaa;font-size:.62rem;direction:ltr;display:inline-block">${MEAS_EN[k]}</span>`:''}</label>
+      <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#aaa;font-size:.6rem;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
         value="${values && values[k] != null ? values[k] : ''}" oninput="validateMeasLive()">
     </div>`).join('');
@@ -4313,6 +4318,22 @@ const THOBE_BG_SVG = '<svg viewBox="0 0 420 640" xmlns="http://www.w3.org/2000/s
   + '</g></svg>';
 
 let _orderParts = {};   // اختيارات أجزاء الأوردر الحالي: { hotspotId: value }
+let _orderUnit = 'cm';  // وحدة إدخال القياسات: سم (افتراضي) أو إنش
+function setOrderUnit(u) {
+  if (u === _orderUnit) return;
+  const f = u === 'inch' ? (1/2.54) : 2.54; // تحويل القيم المدخلة حالياً
+  document.querySelectorAll('#ms-fields input').forEach(inp=>{
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) inp.value = Math.round(v*f*10)/10;
+  });
+  _orderUnit = u;
+  _refreshUnitUI();
+}
+function _refreshUnitUI() {
+  const cm = document.getElementById('unit-cm'), inb = document.getElementById('unit-in');
+  if (cm) cm.classList.toggle('active', _orderUnit==='cm');
+  if (inb) inb.classList.toggle('active', _orderUnit==='inch');
+}
 function getHotspots(tpl){ return tmplHotspots[tpl] || DEFAULT_HOTSPOTS[tpl] || []; }
 
 // رسم الصورة (أو الثوب الافتراضي) مع نقاطها فوقها
@@ -4583,6 +4604,7 @@ function saveMeasurement() {
   const data = {
     clientId, date,
     template: document.getElementById('ms-template').value,
+    unit: _orderUnit,
     values,
     model: {
       partsSel:   _orderPartsSnapshot(),
@@ -5208,7 +5230,7 @@ function printProdOrder(id) {
   // القياسات المرتبطة تطبع داخل الأمر حتى لا يحتاج القصّاص ورقة ثانية
   const m = o.measId ? measurements.find(x=>String(x.id)===String(o.measId)) : null;
   document.getElementById('pp-meas').innerHTML = m ? (
-    '<div style="font-size:.82rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات ('+escHtml(m.template)+'):</div>' +
+    '<div style="font-size:.82rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(m.template)+'):</div>' +
     '<div class="mp-grid" style="margin:0">' +
     (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>m.values && m.values[k])
       .map(k=>`<div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('') +
