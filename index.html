@@ -332,7 +332,7 @@ body.ltr .dash-card::after{content:'›'}
 .unit-tog{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:8px;overflow:hidden}
 .unit-tog button{border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;color:#666}
 .unit-tog button.active{background:#2e7d32;color:#fff}
-.ord-body{display:grid;grid-template-columns:minmax(0,1fr) 500px;gap:16px;flex:1;min-height:0;align-items:start}
+.ord-body{display:grid;grid-template-columns:minmax(0,700px) minmax(440px,1fr);gap:18px;flex:1;min-height:0;align-items:stretch}
 .ord-meas{min-width:0;align-content:start}
 .ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:10px;position:sticky;top:8px;height:calc(100vh - 20px);display:flex;flex-direction:column}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:6px}
@@ -369,9 +369,9 @@ body.ltr .dash-card::after{content:'›'}
 .part-menu button{display:block;width:100%;text-align:start;background:#f7faf5;border:1px solid #eef2ea;border-radius:8px;padding:8px 11px;margin:3px 0;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;color:#333;transition:all .12s}
 .part-menu button:hover{background:#e8f5e9;border-color:#aed581}
 .part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
-.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:4px 5px}
-.ms-fields-grid .fg label{font-size:.6rem !important;margin-bottom:0;line-height:1.1;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-fields-grid .fg input{padding:3px 4px !important;font-size:.76rem}
+.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px 8px}
+.ms-fields-grid .fg label{font-size:.66rem !important;margin-bottom:1px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-fields-grid .fg input{padding:5px 6px !important;font-size:.82rem}
 .ord-model .order-canvas{cursor:default}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
 @page{size:A4 portrait;margin:0 10mm}
