@@ -465,6 +465,7 @@ const fbDB   = firebase.firestore();
   <a id="sb-members" onclick="showMembers();closeSb()">🧑‍💼 المستخدمون</a>
   <a id="sb-branches" onclick="showBranches();closeSb()">🏬 الفروع</a>
   <a data-perm="archive" onclick="showScreen('archive-screen');closeSb()">🗂️ الأرشيف</a>
+  <a onclick="showAIInsights();closeSb()">🤖 الرؤى الذكية</a>
   <a id="sb-terms" onclick="showTerms();closeSb()">🏷️ المسميات</a>
   <a data-perm="settings" onclick="showScreen('settings-screen');closeSb()">⚙️ الإعدادات</a>
 </div>
@@ -1279,7 +1280,7 @@ const fbDB   = firebase.firestore();
       <h2 id="ms-panel-title" style="font-size:1.02rem;margin:0">📐 أوردر تفصيل</h2>
       <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
         <input type="hidden" id="ms-edit-id">
-        <div class="fg" style="margin:0"><select id="ms-client" style="min-width:140px"></select></div>
+        <div class="fg" style="margin:0"><select id="ms-client" style="min-width:140px" onchange="suggestFromHistory()"></select></div>
         <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
         <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:120px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
         <div class="unit-tog"><button id="unit-cm" class="active" onclick="setOrderUnit('cm')">سم</button><button id="unit-in" onclick="setOrderUnit('inch')">إنش</button></div>
@@ -1291,6 +1292,7 @@ const fbDB   = firebase.firestore();
     <div class="ord-body">
       <!-- ═══ القياسات + التفاصيل -->
       <div class="ord-meas">
+        <div id="ms-suggest" style="display:none;margin-bottom:10px"></div>
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-warnings"></div>
         <div class="ord-details">
@@ -1552,6 +1554,14 @@ const fbDB   = firebase.firestore();
       </table>
       <div id="dv-empty" style="display:none;text-align:center;padding:24px;color:#bbb">لا توجد تسليمات مسجلة بعد</div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: AI INSIGHTS (الرؤى والتوقعات) -->
+<div class="moverlay" id="ai-modal">
+  <div class="mbox" style="max-width:560px">
+    <div class="mhdr"><h3>🤖 الرؤى والتوقّعات الذكية</h3><button class="mcls" onclick="closeModal('ai-modal')">✕</button></div>
+    <div class="mlist" id="ai-body" style="padding:16px"></div>
   </div>
 </div>
 
@@ -4618,6 +4628,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   renderOrderVisual();
   _closeAllOverlays();
   showScreen('measure-panel');
+  suggestFromHistory();
 }
 function renderMeasFields(values) {
   const tpl = document.getElementById('ms-template').value;
@@ -5488,6 +5499,79 @@ function getNextProdNum(){
   const nums = prodOrders.map(o=>parseInt(o.num)).filter(n=>!isNaN(n));
   return nums.length ? Math.max(...nums)+1 : 1;
 }
+// ═══════════════ AI ENGINE — محرّك الذكاء (اقتراحات + توقّع الطلب)
+// اقتراح ذكي للعميل المتكرر: يعرض آخر قياس ويتيح استخدامه
+function suggestFromHistory(){
+  const box = document.getElementById('ms-suggest'); if(!box) return;
+  if (document.getElementById('ms-edit-id').value) { box.style.display='none'; return; }
+  const cid = document.getElementById('ms-client').value;
+  const prior = measurements.filter(m=>String(m.clientId)===String(cid)).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id-a.id);
+  if (!prior.length) { box.style.display='none'; return; }
+  const last = prior[0];
+  // أكثر قالب طلبه هذا العميل
+  const cnt={}; prior.forEach(m=>cnt[m.template]=(cnt[m.template]||0)+1);
+  const favTpl = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  box.style.display='block';
+  box.innerHTML = `<div style="background:linear-gradient(135deg,#ede7f6,#e3f2fd);border:1.5px solid #b39ddb;border-radius:11px;padding:10px 13px">
+    <div style="font-weight:800;color:#4527a0;font-size:.84rem;margin-bottom:4px">🤖 اقتراح ذكي</div>
+    <div style="font-size:.82rem;color:#444">لهذا العميل <b>${prior.length}</b> قياس سابق — آخرها <b>${isoToDMY(last.date)}</b> (${escHtml(L(last.template))})${favTpl&&cnt[favTpl]>1?` • الأكثر طلباً: <b>${escHtml(L(favTpl))}</b>`:''}</div>
+    <div style="display:flex;gap:7px;margin-top:7px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="applyPrior(${last.id})">📋 استخدام القياس السابق</button>
+      <button class="btn btn-info btn-sm" onclick="showAIInsights()">📈 رؤى وتوقّعات</button>
+    </div></div>`;
+}
+// تطبيق قياس سابق على الأوردر الجديد الحالي (دون تغيير العميل/التاريخ)
+function applyPrior(measId){
+  const m = measurements.find(x=>x.id===measId); if(!m) return;
+  document.getElementById('ms-template').value = m.template;
+  _orderUnit = m.unit || 'cm'; _refreshUnitUI();
+  _orderParts = {};
+  if (m.model && m.model.partsSel) m.model.partsSel.forEach(p=>{ _orderParts[p.id]=p.value; });
+  renderMeasFields(m.values);
+  const mod = m.model||{};
+  document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
+    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('');
+  ['buttons','embroidery','taktak','metal','extfabric'].forEach(k=>{ const el=document.getElementById('mm-'+(k==='extfabric'?'extfabric':k)); });
+  document.getElementById('mm-buttons').value=mod.buttons||'';
+  document.getElementById('mm-embroidery').value=mod.embroidery||'';
+  document.getElementById('mm-taktak').value=mod.taktak||'';
+  document.getElementById('mm-metal').value=mod.metal||'';
+  document.getElementById('mm-extfabric').value=mod.extFabric||'';
+  document.getElementById('mm-extfabricw').value=mod.extFabricW||'';
+  document.getElementById('mm-qty').value=mod.qty||1;
+  document.getElementById('mm-proofa').checked=!!mod.proofa;
+  renderOrderVisual();
+  alert('✔ تم تعبئة القياس والموديل من آخر طلب — عدّل ما تشاء ثم احفظ كأوردر جديد');
+}
+// لوحة الرؤى: توقّع الطلب وأكثر المطلوب
+function showAIInsights(){
+  const now=new Date();
+  // اتجاه الطلبات آخر 3 أشهر مقابل توقّع الشهر القادم (متوسط متحرك)
+  const monthCount=k=>measurements.filter(m=>(m.date||'').slice(0,7)===k).length
+    + prodOrders.filter(o=>(o.createdAt||'').slice(0,7)===k).length;
+  const last3=[];
+  for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);last3.push({k:d.toISOString().slice(0,7),m:d.getMonth(),v:monthCount(d.toISOString().slice(0,7))});}
+  const forecast=Math.round(last3.reduce((s,x)=>s+x.v,0)/3);
+  // أكثر القوالب والأقمشة طلباً
+  const tc={}; measurements.forEach(m=>tc[m.template]=(tc[m.template]||0)+1);
+  const topT=Object.keys(tc).map(t=>({l:L(t),v:tc[t]})).sort((a,b)=>b.v-a.v).slice(0,5);
+  const fc={}; measurements.forEach(m=>{const fid=m.model&&m.model.fabricId;if(fid){const f=_fabricById(fid);if(f)fc[f.name]=(fc[f.name]||0)+1;}});
+  const topF=Object.keys(fc).map(t=>({l:t,v:fc[t]})).sort((a,b)=>b.v-a.v).slice(0,5);
+  // عملاء للمتابعة (لم يطلبوا منذ 90 يوماً)
+  const cutoff=new Date(now.getTime()-90*864e5).toISOString().split('T')[0];
+  const lastByClient={}; measurements.forEach(m=>{const d=m.date||'';if(!lastByClient[m.clientId]||d>lastByClient[m.clientId])lastByClient[m.clientId]=d;});
+  const dueFollow=Object.keys(lastByClient).filter(cid=>lastByClient[cid]<cutoff).length;
+  const bars=items=>{const mx=Math.max(1,...items.map(i=>i.v));return items.length?items.map(i=>`<div class="da-bar-row"><span class="bl">${escHtml(i.l)}</span><span class="da-bar-track"><span class="da-bar-fill" style="width:${Math.round(i.v/mx*100)}%"></span></span><span class="bv">${i.v}</span></div>`).join(''):'<div class="da-empty" style="color:#aaa">لا بيانات</div>';};
+  document.getElementById('ai-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="background:linear-gradient(135deg,#7e57c2,#5e35b1);color:#fff;border-radius:13px;padding:14px"><div style="font-size:1.9rem;font-weight:900">${forecast}</div><div style="font-size:.78rem;opacity:.9">طلبات متوقّعة الشهر القادم</div><div style="font-size:.66rem;opacity:.7;margin-top:3px">بناءً على متوسط آخر 3 أشهر</div></div>
+      <div style="background:linear-gradient(135deg,#26a69a,#00897b);color:#fff;border-radius:13px;padding:14px"><div style="font-size:1.9rem;font-weight:900">${dueFollow}</div><div style="font-size:.78rem;opacity:.9">عملاء للمتابعة</div><div style="font-size:.66rem;opacity:.7;margin-top:3px">لم يطلبوا منذ 90 يوماً</div></div>
+    </div>
+    <div style="font-weight:800;color:#4527a0;font-size:.86rem;margin-bottom:8px">🧵 أكثر القوالب طلباً — جهّزها</div>${bars(topT)}
+    <div style="font-weight:800;color:#00796b;font-size:.86rem;margin:14px 0 8px">🎽 أكثر الأقمشة طلباً — راقب مخزونها</div>${bars(topF)}`;
+  document.getElementById('ai-modal').classList.add('open');
+}
+
 // ═══════════════ PATTERN ENGINE — محرّك البترونات (مكتبة + إصدارات + مكوّنات)
 const PATTERN_COMPONENTS = ['أمام','خلف','كم','ياقة','كبك','جيب','جبزور','قلاب'];
 const CAD_SYSTEMS = ['Gerber','Lectra','Optitex','Grafis','Gemini','Bullmer','عام / Generic'];
