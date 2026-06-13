@@ -76,21 +76,49 @@ body.ltr .lang-btn{left:auto;right:18px}
 .dash-hero p{color:rgba(255,255,255,.5);font-size:.64rem;margin-top:0;display:inline;margin-inline-start:8px}
 .hero-cta{background:linear-gradient(135deg,#7cb342,#26c6da);color:white;border:none;border-radius:8px;padding:5px 11px;font-size:.7rem;font-weight:bold;cursor:pointer;font-family:inherit;box-shadow:0 5px 16px rgba(124,179,66,.3);transition:transform .15s}
 .hero-cta:hover{transform:translateY(-2px)}
-.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:11px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
-.dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;max-width:1150px;margin:0 auto;position:relative;z-index:1}
+.dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:13px;padding:9px 12px;display:flex;align-items:center;gap:10px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
 .dash-card::after{content:'‹';color:rgba(255,255,255,.25);font-size:1.2rem;margin-inline-start:auto;transition:all .2s}
 body.ltr .dash-card::after{content:'›'}
 .dash-card:hover{transform:translateY(-3px);background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28);box-shadow:0 10px 28px rgba(0,0,0,.3)}
 .dash-card:hover::after{color:#aed581;margin-inline-end:-3px}
-.dash-card .icon{width:46px;height:46px;margin:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:1.35rem;border-radius:13px;background:linear-gradient(135deg,rgba(124,179,66,.3),rgba(38,198,218,.22));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.dash-card .icon{width:38px;height:38px;margin:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:1.15rem;border-radius:11px;background:linear-gradient(135deg,rgba(124,179,66,.3),rgba(38,198,218,.22));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
 .dash-card:nth-child(6n+2) .icon{background:linear-gradient(135deg,rgba(126,87,194,.34),rgba(63,81,181,.26))}
 .dash-card:nth-child(6n+3) .icon{background:linear-gradient(135deg,rgba(255,179,0,.32),rgba(255,112,67,.24))}
 .dash-card:nth-child(6n+4) .icon{background:linear-gradient(135deg,rgba(38,166,154,.34),rgba(0,172,193,.26))}
 .dash-card:nth-child(6n+5) .icon{background:linear-gradient(135deg,rgba(236,64,122,.3),rgba(171,71,188,.24))}
 .dash-card:nth-child(6n) .icon{background:linear-gradient(135deg,rgba(66,165,245,.32),rgba(38,198,218,.24))}
-.dash-card h3{color:white;font-size:.9rem;font-weight:700}
-.dash-card p{color:rgba(255,255,255,.42);font-size:.69rem;margin-top:2px}
+.dash-card h3{color:white;font-size:.84rem;font-weight:700}
+.dash-card p{color:rgba(255,255,255,.4);font-size:.64rem;margin-top:1px;line-height:1.2}
 .dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:6px;max-width:1150px;margin:8px auto 0;position:relative;z-index:1}
+/* ═══ لوحة التحليل الحديثة */
+.dash-analytics{max-width:1150px;margin:18px auto 0;position:relative;z-index:1}
+.da-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.da-head h2{color:#fff;font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.da-gear{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:10px;padding:6px 13px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit}
+.da-gear:hover{background:rgba(255,255,255,.24)}
+.da-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:14px}
+.da-kpi{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:14px 16px;position:relative;overflow:hidden}
+.da-kpi .v{font-size:1.7rem;font-weight:900;color:#fff;line-height:1}
+.da-kpi .l{font-size:.74rem;color:rgba(255,255,255,.6);margin-top:5px}
+.da-kpi .ic{position:absolute;top:10px;inset-inline-end:12px;font-size:1.3rem;opacity:.5}
+.da-kpi.g{background:linear-gradient(135deg,rgba(102,187,106,.28),rgba(38,166,154,.16))}
+.da-kpi.b{background:linear-gradient(135deg,rgba(66,165,245,.28),rgba(38,198,218,.16))}
+.da-kpi.o{background:linear-gradient(135deg,rgba(255,167,38,.28),rgba(255,112,67,.16))}
+.da-kpi.p{background:linear-gradient(135deg,rgba(126,87,194,.28),rgba(171,71,188,.16))}
+.da-kpi.r{background:linear-gradient(135deg,rgba(239,83,80,.3),rgba(236,64,122,.16))}
+.da-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.da-card{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px 17px}
+.da-card h3{color:#fff;font-size:.92rem;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.da-bar-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.da-bar-row .bl{font-size:.76rem;color:rgba(255,255,255,.75);min-width:78px;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.da-bar-track{flex:1;height:16px;background:rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
+.da-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#7cb342,#26c6da);min-width:3px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.da-bar-row .bv{font-size:.78rem;color:#fff;font-weight:700;min-width:42px;text-align:end}
+.da-li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:.8rem;color:rgba(255,255,255,.85)}
+.da-li:last-child{border-bottom:none}
+.da-li b{color:#fff}
+.da-empty{color:rgba(255,255,255,.4);font-size:.82rem;text-align:center;padding:14px}
 .stat-box{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);border-radius:8px;padding:5px 7px;color:white;text-align:center;border:1px solid rgba(255,255,255,.1);transition:all .2s}
 .stat-box:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
 .stat-box .num{font-size:.98rem;font-weight:800;background:linear-gradient(135deg,#aed581,#4dd0e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -567,6 +595,15 @@ const fbDB   = firebase.firestore();
     <div class="dash-card" onclick="showScreen('analytics-screen')" data-perm="analytics"><div class="icon">📊</div><h3 data-i18n="analytics">التحليلات</h3><p data-i18n="analyticsSub">إحصائيات وتقارير</p></div>
     <div class="dash-card" onclick="showScreen('archive-screen')" data-perm="archive"><div class="icon">🗂️</div><h3 data-i18n="archive">الأرشيف</h3><p data-i18n="archiveSub">الفواتير المحذوفة</p></div>
     <div class="dash-card" onclick="showScreen('settings-screen')" data-perm="settings"><div class="icon">⚙️</div><h3 data-i18n="settings">الإعدادات</h3><p data-i18n="settingsSub">ضبط النظام</p></div>
+  </div>
+  <div class="dash-analytics" id="dash-analytics"></div>
+</div>
+
+<!-- ═══════════════ MODAL: DASHBOARD SETTINGS -->
+<div class="moverlay" id="dash-settings-modal">
+  <div class="mbox" style="max-width:420px">
+    <div class="mhdr"><h3>⚙️ تخصيص لوحة التحليل</h3><button class="mcls" onclick="closeModal('dash-settings-modal')">✕</button></div>
+    <div style="padding:16px" id="dash-settings-body"></div>
   </div>
 </div>
 
@@ -2080,7 +2117,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2181,6 +2218,7 @@ function loadAccountData() {
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
+  dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -2807,12 +2845,113 @@ function showScreen(id) {
   if (id === 'products-screen')  renderProducts();
   if (id === 'archive-screen')   renderArchive();
   if (id === 'analytics-screen') renderAnalytics();
-  if (id === 'dashboard')        renderDashStats();
+  if (id === 'dashboard')        { renderDashStats(); renderDashboard(); }
   if (id === 'settings-screen')  openSettingsForm();
 }
 
 // ═══════════════ DASHBOARD
 function isSaleInv(i){ return i.type!=='فاتورة مرتجع' && i.type!=='فاتورة مشتريات' && i.type!=='مرتجع مشتريات'; }
+let dashWidgets = {};
+const DASH_WIDGETS = [
+  ['kpis','المؤشرات السريعة'],
+  ['sales6','مبيعات آخر 6 أشهر'],
+  ['stages','توزيع مراحل الإنتاج'],
+  ['templates','أكثر القوالب طلباً'],
+  ['jobs','التعديل والتطريز'],
+  ['appts','المواعيد القادمة'],
+  ['late','أوامر متأخرة'],
+  ['recent','أحدث أوامر الإنتاج'],
+];
+function dwOn(k){ return dashWidgets[k] !== false; }
+const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function _hbars(items, colorFn){
+  const max = Math.max(1, ...items.map(i=>i.value));
+  if (!items.length || items.every(i=>!i.value)) return '<div class="da-empty">لا توجد بيانات بعد</div>';
+  return items.map(i=>`<div class="da-bar-row"><span class="bl">${escHtml(i.label)}</span>
+    <span class="da-bar-track"><span class="da-bar-fill" style="width:${Math.round(i.value/max*100)}%${colorFn?';background:'+colorFn(i):''}"></span></span>
+    <span class="bv">${formatNum(i.value)}</span></div>`).join('');
+}
+function openDashSettings(){
+  document.getElementById('dash-settings-body').innerHTML = DASH_WIDGETS.map(([k,lbl])=>`
+    <label style="display:flex;gap:9px;align-items:center;cursor:pointer;padding:7px 4px;border-bottom:1px solid #f2f2f2;font-size:.9rem">
+      <input type="checkbox" ${dwOn(k)?'checked':''} onchange="toggleDashWidget('${k}',this.checked)" style="width:auto">
+      <span>${lbl}</span>
+    </label>`).join('');
+  document.getElementById('dash-settings-modal').classList.add('open');
+}
+function toggleDashWidget(k,on){
+  if (on) delete dashWidgets[k]; else dashWidgets[k]=false;
+  lsSet('dashWidgets', JSON.stringify(dashWidgets));
+  renderDashboard();
+}
+function renderDashboard(){
+  const el = document.getElementById('dash-analytics'); if (!el) return;
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date(); const ym = now.toISOString().slice(0,7);
+  let h = '<div class="da-head"><h2>📊 لوحة تحليل النظام</h2><button class="da-gear" onclick="openDashSettings()">⚙️ تخصيص</button></div>';
+
+  // المؤشرات السريعة
+  if (dwOn('kpis')) {
+    const salesMonth = invoices.filter(i=>isSaleInv(i) && (i.date||'').slice(0,7)===ym).reduce((s,i)=>s+i.grand,0);
+    const ordersMonth = prodOrders.filter(o=>(o.createdAt||'').slice(0,7)===ym).length;
+    const inProd = prodOrders.filter(o=>!o.done).length;
+    const ready = prodOrders.filter(o=>o.done&&!o.delivered).length + tailorJobs.filter(j=>j.status==='جاهز').length;
+    const apToday = appointments.filter(a=>a.date===today && a.status!=='ملغي').length;
+    const late = prodOrders.filter(o=>!o.done && o.due && o.due<today).length;
+    h += '<div class="da-kpis">'
+      + `<div class="da-kpi g"><div class="ic">💰</div><div class="v">${formatNum(salesMonth)}</div><div class="l">مبيعات هذا الشهر (${curName()})</div></div>`
+      + `<div class="da-kpi b"><div class="ic">🧾</div><div class="v">${ordersMonth}</div><div class="l">أوامر إنتاج هذا الشهر</div></div>`
+      + `<div class="da-kpi p"><div class="ic">🏭</div><div class="v">${inProd}</div><div class="l">تحت الإنتاج</div></div>`
+      + `<div class="da-kpi g"><div class="ic">✅</div><div class="v">${ready}</div><div class="l">جاهز للتسليم</div></div>`
+      + `<div class="da-kpi o"><div class="ic">📅</div><div class="v">${apToday}</div><div class="l">مواعيد اليوم</div></div>`
+      + `<div class="da-kpi r"><div class="ic">⏰</div><div class="v">${late}</div><div class="l">أوامر متأخرة</div></div>`
+      + '</div>';
+  }
+
+  let cards = '';
+  // مبيعات آخر 6 أشهر
+  if (dwOn('sales6')) {
+    const items = [];
+    for (let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const k=d.toISOString().slice(0,7);
+      items.push({ label:AR_MONTHS[d.getMonth()], value:invoices.filter(x=>isSaleInv(x)&&(x.date||'').slice(0,7)===k).reduce((s,x)=>s+x.grand,0) }); }
+    cards += `<div class="da-card"><h3>📈 مبيعات آخر 6 أشهر</h3>${_hbars(items)}</div>`;
+  }
+  // توزيع مراحل الإنتاج
+  if (dwOn('stages')) {
+    const items = PROD_STAGES.map(st=>({ label:L(st), value:prodOrders.filter(o=>!o.done && PROD_STAGES[o.stageIdx]===st).length }));
+    cards += `<div class="da-card"><h3>🏭 توزيع مراحل الإنتاج</h3>${_hbars(items, ()=>'linear-gradient(90deg,#7e57c2,#26c6da)')}</div>`;
+  }
+  // أكثر القوالب طلباً
+  if (dwOn('templates')) {
+    const cnt = {};
+    measurements.forEach(m=>{ cnt[m.template]=(cnt[m.template]||0)+1; });
+    const items = Object.keys(cnt).map(t=>({label:L(t),value:cnt[t]})).sort((a,b)=>b.value-a.value).slice(0,6);
+    cards += `<div class="da-card"><h3>🧵 أكثر القوالب طلباً</h3>${_hbars(items, ()=>'linear-gradient(90deg,#26a69a,#7cb342)')}</div>`;
+  }
+  // التعديل والتطريز
+  if (dwOn('jobs')) {
+    const st = ['قيد التنفيذ','جاهز','تم التسليم'];
+    const items = st.map(x=>({label:L(x),value:tailorJobs.filter(j=>j.status===x).length}));
+    cards += `<div class="da-card"><h3>✂️ أعمال التعديل والتطريز</h3>${_hbars(items, ()=>'linear-gradient(90deg,#ec407a,#ab47bc)')}</div>`;
+  }
+  // المواعيد القادمة
+  if (dwOn('appts')) {
+    const up = appointments.filter(a=>a.date>=today && a.status==='قادم').sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||''))).slice(0,5);
+    cards += `<div class="da-card"><h3>📅 المواعيد القادمة</h3>${up.length?up.map(a=>`<div class="da-li"><span>${escHtml(_custName(a.clientId))} — ${escHtml(L(a.type))}</span><b>${isoToDMY(a.date)}${a.time?' '+a.time:''}</b></div>`).join(''):'<div class="da-empty">لا مواعيد قادمة</div>'}</div>`;
+  }
+  // أوامر متأخرة
+  if (dwOn('late')) {
+    const lt = prodOrders.filter(o=>!o.done && o.due && o.due<today).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0,5);
+    cards += `<div class="da-card"><h3>⏰ أوامر متأخرة</h3>${lt.length?lt.map(o=>`<div class="da-li"><span>#${o.num} ${escHtml(_custName(o.clientId))}</span><b style="color:#ff8a80">${isoToDMY(o.due)}</b></div>`).join(''):'<div class="da-empty">لا أوامر متأخرة 👍</div>'}</div>`;
+  }
+  // أحدث أوامر الإنتاج
+  if (dwOn('recent')) {
+    const rc = [...prodOrders].sort((a,b)=>b.id-a.id).slice(0,5);
+    cards += `<div class="da-card"><h3>🆕 أحدث أوامر الإنتاج</h3>${rc.length?rc.map(o=>`<div class="da-li"><span>#${o.num} ${escHtml(_custName(o.clientId))}</span><b>${o.done?L('جاهز'):L(PROD_STAGES[o.stageIdx])}</b></div>`).join(''):'<div class="da-empty">لا أوامر بعد</div>'}</div>`;
+  }
+  if (cards) h += '<div class="da-grid">'+cards+'</div>';
+  el.innerHTML = h;
+}
 function renderDashStats() {
   const total = invoices.filter(isSaleInv).reduce((s,i)=>s+i.grand,0);
   const today = new Date().toISOString().split('T')[0];
