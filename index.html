@@ -196,6 +196,7 @@ body.ltr .dash-card::after{content:'›'}
 #prod-panel{z-index:350}
 #tj-panel{z-index:350}
 #pattern-panel{z-index:350}
+#quote-panel{z-index:350}
 /* نافذتا الفروع وQR تُفتحان فوق نوافذ أخرى */
 #branches-modal,#qr-modal,#sup-stmt-modal{z-index:355}
 #supplier-panel{z-index:365}
@@ -458,6 +459,7 @@ const fbDB   = firebase.firestore();
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
   <div class="sb-sec">المبيعات والمالية</div>
   <a data-perm="invoices" onclick="newInvoice();closeSb()">➕ فاتورة جديدة</a>
+  <a data-perm="invoices" onclick="showQuotations();closeSb()">📝 عروض الأسعار</a>
   <a data-perm="invoices" onclick="showScreen('invoice-list');closeSb()">📋 الفواتير</a>
   <a onclick="showAccounts();closeSb()">💰 الحسابات</a>
   <div class="sb-sec">الإدارة</div>
@@ -1557,6 +1559,62 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: QUOTATIONS (عروض الأسعار) -->
+<div class="moverlay" id="quotes-modal">
+  <div class="mbox" style="max-width:900px">
+    <div class="mhdr"><h3>📝 عروض الأسعار</h3><button class="mcls" onclick="closeModal('quotes-modal')">✕</button></div>
+    <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="openQuotePanel()">＋ عرض سعر جديد</button>
+      <input type="text" id="q-search" placeholder="🔍 بحث بالرقم أو العميل..." oninput="renderQuotations()" style="flex:1;min-width:150px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+    </div>
+    <div class="mlist">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العرض</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">التاريخ</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العميل</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الإجمالي</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الحالة</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">إجراءات</th>
+        </tr></thead>
+        <tbody id="quotes-tbody"></tbody>
+      </table>
+      <div id="q-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد عروض أسعار — اضغط "عرض سعر جديد"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SIDE PANEL: QUOTATION -->
+<div class="side-panel" id="quote-panel">
+  <div class="spb">
+    <div class="sph"><h3 id="q-panel-title">📝 عرض سعر جديد</h3><button class="spc" onclick="closeModal2('quote-panel')">✕</button></div>
+    <div class="spbody">
+      <input type="hidden" id="q-edit-id">
+      <div class="fg"><label>العميل <span class="req">*</span></label><select id="q-client"></select></div>
+      <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:8px">
+        <div class="fg"><label>التاريخ</label><span class="dmy"><input type="text" id="q-date" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="fg"><label>صالح (يوم)</label><input type="number" id="q-valid" min="0" value="7" style="text-align:center"></div>
+        <div class="fg"><label>الضريبة %</label><input type="number" id="q-tax" min="0" step="0.5" oninput="qCalc()" style="text-align:center"></div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin:4px 0 8px">
+        <thead><tr><th style="text-align:start;font-size:.74rem;color:#888;padding:3px">الوصف</th><th style="font-size:.74rem;color:#888">كمية</th><th style="font-size:.74rem;color:#888">سعر</th><th style="font-size:.74rem;color:#888">إجمالي</th><th></th></tr></thead>
+        <tbody id="quote-rows"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" onclick="qAddRow()">＋ بند</button>
+      <div style="background:#f7faf5;border-radius:9px;padding:10px 12px;margin-top:10px;font-size:.86rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">المجموع: <b id="q-sub">0</b></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">الضريبة: <b id="q-taxv">0</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:1.05rem;color:#1b5e20;font-weight:800">الإجمالي: <span id="q-grand">0</span></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label>ملاحظات</label><textarea id="q-notes" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-success" style="flex:1" onclick="saveQuote()">✔ حفظ العرض</button>
+        <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('quote-panel')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: AI INSIGHTS (الرؤى والتوقعات) -->
 <div class="moverlay" id="ai-modal">
   <div class="mbox" style="max-width:560px">
@@ -2219,7 +2277,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2272,7 +2330,7 @@ function _dailyBackup(uid, data) {
 }
 
 // ═══════════════ STATE (loaded per account)
-let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[], tailorJobs=[], deliveries=[], patterns=[];
+let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[], tailorJobs=[], deliveries=[], patterns=[], quotations=[];
 let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة — أساس التوزيع التلقائي للمهام
 let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
@@ -2313,6 +2371,7 @@ function loadAccountData() {
   tailorJobs      = JSON.parse(lsGet('tailorJobs','[]'));
   deliveries      = JSON.parse(lsGet('deliveries','[]'));
   patterns        = JSON.parse(lsGet('patterns','[]'));
+  quotations      = JSON.parse(lsGet('quotations','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
   measVisible     = JSON.parse(lsGet('measVisible','{}'));
   qcDefects       = JSON.parse(lsGet('qcDefects','[]'));
@@ -5512,6 +5571,118 @@ function getNextProdNum(){
   const nums = prodOrders.map(o=>parseInt(o.num)).filter(n=>!isNaN(n));
   return nums.length ? Math.max(...nums)+1 : 1;
 }
+// ═══════════════ QUOTATIONS — عروض الأسعار (عرض → اعتماد → فاتورة)
+const Q_STATUS = { 'معلق':'background:#fff8e1;color:#b28704', 'معتمد':'background:#e8f5e9;color:#2e7d32', 'مرفوض':'background:#ffebee;color:#c62828', 'تحوّل لفاتورة':'background:#e3f2fd;color:#1565c0' };
+function getNextQuoteNum(){ const n=quotations.map(q=>parseInt(q.num)).filter(x=>!isNaN(x)); return n.length?Math.max(...n)+1:1; }
+function showQuotations(){
+  if (!canAccess('invoices')) { permDenied('invoices'); return; }
+  renderQuotations();
+  document.getElementById('quotes-modal').classList.add('open');
+}
+function renderQuotations(){
+  const q=(document.getElementById('q-search').value||'').trim().toLowerCase();
+  const list=[...quotations].filter(x=>!q||String(x.num).includes(q)||(x.clientName||'').toLowerCase().includes(q)).sort((a,b)=>b.id-a.id);
+  document.getElementById('q-empty').style.display=list.length?'none':'block';
+  document.getElementById('quotes-tbody').innerHTML=list.map(x=>`
+    <tr>
+      <td style="text-align:center;font-weight:700;direction:ltr">#${x.num}</td>
+      <td style="text-align:center">${isoToDMY(x.date)}</td>
+      <td style="text-align:center;font-weight:600">${escHtml(x.clientName)}</td>
+      <td style="text-align:center;font-weight:700">${formatNum(x.grand)}</td>
+      <td style="text-align:center"><span class="ap-badge" style="${Q_STATUS[x.status]||''}">${escHtml(x.status)}</span></td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openQuotePanel(${x.id})">✏️</button>
+        <button class="btn btn-info btn-sm" onclick="printQuote(${x.id})" title="طباعة">🖨️</button>
+        ${x.status!=='تحوّل لفاتورة'?`<button class="btn btn-success btn-sm" onclick="convertQuote(${x.id})" title="تحويل لفاتورة">🧾 فاتورة</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deleteQuote(${x.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+let _qn=0;
+function qAddRow(d){
+  _qn++; const n=_qn;
+  const tr=document.createElement('tr'); tr.id='qrow-'+n;
+  tr.innerHTML=`<td><input type="text" id="qd-${n}" value="${d?escHtml(d.desc||''):''}" placeholder="الوصف" style="width:100%;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"></td>
+    <td><input type="number" id="qq-${n}" value="${d?d.qty:1}" min="0" oninput="qCalc()" style="width:62px;padding:5px;border:1.5px solid #ddd;border-radius:6px;text-align:center"></td>
+    <td><input type="number" id="qp-${n}" value="${d?d.price:''}" min="0" oninput="qCalc()" style="width:80px;padding:5px;border:1.5px solid #ddd;border-radius:6px;text-align:center"></td>
+    <td id="qt-${n}" style="text-align:center;font-weight:700;color:#1b5e20">0</td>
+    <td><button onclick="document.getElementById('qrow-${n}').remove();qCalc()" style="background:#ffebee;border:none;color:#c62828;border-radius:5px;padding:3px 7px;cursor:pointer">✕</button></td>`;
+  document.getElementById('quote-rows').appendChild(tr);
+}
+function _qRows(){ return [...document.querySelectorAll('#quote-rows tr')].map(tr=>{const id=tr.id.split('-')[1];return {n:id,desc:document.getElementById('qd-'+id).value.trim(),qty:parseFloat(document.getElementById('qq-'+id).value)||0,price:parseFloat(document.getElementById('qp-'+id).value)||0};}); }
+function qCalc(){
+  let sub=0;
+  _qRows().forEach(r=>{const t=r.qty*r.price;sub+=t;const c=document.getElementById('qt-'+r.n);if(c)c.textContent=formatNum(t);});
+  const taxRate=parseFloat(document.getElementById('q-tax').value)||0;
+  const tax=sub*taxRate/100;
+  document.getElementById('q-sub').textContent=formatNum(sub);
+  document.getElementById('q-taxv').textContent=formatNum(tax);
+  document.getElementById('q-grand').textContent=formatNum(sub+tax);
+}
+function openQuotePanel(id){
+  if(!customers.length){alert('أضف عميلاً أولاً');return;}
+  const x=id?quotations.find(q=>q.id===id):null;
+  document.getElementById('q-panel-title').textContent=x?'✏️ تعديل عرض سعر #'+x.num:'📝 عرض سعر جديد';
+  document.getElementById('q-edit-id').value=x?x.id:'';
+  document.getElementById('q-client').innerHTML=_custOptions(x?x.clientId:null);
+  document.getElementById('q-date').value=x?isoToDMY(x.date):todayDMY();
+  document.getElementById('q-valid').value=x?(x.validDays||7):7;
+  document.getElementById('q-tax').value=x?x.taxRate:(settings.taxRate||0);
+  document.getElementById('q-notes').value=x?(x.notes||''):'';
+  document.getElementById('quote-rows').innerHTML=''; _qn=0;
+  if(x&&x.items&&x.items.length) x.items.forEach(it=>qAddRow(it)); else { qAddRow(); qAddRow(); }
+  qCalc();
+  document.getElementById('quote-panel').classList.add('open');
+}
+function saveQuote(){
+  const cid=document.getElementById('q-client').value; if(!cid){alert('اختر العميل');return;}
+  const c=_custById(cid);
+  const items=_qRows().filter(r=>r.desc&&r.qty>0).map(r=>({desc:r.desc,qty:r.qty,price:r.price,total:r.qty*r.price}));
+  if(!items.length){alert('أضف بنداً واحداً على الأقل');return;}
+  const taxRate=parseFloat(document.getElementById('q-tax').value)||0;
+  const sub=items.reduce((s,i)=>s+i.total,0); const tax=sub*taxRate/100;
+  const data={ clientId:cid, clientName:c.name, clientPhone:c.phone||'', date:readDMY('q-date'),
+    validDays:parseInt(document.getElementById('q-valid').value)||0, items, taxRate, subtotal:sub, tax, grand:sub+tax,
+    notes:document.getElementById('q-notes').value.trim() };
+  const editId=document.getElementById('q-edit-id').value;
+  if(editId){ const x=quotations.find(q=>String(q.id)===editId); if(x)Object.assign(x,data); }
+  else quotations.push({id:Date.now(),num:getNextQuoteNum(),status:'معلق',...data});
+  save('quotations'); closeModal2('quote-panel'); renderQuotations();
+}
+function deleteQuote(id){ if(!confirm('حذف عرض السعر؟'))return; quotations=quotations.filter(q=>q.id!==id); save('quotations'); renderQuotations(); }
+function convertQuote(id){
+  const x=quotations.find(q=>q.id===id); if(!x)return;
+  if(!confirm('تحويل عرض السعر #'+x.num+' إلى فاتورة؟'))return;
+  const c=_custById(x.clientId);
+  x.status='تحوّل لفاتورة'; save('quotations');
+  closeModal('quotes-modal');
+  newInvoice();
+  if(c){document.getElementById('f-client-num').value=c.num||'';document.getElementById('f-client-name').value=c.name;document.getElementById('f-client-phone').value=c.phone||'';if(c.id)document.getElementById('f-client-inv-num').value=getNextClientInvNum(c.id);}
+  document.getElementById('f-tax-rate').value=String(x.taxRate||0);
+  document.getElementById('items-tbody').innerHTML='';rowCount=0;
+  x.items.forEach(it=>addRow({desc:it.desc,qty:it.qty,price:it.price}));
+  recalc();
+}
+function printQuote(id){
+  const x=quotations.find(q=>q.id===id); if(!x)return;
+  const rows=x.items.map((it,i)=>`<tr><td>${i+1}</td><td style="text-align:start">${escHtml(it.desc)}</td><td>${formatNum(it.qty)}</td><td>${formatNum(it.price)}</td><td>${formatNum(it.total)}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>عرض سعر #${x.num}</title>
+    <style>body{font-family:'Cairo',Arial,sans-serif;padding:24px;color:#222}h1{color:#1b5e20;font-size:1.3rem;margin:0}table{width:100%;border-collapse:collapse;margin:14px 0}th,td{border:1px solid #999;padding:7px;text-align:center}th{background:#eef5e8}.tot{display:flex;justify-content:flex-end;gap:30px;font-weight:700;margin-top:6px}</style></head><body>
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #2e7d32;padding-bottom:8px">
+      <div><h1>${escHtml(settings.coName||'')}</h1><div style="font-size:.85rem;color:#666">${escHtml(settings.coSub||'')}</div></div>
+      <div style="text-align:end"><div style="font-weight:800;color:#1b5e20;font-size:1.1rem">عرض سعر</div><div style="direction:ltr">#${x.num} — ${isoToDMY(x.date)}</div></div>
+    </div>
+    <div style="margin:10px 0;font-size:.92rem">العميل: <b>${escHtml(x.clientName)}</b>${x.clientPhone?' — '+escHtml(x.clientPhone):''}</div>
+    <table><thead><tr><th>#</th><th>الوصف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="tot"><span>المجموع: ${formatNum(x.subtotal)} ${curName()}</span><span>الضريبة (${x.taxRate}%): ${formatNum(x.tax)}</span></div>
+    <div class="tot" style="font-size:1.15rem;color:#1b5e20">الإجمالي: ${formatNum(x.grand)} ${curName()}</div>
+    ${x.validDays?`<div style="margin-top:10px;font-size:.82rem;color:#777">صالح لمدة ${x.validDays} يوماً من تاريخه</div>`:''}
+    ${x.notes?`<div style="margin-top:8px;font-size:.85rem">ملاحظات: ${escHtml(x.notes)}</div>`:''}
+    <script>onload=()=>print()<\/script></body></html>`);
+  w.document.close();
+}
+
 // ═══════════════ AI ENGINE — محرّك الذكاء (اقتراحات + توقّع الطلب)
 // اقتراح ذكي للعميل المتكرر: يعرض آخر قياس ويتيح استخدامه
 function suggestFromHistory(){
@@ -6608,7 +6779,7 @@ function applyBranding() {
 // ═══════════════ UTILS — English numerals everywhere
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function save(key) {
-  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders,tailorJobs,deliveries,patterns};
+  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders,tailorJobs,deliveries,patterns,quotations};
   lsSet(key, JSON.stringify(map[key]));
 }
 function formatNum(n) { return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2}); }
