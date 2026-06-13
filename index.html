@@ -1114,18 +1114,39 @@ const fbDB   = firebase.firestore();
 
 <!-- ═══════════════ MODAL: MEASUREMENT FIELD SETTINGS (إعدادات حقول القياس) -->
 <div class="moverlay" id="meas-settings-modal" style="z-index:360">
-  <div class="mbox" style="max-width:600px">
-    <div class="mhdr"><h3>⚙️ إعدادات حقول القياس</h3><button class="mcls" onclick="closeModal('meas-settings-modal')">✕</button></div>
+  <div class="mbox" style="max-width:760px">
+    <div class="mhdr"><h3>⚙️ إعدادات القالب</h3><button class="mcls" onclick="closeModal('meas-settings-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <label style="font-size:.85rem;font-weight:600">القالب:</label>
       <select id="mset-template" onchange="renderMeasSettings()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;flex:1;min-width:140px"></select>
-      <button class="btn btn-success btn-sm" onclick="measSetAll(true)">✔ إظهار الكل</button>
-      <button class="btn btn-warning btn-sm" onclick="measSetAll(false)">إخفاء الكل</button>
     </div>
-    <div style="padding:7px 16px;background:#f1f8e9;font-size:.78rem;color:#33691e">
-      أزل العلامة عن أي مقاس لإخفائه من شاشة القياس — الإعداد يُحفظ فوراً لكل قالب على حدة
+    <div style="display:flex;border-bottom:1px solid #eee">
+      <button class="mset-tab active" id="mset-tab-fields" onclick="msetTab('fields')" style="flex:1;padding:10px;border:none;background:#f3f7f0;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#2e7d32">📐 القياسات الظاهرة</button>
+      <button class="mset-tab" id="mset-tab-imgs" onclick="msetTab('imgs')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">🖼️ صور الموديل والأجزاء</button>
     </div>
-    <div class="mlist" id="mset-list" style="padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px"></div>
+    <div id="mset-pane-fields">
+      <div style="padding:7px 16px;background:#f1f8e9;font-size:.78rem;color:#33691e;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <span>أزل العلامة عن أي مقاس لإخفائه من شاشة الأوردر — يُحفظ فوراً لكل قالب</span>
+        <span style="display:flex;gap:6px"><button class="btn btn-success btn-sm" onclick="measSetAll(true)">✔ الكل</button><button class="btn btn-warning btn-sm" onclick="measSetAll(false)">إخفاء الكل</button></span>
+      </div>
+      <div class="mlist" id="mset-list" style="padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px"></div>
+    </div>
+    <div id="mset-pane-imgs" style="display:none" class="mlist">
+      <div style="padding:14px 16px">
+        <div style="font-weight:800;color:#2e7d32;font-size:.88rem;margin-bottom:8px">👕 صورة الموديل الرئيسية للقالب</div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <div id="mset-model-prev" style="width:120px;height:150px;border:2px dashed #c5e1a5;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;color:#bbb;font-size:.75rem">لا صورة</div>
+          <div>
+            <input type="file" id="mset-model-file" accept="image/*" onchange="uploadTmplModel()" style="font-size:.82rem;max-width:230px">
+            <div style="font-size:.72rem;color:#999;margin-top:6px">تظهر هذه الصورة أعلى شاشة الأوردر. يُفضّل صورة واضحة للثوب/الموديل.</div>
+            <button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="removeTmplModel()">حذف الصورة</button>
+          </div>
+        </div>
+        <div style="font-weight:800;color:#4527a0;font-size:.88rem;margin:18px 0 8px">🧩 صور خيارات الأجزاء القابلة للتغيير</div>
+        <div style="font-size:.74rem;color:#999;margin-bottom:10px">ارفع صورة لكل خيار (مثلاً صور الياقات: ملكي/صيني/مربع...) لتظهر في قائمة الاختيار داخل الأوردر.</div>
+        <div id="mset-parts"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1145,6 +1166,7 @@ const fbDB   = firebase.firestore();
         <!-- ═══ رسم الثوب التفاعلي -->
         <div class="thobe-wrap">
           <div style="text-align:center;font-size:.8rem;font-weight:800;color:#33691e;margin-bottom:4px">👆 اضغط أي جزء لاختيار تفصيله</div>
+          <img id="tmpl-model-img" style="display:none;width:100%;max-height:230px;object-fit:contain;border-radius:12px;margin-bottom:8px;background:#fff">
           <svg class="thobe-svg" viewBox="0 0 300 430" id="thobe-svg">
             <!-- جسم الثوب -->
             <path d="M110 64 Q150 50 190 64 L196 92 L232 120 L268 200 L246 214 L210 150 L210 410 L90 410 L90 150 L54 214 L32 200 L68 120 L104 92 Z"
@@ -2043,7 +2065,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2100,6 +2122,7 @@ let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], bra
 let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة — أساس التوزيع التلقائي للمهام
 let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
+let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
 const DEF_SETTINGS = {
@@ -2137,6 +2160,7 @@ function loadAccountData() {
   measVisible     = JSON.parse(lsGet('measVisible','{}'));
   qcDefects       = JSON.parse(lsGet('qcDefects','[]'));
   if (!qcDefects.length) qcDefects = ['اختلاف قياس','عيب خياطة','عيب قماش','عيب كي','لون غير مطابق','زر/كبك ناقص'];
+  tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -4266,11 +4290,14 @@ function openPartMenu(part, evt) {
   const sel = document.getElementById(cfg.sel);
   const cur = sel.value;
   document.getElementById('pm-title').textContent = cfg.label;
+  const tpl = document.getElementById('ms-template').value;
+  const imgs = (tmplImages[tpl] && tmplImages[tpl].parts && tmplImages[tpl].parts[part]) || {};
   document.getElementById('pm-options').innerHTML =
     [...sel.options].map(o=>{
       const v = o.value;
       const lbl = v || '— بدون —';
-      return `<button class="${v===cur?'cur':''}" onclick="pickPart('${part}','${v.replace(/'/g,"\\'")}')">${lbl}</button>`;
+      const im = imgs[v];
+      return `<button class="${v===cur?'cur':''}" style="${im?'display:flex;align-items:center;gap:8px':''}" onclick="pickPart('${part}','${v.replace(/'/g,"\\'")}')">${im?`<img src="${im}" style="width:34px;height:34px;object-fit:cover;border-radius:6px">`:''}<span>${lbl}</span></button>`;
     }).join('');
   const menu = document.getElementById('part-menu');
   menu.classList.add('open');
@@ -4296,16 +4323,106 @@ function updateThobe() {
     const tv = document.getElementById('tv-'+part);
     if (tv) tv.textContent = sel.value || '';
   });
-  const cuffSet = document.getElementById('mm-cuff').value;
-  document.querySelectorAll('#td-cuff').forEach(()=>{});
+  // صورة الموديل المرفوعة للقالب الحالي (إن وُجدت)
+  const tpl = document.getElementById('ms-template').value;
+  const mimg = document.getElementById('tmpl-model-img');
+  const url = tmplImages[tpl] && tmplImages[tpl].model;
+  if (url) { mimg.src = url; mimg.style.display = 'block'; } else { mimg.style.display = 'none'; }
 }
 document.addEventListener('click', e=>{ if (!e.target.closest('#part-menu') && !e.target.closest('.hot')) closePartMenu(); });
 
 function openMeasSettings() {
   document.getElementById('mset-template').innerHTML =
     Object.keys(MEAS_TEMPLATES).map(t=>`<option>${t}</option>`).join('');
+  msetTab('fields');
   renderMeasSettings();
   document.getElementById('meas-settings-modal').classList.add('open');
+}
+// ضغط الصورة وتحويلها لـ JPEG صغير الحجم قبل التخزين
+function _resizeImg(file, maxDim, quality, cb) {
+  if (file.size > 8*1024*1024) { alert('الصورة كبيرة جداً (أكثر من 8 ميجا)'); return; }
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h*maxDim/w); w = maxDim; }
+      else if (h >= w && h > maxDim) { w = Math.round(w*maxDim/h); h = maxDim; }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(cv.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = ()=>alert('تعذّرت قراءة الصورة');
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+function _saveTmplImages() {
+  const json = JSON.stringify(tmplImages);
+  if (json.length > 850000) { alert('⚠️ مجموع صور القوالب أصبح كبيراً وقد لا تُرفع للسحابة — احذف بعض الصور أو صغّرها'); }
+  lsSet('tmplImages', json);
+}
+function _tplImgObj(tpl){ tmplImages[tpl] = tmplImages[tpl] || { parts:{} }; tmplImages[tpl].parts = tmplImages[tpl].parts||{}; return tmplImages[tpl]; }
+function msetTab(which) {
+  const f = which==='fields';
+  document.getElementById('mset-pane-fields').style.display = f ? '' : 'none';
+  document.getElementById('mset-pane-imgs').style.display = f ? 'none' : '';
+  document.getElementById('mset-tab-fields').style.background = f ? '#f3f7f0' : 'white';
+  document.getElementById('mset-tab-fields').style.color = f ? '#2e7d32' : '#999';
+  document.getElementById('mset-tab-imgs').style.background = f ? 'white' : '#f3f7f0';
+  document.getElementById('mset-tab-imgs').style.color = f ? '#999' : '#4527a0';
+  if (!f) renderTmplImages();
+}
+function uploadTmplModel() {
+  const tpl = document.getElementById('mset-template').value;
+  const file = document.getElementById('mset-model-file').files[0]; if (!file) return;
+  _resizeImg(file, 520, 0.7, dataURL => { _tplImgObj(tpl).model = dataURL; _saveTmplImages(); renderTmplImages(); });
+}
+function removeTmplModel() {
+  const tpl = document.getElementById('mset-template').value;
+  if (tmplImages[tpl]) { delete tmplImages[tpl].model; _saveTmplImages(); renderTmplImages(); }
+}
+function uploadPartImg(part, opt, inputId) {
+  const tpl = document.getElementById('mset-template').value;
+  const file = document.getElementById(inputId).files[0]; if (!file) return;
+  _resizeImg(file, 240, 0.65, dataURL => {
+    const o = _tplImgObj(tpl); o.parts[part] = o.parts[part]||{}; o.parts[part][opt] = dataURL;
+    _saveTmplImages(); renderTmplImages();
+  });
+}
+function removePartImg(part, opt) {
+  const tpl = document.getElementById('mset-template').value;
+  if (tmplImages[tpl] && tmplImages[tpl].parts[part]) { delete tmplImages[tpl].parts[part][opt]; _saveTmplImages(); renderTmplImages(); }
+}
+function renderTmplImages() {
+  const tpl = document.getElementById('mset-template').value;
+  const obj = tmplImages[tpl] || { parts:{} };
+  const prev = document.getElementById('mset-model-prev');
+  prev.innerHTML = obj.model ? `<img src="${obj.model}" style="width:100%;height:100%;object-fit:cover">` : 'لا صورة';
+  // الأجزاء وخياراتها من القوائم المخفية
+  document.getElementById('mset-parts').innerHTML = Object.keys(PART_CFG).map(part=>{
+    const sel = document.getElementById(PART_CFG[part].sel);
+    const opts = [...sel.options].map(o=>o.value).filter(Boolean);
+    return `<div style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:.82rem;color:#333;margin-bottom:5px">${PART_CFG[part].label}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${opts.map(opt=>{
+          const img = (obj.parts[part]||{})[opt];
+          const iid = 'pi-'+part+'-'+opt.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g,'');
+          return `<div style="text-align:center;width:78px">
+            <label style="cursor:pointer;display:block">
+              <div style="width:78px;height:78px;border:1.5px solid ${img?'#66bb6a':'#ddd'};border-radius:10px;overflow:hidden;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                ${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover">`:'➕'}
+              </div>
+              <input type="file" accept="image/*" id="${iid}" onchange="uploadPartImg('${part}','${opt.replace(/'/g,"\\'")}','${iid}')" style="display:none">
+            </label>
+            <div style="font-size:.68rem;margin-top:2px">${opt}</div>
+            ${img?`<span style="font-size:.62rem;color:#c62828;cursor:pointer" onclick="removePartImg('${part}','${opt.replace(/'/g,"\\'")}')">حذف</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 function renderMeasSettings() {
   const tpl = document.getElementById('mset-template').value;
