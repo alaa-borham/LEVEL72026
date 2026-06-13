@@ -4007,7 +4007,11 @@ window.addEventListener('afterprint', ()=>{
 function printInvoice(inv) {
   applyCompanyInfo(); // تحديث الترويسة والرقم الضريبي بأحدث الإعدادات
   document.getElementById('p-date').textContent        = fmtDate(inv.date);
-  document.getElementById('p-type').textContent        = inv.type + (inv.branchName ? ' — 🏬 '+inv.branchName : '');
+  // إشعار دائن للمرتجعات (ZATCA) مع الإشارة للفاتورة الأصلية
+  let _typeLabel = inv.type;
+  if (inv.type==='فاتورة مرتجع') _typeLabel = settings.vatNo ? 'إشعار دائن (مرتجع)' : 'فاتورة مرتجع';
+  const _orig = inv.returnForId ? (invoices.find(x=>x.id===inv.returnForId)||deletedInvoices.find(x=>x.id===inv.returnForId)) : null;
+  document.getElementById('p-type').textContent = _typeLabel + (inv.branchName ? ' — 🏬 '+inv.branchName : '') + (_orig ? ' — مرجع الفاتورة #'+_orig.invNum : '');
   document.getElementById('p-client-num').textContent  = inv.clientNum||'-';
   document.getElementById('p-client-name').textContent = inv.clientName;
   document.getElementById('p-client-phone').textContent= inv.clientPhone||'';
