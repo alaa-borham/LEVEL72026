@@ -693,7 +693,9 @@ const fbDB   = firebase.firestore();
         <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="openBranding()" data-i18n="setBranding">🎨 الشعار والخلفية (الصور والقياسات)</button>
 
         <h4 style="color:#2e7d32;margin:18px 0 12px">📦 تصدير البيانات</h4>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="exportToExcel()">📊 تصدير كل البيانات إلى Excel (نسخة احتياطية)</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="exportToExcel()">📊 تصدير كل البيانات إلى Excel</button>
+        <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="exportBackup()">💾 نسخة احتياطية كاملة (ملف استرجاع)</button>
+        <label class="btn btn-warning" style="width:100%;margin-bottom:8px;display:block;text-align:center;cursor:pointer">♻️ استرجاع من ملف نسخة احتياطية<input type="file" accept="application/json,.json" onchange="importBackup(this)" style="display:none"></label>
         <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="showTerms()">🏷️ إدارة المسميات (تغيير الأسماء عربي/إنجليزي)</button>
         <div class="fg" style="margin-top:8px"><label>نظام القص للتصدير XML</label>
           <select id="set-cad"><option>Gerber</option><option>Lectra</option><option>Optitex</option><option>Grafis</option><option>Gemini</option><option>Bullmer</option><option>عام / Generic</option></select></div>
@@ -7082,6 +7084,37 @@ function _setInvoiceQR(inv) {
 }
 
 // ═══════════════ تصدير كل بيانات المنشأة لملف Excel (نسخة احتياطية)
+// نسخة احتياطية كاملة (JSON) قابلة للاسترجاع
+function exportBackup() {
+  const data = {};
+  CLOUD_KEYS.forEach(k=>{ const v = localStorage.getItem(lsKey(k)); if (v!==null) data[k]=v; });
+  const payload = { app:'LEVEL7 Tailor', version:1, exportedAt:new Date().toISOString(),
+    account: currentAccProfile ? currentAccProfile.biz : '', data };
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'LEVEL7-نسخة-احتياطية-' + new Date().toISOString().split('T')[0] + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  logAction('نسخة احتياطية', 'تصدير ملف استرجاع كامل');
+}
+function importBackup(input) {
+  if (currentMember) { alert('الاسترجاع لصاحب المنشأة فقط'); input.value=''; return; }
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    let obj;
+    try { obj = JSON.parse(e.target.result); } catch(_) { alert('الملف غير صالح'); return; }
+    const data = obj && obj.data;
+    if (!data || typeof data!=='object') { alert('ملف النسخة الاحتياطية غير صحيح'); return; }
+    if (!confirm('⚠️ سيستبدل هذا كل البيانات الحالية ببيانات الملف.\nاسم المنشأة في الملف: '+(obj.account||'-')+'\nتاريخ النسخة: '+(obj.exportedAt? isoToDMY(obj.exportedAt.split('T')[0]):'-')+'\n\nمتابعة الاسترجاع؟')) { input.value=''; return; }
+    CLOUD_KEYS.forEach(k=>{ if (data[k]!==undefined) lsSet(k, data[k]); });
+    logAction('استرجاع نسخة', 'استرجاع من ملف بتاريخ '+(obj.exportedAt||''));
+    cloudSaveNow();
+    alert('✔ تم الاسترجاع — ستُعاد تهيئة النظام الآن');
+    setTimeout(()=>location.reload(), 1200);
+  };
+  r.readAsText(file);
+}
 function exportToExcel() {
   const lib = window.XLSX ? Promise.resolve() : new Promise((res, rej)=>{
     const s = document.createElement('script');
