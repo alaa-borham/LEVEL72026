@@ -6192,6 +6192,12 @@ function advanceProdStage(id) {
   logAction('إنجاز مرحلة إنتاج', 'أمر #'+o.num+' — '+st+(o.done?' — اكتمل':''));
   renderProduction();
   renderDashStats();
+  // رسالة تلقائية للعميل عند اكتمال الطلب (جاهز)
+  if (o.done) {
+    const c = _custById(o.clientId);
+    if (c && _waNormalize(c.phone) && confirm('🎉 اكتمل الأمر #'+o.num+'.\nإرسال رسالة واتساب للعميل بأن طلبه جاهز؟'))
+      sendWA(o.clientId, 'ready');
+  }
 }
 function invoiceFromOrder(orderId){
   if (!canAccess('invoices')) { permDenied('invoices'); return; }
