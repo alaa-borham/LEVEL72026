@@ -325,6 +325,25 @@ body.ltr .dash-card::after{content:'›'}
 .meas-print .mp-cell .v{font-size:1.25rem;font-weight:800;color:#1b5e20;direction:ltr}
 /* ═══ شارة نوع الموعد */
 .ap-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.76rem;font-weight:700}
+/* ═══ شاشة أوردر التفصيل البصرية */
+#measure-panel .spb{max-width:1080px}
+.order-grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+@media(max-width:760px){.order-grid{grid-template-columns:1fr}}
+.thobe-wrap{background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:16px;padding:12px;position:sticky;top:8px}
+.thobe-svg{width:100%;height:auto;display:block;user-select:none}
+.hot{cursor:pointer;transition:all .15s}
+.hot:hover{opacity:.85;filter:drop-shadow(0 0 5px rgba(46,125,50,.6))}
+.hot-dot{fill:#c8e6c9;stroke:#2e7d32;stroke-width:2}
+.hot-dot.set{fill:#66bb6a}
+.hot-lbl{font-size:9px;fill:#33691e;font-weight:700;pointer-events:none}
+.hot-val{font-size:8.5px;fill:#1b5e20;font-weight:800;pointer-events:none}
+.part-menu{position:fixed;z-index:380;background:white;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);padding:8px;min-width:170px;display:none;border:1px solid #e0e0e0}
+.part-menu.open{display:block;animation:mpop .15s ease}
+.part-menu h5{font-size:.82rem;color:#2e7d32;padding:4px 8px 8px;font-weight:800;border-bottom:1px solid #f0f0f0;margin-bottom:5px}
+.part-menu button{display:block;width:100%;text-align:start;background:#f7faf5;border:1px solid #eef2ea;border-radius:8px;padding:8px 11px;margin:3px 0;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;color:#333;transition:all .12s}
+.part-menu button:hover{background:#e8f5e9;border-color:#aed581}
+.part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
+.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 10px}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
 @page{size:A4 portrait;margin:0 10mm}
 </style>
@@ -1116,46 +1135,95 @@ const fbDB   = firebase.firestore();
     <div class="sph"><h3 id="ms-panel-title">📐 قياس جديد</h3><button class="spc" onclick="closeModal2('measure-panel')">✕</button></div>
     <div class="spbody">
       <input type="hidden" id="ms-edit-id">
-      <div class="fg"><label>العميل <span class="req">*</span></label><select id="ms-client"></select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="fg"><label>قالب القياس</label><select id="ms-template" onchange="renderMeasFields()"></select></div>
-        <div class="fg"><label>التاريخ</label><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="fg" style="margin:0"><label>العميل <span class="req">*</span></label><select id="ms-client"></select></div>
+        <div class="fg" style="margin:0"><label>قالب القياس</label><select id="ms-template" onchange="renderMeasFields();updateThobe()"></select></div>
+        <div class="fg" style="margin:0"><label>التاريخ</label><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
       </div>
-      <div style="font-size:.78rem;color:#888;margin-bottom:6px">القياسات بالسنتيمتر — اترك أي حقل لا تحتاجه فارغاً</div>
-      <div id="ms-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px"></div>
-      <div id="ms-warnings" style="margin-top:8px"></div>
-      <div style="background:#ede7f6;border-radius:10px;padding:10px 12px;margin-top:8px">
-        <div style="font-size:.8rem;font-weight:700;color:#4527a0;margin-bottom:8px">✂️ موديل التفصيل (اختياري)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px">
-          <div class="fg" style="margin:0"><label>الياقة</label>
-            <select id="mm-collar"><option value=""></option><option>ملكي</option><option>صيني</option><option>مربع</option><option>فرنسي</option></select></div>
-          <div class="fg" style="margin:0"><label>الجبزور (القلاب)</label>
-            <select id="mm-placket"><option value=""></option><option>ملكي</option><option>مفتوح</option><option>فرنسي</option><option>مخفي</option></select></div>
-          <div class="fg" style="margin:0"><label>الأكمام</label>
-            <select id="mm-cuff"><option value=""></option><option>سادة</option><option>كبك</option></select></div>
-          <div class="fg" style="margin:0"><label>جيب الصدر</label>
-            <select id="mm-pocket"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيب بقلم</option><option>جيبان</option></select></div>
-          <div class="fg" style="margin:0"><label>الجيوب الجانبية</label>
-            <select id="mm-sidepockets"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيبان</option></select></div>
-          <div class="fg" style="margin:0"><label>التكتك</label><input type="text" id="mm-taktak"></div>
-          <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية / معدنية..."></div>
-          <div class="fg" style="margin:0"><label>التطريز</label><input type="text" id="mm-embroidery"></div>
-          <div class="fg" style="margin:0;grid-column:span 2"><label>شعارات / إكسسوارات معدنية</label><input type="text" id="mm-metal"></div>
-          <div class="fg" style="margin:0;grid-column:span 2"><label>القماش (من مخزون الأقمشة)</label><select id="mm-fabric"></select></div>
-          <div class="fg" style="margin:0"><label>قماش خارجي من العميل — النوع</label><input type="text" id="mm-extfabric"></div>
-          <div class="fg" style="margin:0"><label>عرض القماش الخارجي (سم)</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
-          <div class="fg" style="margin:0"><label>عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
-          <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:4px"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="mm-proofa" style="width:auto"> يحتاج بروفة</label></div>
+
+      <div class="order-grid">
+        <!-- ═══ رسم الثوب التفاعلي -->
+        <div class="thobe-wrap">
+          <div style="text-align:center;font-size:.8rem;font-weight:800;color:#33691e;margin-bottom:4px">👆 اضغط أي جزء لاختيار تفصيله</div>
+          <svg class="thobe-svg" viewBox="0 0 300 430" id="thobe-svg">
+            <!-- جسم الثوب -->
+            <path d="M110 64 Q150 50 190 64 L196 92 L232 120 L268 200 L246 214 L210 150 L210 410 L90 410 L90 150 L54 214 L32 200 L68 120 L104 92 Z"
+                  fill="#ffffff" stroke="#9ccc65" stroke-width="2.5"/>
+            <!-- خط الجبزور الأمامي -->
+            <line x1="150" y1="92" x2="150" y2="408" stroke="#c5e1a5" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- الياقة -->
+            <g class="hot" onclick="openPartMenu('collar',event)">
+              <path d="M110 64 Q150 50 190 64 L182 86 Q150 74 118 86 Z" fill="#dcedc8" stroke="#2e7d32" stroke-width="2"/>
+              <text class="hot-lbl" x="150" y="44" text-anchor="middle">الياقة</text>
+              <text class="hot-val" x="150" y="78" text-anchor="middle" id="tv-collar"></text>
+            </g>
+            <!-- الجبزور -->
+            <g class="hot" onclick="openPartMenu('placket',event)">
+              <rect x="142" y="96" width="16" height="120" rx="4" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5" opacity=".75"/>
+              <text class="hot-lbl" x="246" y="116" text-anchor="middle">الجبزور</text>
+              <text class="hot-val" x="246" y="128" text-anchor="middle" id="tv-placket"></text>
+              <line x1="158" y1="120" x2="226" y2="120" stroke="#0288d1" stroke-width=".8" opacity=".5"/>
+            </g>
+            <!-- جيب الصدر -->
+            <g class="hot" onclick="openPartMenu('pocket',event)">
+              <rect x="104" y="150" width="34" height="30" rx="3" fill="#fff3e0" stroke="#e65100" stroke-width="1.6"/>
+              <text class="hot-lbl" x="121" y="145" text-anchor="middle">جيب الصدر</text>
+              <text class="hot-val" x="121" y="170" text-anchor="middle" id="tv-pocket"></text>
+            </g>
+            <!-- الأكمام / الكبك (يمين ويسار) -->
+            <g class="hot" onclick="openPartMenu('cuff',event)">
+              <circle class="hot-dot" cx="50" cy="208" r="15" id="td-cuff"/>
+              <circle class="hot-dot" cx="250" cy="208" r="15"/>
+              <text class="hot-lbl" x="50" y="240" text-anchor="middle">الأكمام</text>
+              <text class="hot-val" x="50" y="252" text-anchor="middle" id="tv-cuff"></text>
+            </g>
+            <!-- الجيوب الجانبية -->
+            <g class="hot" onclick="openPartMenu('sidepockets',event)">
+              <rect x="96" y="300" width="30" height="40" rx="3" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.4"/>
+              <rect x="174" y="300" width="30" height="40" rx="3" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.4"/>
+              <text class="hot-lbl" x="150" y="365" text-anchor="middle">الجيوب الجانبية</text>
+              <text class="hot-val" x="150" y="377" text-anchor="middle" id="tv-sidepockets"></text>
+            </g>
+          </svg>
+          <!-- خيارات إضافية أسفل الرسم -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px">
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية / معدنية"></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">التطريز</label><input type="text" id="mm-embroidery"></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">التكتك</label><input type="text" id="mm-taktak"></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">معدنيات/شعار</label><input type="text" id="mm-metal"></div>
+            <div class="fg" style="margin:0;grid-column:span 2"><label style="font-size:.72rem">القماش (من المخزون)</label><select id="mm-fabric"></select></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">قماش العميل</label><input type="text" id="mm-extfabric"></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">عرضه (سم)</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
+            <div class="fg" style="margin:0"><label style="font-size:.72rem">عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
+            <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:5px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:.78rem"><input type="checkbox" id="mm-proofa" style="width:auto"> بروفة</label></div>
+          </div>
+          <!-- قوائم اختيار الأجزاء (مخفية، تظهر عند الضغط) — تحمل قيم الموديل -->
+          <select id="mm-collar" style="display:none"><option value=""></option><option>ملكي</option><option>صيني</option><option>مربع</option><option>فرنسي</option></select>
+          <select id="mm-placket" style="display:none"><option value=""></option><option>ملكي</option><option>مفتوح</option><option>فرنسي</option><option>مخفي</option></select>
+          <select id="mm-cuff" style="display:none"><option value=""></option><option>سادة</option><option>كبك</option></select>
+          <select id="mm-pocket" style="display:none"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيب بقلم</option><option>جيبان</option></select>
+          <select id="mm-sidepockets" style="display:none"><option value=""></option><option>بدون</option><option>جيب واحد</option><option>جيبان</option></select>
+        </div>
+
+        <!-- ═══ جدول القياسات -->
+        <div>
+          <div style="font-size:.82rem;color:#555;font-weight:700;margin-bottom:6px">📐 القياسات (سم) — اترك أي حقل لا تحتاجه فارغاً</div>
+          <div id="ms-fields" class="ms-fields-grid"></div>
+          <div id="ms-warnings" style="margin-top:8px"></div>
+          <div class="fg" style="margin-top:10px"><label>ملاحظات إضافية</label><textarea id="ms-notes" rows="2"></textarea></div>
         </div>
       </div>
-      <div class="fg" style="margin-top:8px"><label>ملاحظات إضافية</label><textarea id="ms-notes" rows="2"></textarea></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-success" style="flex:1" onclick="saveMeasurement()">✔ حفظ القياس</button>
-        <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('measure-panel')">إلغاء</button>
+
+      <div style="display:flex;gap:8px;margin-top:16px;position:sticky;bottom:0;background:white;padding:10px 0;border-top:1px solid #eee">
+        <button class="btn btn-success" style="flex:1;padding:12px" onclick="saveMeasurement()">✔ حفظ الأوردر</button>
+        <button class="btn" style="background:#9e9e9e;color:white;padding:12px 24px" onclick="closeModal2('measure-panel')">إلغاء</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- قائمة اختيار جزء الموديل (تظهر عند الضغط على الرسم) -->
+<div class="part-menu" id="part-menu"><h5 id="pm-title"></h5><div id="pm-options"></div></div>
 
 <!-- ═══════════════ MODAL: APPOINTMENTS (المواعيد) -->
 <div class="moverlay" id="appointments-modal">
@@ -4168,6 +4236,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   document.getElementById('mm-qty').value        = mod.qty||1;
   document.getElementById('mm-proofa').checked   = !!mod.proofa;
   renderMeasFields(src ? src.values : null);
+  updateThobe();
   document.getElementById('measure-panel').classList.add('open');
 }
 function renderMeasFields(values) {
@@ -4183,6 +4252,55 @@ function renderMeasFields(values) {
     </div>`).join('');
   validateMeasLive();
 }
+// ═══════════════ الرسم التفاعلي لأوردر التفصيل
+const PART_CFG = {
+  collar:      { label:'الياقة', sel:'mm-collar' },
+  placket:     { label:'الجبزور (القلاب)', sel:'mm-placket' },
+  cuff:        { label:'الأكمام', sel:'mm-cuff' },
+  pocket:      { label:'جيب الصدر', sel:'mm-pocket' },
+  sidepockets: { label:'الجيوب الجانبية', sel:'mm-sidepockets' },
+};
+function openPartMenu(part, evt) {
+  evt.stopPropagation();
+  const cfg = PART_CFG[part]; if (!cfg) return;
+  const sel = document.getElementById(cfg.sel);
+  const cur = sel.value;
+  document.getElementById('pm-title').textContent = cfg.label;
+  document.getElementById('pm-options').innerHTML =
+    [...sel.options].map(o=>{
+      const v = o.value;
+      const lbl = v || '— بدون —';
+      return `<button class="${v===cur?'cur':''}" onclick="pickPart('${part}','${v.replace(/'/g,"\\'")}')">${lbl}</button>`;
+    }).join('');
+  const menu = document.getElementById('part-menu');
+  menu.classList.add('open');
+  // وضع القائمة قرب موضع الضغط داخل الشاشة
+  const mw = 190, mh = menu.offsetHeight || 220;
+  let x = evt.clientX - mw/2, y = evt.clientY + 12;
+  x = Math.max(8, Math.min(x, window.innerWidth - mw - 8));
+  if (y + mh > window.innerHeight - 8) y = Math.max(8, evt.clientY - mh - 12);
+  menu.style.left = x + 'px';
+  menu.style.top  = y + 'px';
+}
+function pickPart(part, value) {
+  const sel = document.getElementById(PART_CFG[part].sel);
+  sel.value = value;
+  closePartMenu();
+  updateThobe();
+}
+function closePartMenu() { document.getElementById('part-menu').classList.remove('open'); }
+// تحديث القيم المعروضة على الرسم + تلوين النقاط المختارة
+function updateThobe() {
+  Object.keys(PART_CFG).forEach(part=>{
+    const sel = document.getElementById(PART_CFG[part].sel);
+    const tv = document.getElementById('tv-'+part);
+    if (tv) tv.textContent = sel.value || '';
+  });
+  const cuffSet = document.getElementById('mm-cuff').value;
+  document.querySelectorAll('#td-cuff').forEach(()=>{});
+}
+document.addEventListener('click', e=>{ if (!e.target.closest('#part-menu') && !e.target.closest('.hot')) closePartMenu(); });
+
 function openMeasSettings() {
   document.getElementById('mset-template').innerHTML =
     Object.keys(MEAS_TEMPLATES).map(t=>`<option>${t}</option>`).join('');
