@@ -336,7 +336,7 @@ body.ltr .dash-card::after{content:'›'}
 .ord-meas{min-width:0;align-content:start}
 .ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:10px;position:sticky;top:8px}
 .ord-model .ord-hint{margin-bottom:6px}
-.ord-model .order-canvas{width:100%;max-width:430px;margin:0 auto;aspect-ratio:420/640;position:relative}
+.ord-model .order-canvas{width:100%;margin:0 auto;aspect-ratio:420/640;position:relative}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%}
 .ord-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px 8px;background:#f7f4ed;border:1px solid #e6e0d4;border-radius:10px;padding:9px 11px;margin-top:10px}
 .ord-details label{font-size:.66rem !important}
@@ -4291,44 +4291,45 @@ function renderMeasFields(values) {
 // النقاط الافتراضية للثوب (تُستخدم عند عدم تخصيص نقاط للقالب)
 const DEFAULT_HOTSPOTS = {
   'ثوب سعودي': [
-    { id:'collar',      label:'الياقة',         x:50, y:17, options:['ملكي','صيني','مربع','فرنسي','إيطالي'] },
-    { id:'placket',     label:'الجبزور',        x:50, y:34, options:['ملكي','مفتوح','فرنسي','مخفي'] },
-    { id:'pocket',      label:'جيب الصدر',      x:61, y:37, options:['بدون','جيب واحد','جيب بقلم','جيبان'] },
-    { id:'cuff',        label:'الأكمام / الكبك', x:22, y:66, options:['سادة','كبك','كبك مدبب'] },
-    { id:'sidepockets', label:'الجيب الجانبي',   x:62, y:52, options:['بدون','جيب واحد','جيبان'] },
+    { id:'collar',      label:'الياقة',         x:50, y:8,  options:['ملكي','صيني','مربع','فرنسي','إيطالي'] },
+    { id:'placket',     label:'الجبزور',        x:50, y:24, options:['ملكي','مفتوح','فرنسي','مخفي'] },
+    { id:'pocket',      label:'جيب الصدر',      x:62, y:31, options:['بدون','جيب واحد','جيب بقلم','جيبان'] },
+    { id:'cuff',        label:'الأكمام / الكبك', x:16, y:74, options:['سادة','كبك','كبك مدبب'] },
+    { id:'sidepockets', label:'الجيب الجانبي',   x:62, y:58, options:['بدون','جيب واحد','جيبان'] },
   ],
 };
 DEFAULT_HOTSPOTS['ثوب أطفال'] = DEFAULT_HOTSPOTS['ثوب سعودي'];
 // رسم ثوب بسيط كخلفية عند عدم رفع صورة موديل
-const THOBE_BG_SVG = '<svg viewBox="0 0 420 640" xmlns="http://www.w3.org/2000/svg">'
-  + '<g fill="#ffffff" stroke="#5b5b5b" stroke-width="1.6" stroke-linejoin="round">'
+const THOBE_BG_SVG = '<svg viewBox="0 0 420 640" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">'
+  + '<g fill="#ffffff" stroke="#5b5b5b" stroke-width="1.7" stroke-linejoin="round">'
   // الكمّان
-  + '<path d="M168 126 L96 150 L74 156 L70 412 L120 420 L150 200 Z"/>'
-  + '<path d="M252 126 L332 152 L350 158 L352 412 L300 420 L270 200 Z"/>'
-  // جسم الثوب (A-line)
-  + '<path d="M168 126 Q210 112 252 126 L262 182 L300 605 Q210 624 120 605 L158 182 Z"/>'
+  + '<path d="M150 66 L62 96 L36 104 L32 452 L98 462 L132 156 Z"/>'
+  + '<path d="M270 66 L358 96 L384 104 L388 452 L322 462 L288 156 Z"/>'
+  // جسم الثوب (A-line) يملأ من الكتف حتى الذيل
+  + '<path d="M150 66 Q210 48 270 66 L284 140 L326 624 Q210 648 94 624 L136 140 Z"/>'
   // الكفّان (الكبك)
-  + '<rect x="64" y="406" width="62" height="46" rx="3"/>'
-  + '<rect x="296" y="406" width="62" height="46" rx="3"/>'
+  + '<rect x="30" y="452" width="70" height="54" rx="3"/>'
+  + '<rect x="320" y="452" width="70" height="54" rx="3"/>'
   // الياقة (قميص)
-  + '<path d="M210 116 L171 124 L182 100 L208 96 Z"/>'
-  + '<path d="M210 116 L249 124 L238 100 L212 96 Z"/>'
-  + '<path d="M208 96 Q210 92 212 96 L210 116 Z"/>'
+  + '<path d="M210 62 L165 72 L178 36 L207 30 Z"/>'
+  + '<path d="M210 62 L255 72 L242 36 L213 30 Z"/>'
+  + '<path d="M207 30 Q210 24 213 30 L210 62 Z"/>'
   // الجبزور (بنّورة الأزرار)
-  + '<path d="M198 124 L222 124 L222 300 L210 318 L198 300 Z"/>'
-  // جيب الصدر'
-  + '<path d="M232 210 L278 210 L278 262 L255 274 L232 262 Z"/>'
+  + '<path d="M196 70 L224 70 L224 336 L210 356 L196 336 Z"/>'
+  // جيب الصدر
+  + '<path d="M236 168 L288 168 L288 230 L262 244 L236 230 Z"/>'
   + '</g>'
   // التفاصيل (خياطة متقطعة وأزرار)
   + '<g fill="none" stroke="#9a9a9a" stroke-width="1" stroke-dasharray="3 3">'
-  + '<line x1="168" y1="132" x2="150" y2="205"/><line x1="252" y1="132" x2="270" y2="205"/>'
-  + '<path d="M204 128 L204 300"/><path d="M216 128 L216 300"/>'
-  + '<path d="M236 214 L274 214 L274 260 L255 270 L236 260 Z"/>'
-  + '<line x1="300" y1="595" x2="124" y2="595"/>'
-  + '<path d="M250 352 L276 312" stroke-dasharray="0"/>'  // جيب جانبي
+  + '<line x1="150" y1="74" x2="132" y2="160"/><line x1="270" y1="74" x2="288" y2="160"/>'
+  + '<path d="M202 74 L202 336"/><path d="M218 74 L218 336"/>'
+  + '<path d="M240 172 L284 172 L284 228 L262 240 L240 228 Z"/>'
+  + '<line x1="326" y1="612" x2="98" y2="612"/>'
+  + '<path d="M252 392 L282 344"/>'
   + '</g>'
+  // الأزرار
   + '<g fill="#e8e8e8" stroke="#5b5b5b" stroke-width="1">'
-  + '<circle cx="210" cy="150" r="4.5"/><circle cx="210" cy="188" r="4.5"/><circle cx="210" cy="226" r="4.5"/><circle cx="210" cy="264" r="4.5"/>'
+  + '<circle cx="210" cy="96" r="5"/><circle cx="210" cy="146" r="5"/><circle cx="210" cy="196" r="5"/><circle cx="210" cy="246" r="5"/><circle cx="210" cy="296" r="5"/>'
   + '</g></svg>';
 
 let _orderParts = {};   // اختيارات أجزاء الأوردر الحالي: { hotspotId: value }
