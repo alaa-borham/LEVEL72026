@@ -1462,7 +1462,11 @@ const fbDB   = firebase.firestore();
       <div class="fg" style="margin:0"><label>قالب الرسالة</label><select id="msg-tpl" onchange="msgPreview()"></select></div>
       <div class="fg" style="margin:0"><label>نص الرسالة (يمكن تعديله)</label><textarea id="msg-text" rows="5" style="font-family:inherit"></textarea></div>
       <button class="btn btn-success" onclick="msgSend()" style="background:#25d366;border-color:#25d366;padding:12px;font-size:.95rem;font-weight:700">📲 فتح واتساب وإرسال</button>
-      <div style="font-size:.74rem;color:#999;text-align:center">يفتح محادثة واتساب الويب/التطبيق برقم العميل والنص جاهزاً — تضغط إرسال فقط</div>
+      <div style="font-size:.74rem;color:#999;text-align:center">يفتح محادثة واتساب برقم العميل والنص جاهزاً — تضغط إرسال فقط</div>
+      <div style="border-top:1px solid #eee;padding-top:11px">
+        <div style="font-weight:800;color:#1b5e20;font-size:.84rem;margin-bottom:7px">⚙️ الإشعارات التلقائية (تُعرض عند الحدث)</div>
+        <div id="automsg-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2385,6 +2389,7 @@ let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الج
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
 const DEF_SETTINGS = {
+  autoMsg: { received:false, paid:false, ready:true, delivery:false, delivered:true },
   coName:'', coSub:'', coWeb:'', taxRate:0, defPay:'كاش', currency:'ريال سعودي',
 };
 // العملات المدعومة: الاسم والصيغة المنصوبة للتفقيط
@@ -5137,6 +5142,7 @@ function saveMeasurement() {
     const nid = Date.now();
     measurements.push({ id: nid, ...data });
     save('measurements');
+    autoNotify(clientId,'received','إرسال رسالة واتساب للعميل بتأكيد استلام طلبه؟');
     if (canAccess('production') && confirm('✔ حُفظ الطلب.\nهل تريد إنشاء أمر إنتاج من هذا الطلب الآن؟')) {
       const m = measurements.find(x=>x.id===nid);
       const mod = m.model||{};
@@ -5351,8 +5357,23 @@ function sendWA(clientId, tplKey, customText) {
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg), '_blank');
 }
 // مركز الرسائل: اختيار عميل وقالب وإرسال
+const AUTOMSG_DEFS = [['received','📥 استلام الطلب'],['paid','💵 استلام دفعة'],['ready','🎉 الطلب جاهز'],['delivery','🚗 خرج للتوصيل'],['delivered','📦 تم التسليم']];
+function _autoOn(k){ const a=settings.autoMsg||{}; return a[k]===true; }
+function renderAutoMsg(){
+  const el=document.getElementById('automsg-list'); if(!el) return;
+  const a=settings.autoMsg||{};
+  el.innerHTML=AUTOMSG_DEFS.map(([k,l])=>`<label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:.8rem"><input type="checkbox" ${a[k]?'checked':''} onchange="toggleAutoMsg('${k}',this.checked)" style="width:auto"> ${l}</label>`).join('');
+}
+function toggleAutoMsg(k,on){ settings.autoMsg=settings.autoMsg||{}; settings.autoMsg[k]=on; lsSet('appSettings', JSON.stringify(settings)); }
+// إشعار تلقائي عند حدث: يُعرض فقط إن كان مفعّلاً وللعميل رقم
+function autoNotify(clientId, key, promptMsg){
+  if (!_autoOn(key)) return;
+  const c=_custById(clientId);
+  if (c && _waNormalize(c.phone) && confirm(promptMsg)) sendWA(clientId, key);
+}
 function showMessaging(presetClientId) {
   if (!customers.length) { alert('أضف عميلاً أولاً'); return; }
+  renderAutoMsg();
   document.getElementById('msg-client').innerHTML = _custOptions(presetClientId);
   document.getElementById('msg-tpl').innerHTML = Object.keys(MSG_TEMPLATES)
     .map(k=>`<option value="${k}">${MSG_LABELS[k]}</option>`).join('');
@@ -5527,9 +5548,7 @@ function _doDeliver(clientId, ref, onDone) {
   logAction('تسليم', _custName(clientId)+' — '+ref);
   if (onDone) onDone();
   renderDeliveries();
-  const c = _custById(clientId);
-  if (c && _waNormalize(c.phone) && confirm('✔ تم تسجيل التسليم.\nهل تريد إرسال رسالة واتساب للعميل بإتمام التسليم؟'))
-    sendWA(clientId, 'delivered');
+  autoNotify(clientId,'delivered','✔ تم تسجيل التسليم.\nإرسال رسالة واتساب للعميل بإتمام التسليم؟');
 }
 function deliverProdOrder(id) {
   const o = prodOrders.find(x=>x.id===id); if (!o) return;
@@ -6193,11 +6212,7 @@ function advanceProdStage(id) {
   renderProduction();
   renderDashStats();
   // رسالة تلقائية للعميل عند اكتمال الطلب (جاهز)
-  if (o.done) {
-    const c = _custById(o.clientId);
-    if (c && _waNormalize(c.phone) && confirm('🎉 اكتمل الأمر #'+o.num+'.\nإرسال رسالة واتساب للعميل بأن طلبه جاهز؟'))
-      sendWA(o.clientId, 'ready');
-  }
+  if (o.done) autoNotify(o.clientId,'ready','🎉 اكتمل الأمر #'+o.num+'.\nإرسال رسالة واتساب للعميل بأن طلبه جاهز؟');
 }
 function invoiceFromOrder(orderId){
   if (!canAccess('invoices')) { permDenied('invoices'); return; }
@@ -6794,6 +6809,7 @@ function savePayment() {
   payments.push(pay);
   save('payments');
   logAction('دفعة عميل', (pay.type||'دفعة')+' — '+formatNum(pay.amount)+' '+curName());
+  if (pay.type==='دفعة') autoNotify(pay.clientId,'paid','إرسال رسالة واتساب للعميل بتأكيد استلام الدفعة؟');
   closeModal('payment-modal');
   if (stmtClientId) renderStatement(stmtClientId);
   const vName = pay.type === 'دفعة' ? (ar?'سند القبض':'receipt') : (ar?'سند الصرف':'disbursement');
