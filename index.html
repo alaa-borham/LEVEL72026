@@ -1163,7 +1163,7 @@ const fbDB   = firebase.firestore();
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <div id="mset-model-prev" style="width:120px;height:150px;border:2px dashed #c5e1a5;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;color:#bbb;font-size:.75rem">لا صورة</div>
           <div>
-            <input type="file" id="mset-model-file" accept="image/*" onchange="uploadTmplModel()" style="font-size:.82rem;max-width:230px">
+            <input type="file" id="mset-model-file" accept="image/*,.svg" onchange="uploadTmplModel()" style="font-size:.82rem;max-width:230px">
             <div style="font-size:.72rem;color:#999;margin-top:6px">تظهر هذه الصورة أعلى شاشة الأوردر. يُفضّل صورة واضحة للثوب/الموديل.</div>
             <button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="removeTmplModel()">حذف الصورة</button>
           </div>
@@ -4267,16 +4267,45 @@ function renderMeasFields(values) {
 // النقاط الافتراضية للثوب (تُستخدم عند عدم تخصيص نقاط للقالب)
 const DEFAULT_HOTSPOTS = {
   'ثوب سعودي': [
-    { id:'collar',      label:'الياقة',         x:50, y:11, options:['ملكي','صيني','مربع','فرنسي'] },
-    { id:'placket',     label:'الجبزور',        x:50, y:33, options:['ملكي','مفتوح','فرنسي','مخفي'] },
-    { id:'pocket',      label:'جيب الصدر',      x:36, y:36, options:['بدون','جيب واحد','جيب بقلم','جيبان'] },
-    { id:'cuff',        label:'الأكمام',        x:15, y:48, options:['سادة','كبك'] },
-    { id:'sidepockets', label:'الجيوب الجانبية', x:50, y:72, options:['بدون','جيب واحد','جيبان'] },
+    { id:'collar',      label:'الياقة',         x:50, y:17, options:['ملكي','صيني','مربع','فرنسي','إيطالي'] },
+    { id:'placket',     label:'الجبزور',        x:50, y:34, options:['ملكي','مفتوح','فرنسي','مخفي'] },
+    { id:'pocket',      label:'جيب الصدر',      x:61, y:37, options:['بدون','جيب واحد','جيب بقلم','جيبان'] },
+    { id:'cuff',        label:'الأكمام / الكبك', x:22, y:66, options:['سادة','كبك','كبك مدبب'] },
+    { id:'sidepockets', label:'الجيب الجانبي',   x:62, y:52, options:['بدون','جيب واحد','جيبان'] },
   ],
 };
 DEFAULT_HOTSPOTS['ثوب أطفال'] = DEFAULT_HOTSPOTS['ثوب سعودي'];
 // رسم ثوب بسيط كخلفية عند عدم رفع صورة موديل
-const THOBE_BG_SVG = '<svg viewBox="0 0 300 430" xmlns="http://www.w3.org/2000/svg"><path d="M110 64 Q150 50 190 64 L196 92 L232 120 L268 200 L246 214 L210 150 L210 410 L90 410 L90 150 L54 214 L32 200 L68 120 L104 92 Z" fill="#ffffff" stroke="#9ccc65" stroke-width="2.5"/><line x1="150" y1="92" x2="150" y2="408" stroke="#c5e1a5" stroke-width="2" stroke-dasharray="5 4"/></svg>';
+const THOBE_BG_SVG = '<svg viewBox="0 0 420 640" xmlns="http://www.w3.org/2000/svg">'
+  + '<g fill="#ffffff" stroke="#5b5b5b" stroke-width="1.6" stroke-linejoin="round">'
+  // الكمّان
+  + '<path d="M168 126 L96 150 L74 156 L70 412 L120 420 L150 200 Z"/>'
+  + '<path d="M252 126 L332 152 L350 158 L352 412 L300 420 L270 200 Z"/>'
+  // جسم الثوب (A-line)
+  + '<path d="M168 126 Q210 112 252 126 L262 182 L300 605 Q210 624 120 605 L158 182 Z"/>'
+  // الكفّان (الكبك)
+  + '<rect x="64" y="406" width="62" height="46" rx="3"/>'
+  + '<rect x="296" y="406" width="62" height="46" rx="3"/>'
+  // الياقة (قميص)
+  + '<path d="M210 116 L171 124 L182 100 L208 96 Z"/>'
+  + '<path d="M210 116 L249 124 L238 100 L212 96 Z"/>'
+  + '<path d="M208 96 Q210 92 212 96 L210 116 Z"/>'
+  // الجبزور (بنّورة الأزرار)
+  + '<path d="M198 124 L222 124 L222 300 L210 318 L198 300 Z"/>'
+  // جيب الصدر'
+  + '<path d="M232 210 L278 210 L278 262 L255 274 L232 262 Z"/>'
+  + '</g>'
+  // التفاصيل (خياطة متقطعة وأزرار)
+  + '<g fill="none" stroke="#9a9a9a" stroke-width="1" stroke-dasharray="3 3">'
+  + '<line x1="168" y1="132" x2="150" y2="205"/><line x1="252" y1="132" x2="270" y2="205"/>'
+  + '<path d="M204 128 L204 300"/><path d="M216 128 L216 300"/>'
+  + '<path d="M236 214 L274 214 L274 260 L255 270 L236 260 Z"/>'
+  + '<line x1="300" y1="595" x2="124" y2="595"/>'
+  + '<path d="M250 352 L276 312" stroke-dasharray="0"/>'  // جيب جانبي
+  + '</g>'
+  + '<g fill="#e8e8e8" stroke="#5b5b5b" stroke-width="1">'
+  + '<circle cx="210" cy="150" r="4.5"/><circle cx="210" cy="188" r="4.5"/><circle cx="210" cy="226" r="4.5"/><circle cx="210" cy="264" r="4.5"/>'
+  + '</g></svg>';
 
 let _orderParts = {};   // اختيارات أجزاء الأوردر الحالي: { hotspotId: value }
 function getHotspots(tpl){ return tmplHotspots[tpl] || DEFAULT_HOTSPOTS[tpl] || []; }
@@ -4426,10 +4455,22 @@ function msetTab(which) {
   if (which==='imgs') renderTmplImages();
   if (which==='spots') renderHotspotEditor();
 }
+function _readImage(file, maxDim, quality, cb) {
+  // ملفات SVG: تُخزَّن كما هي (متجهة وخفيفة) دون تحويل لـ canvas
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    if (file.size > 1.5*1024*1024) { alert('ملف SVG كبير جداً'); return; }
+    const r = new FileReader();
+    r.onload = e => cb(e.target.result);
+    r.onerror = ()=>alert('تعذّرت قراءة الملف');
+    r.readAsDataURL(file);
+    return;
+  }
+  _resizeImg(file, maxDim, quality, cb);
+}
 function uploadTmplModel() {
   const tpl = document.getElementById('mset-template').value;
   const file = document.getElementById('mset-model-file').files[0]; if (!file) return;
-  _resizeImg(file, 520, 0.7, dataURL => { _tplImgObj(tpl).model = dataURL; _saveTmplImages(); renderTmplImages(); });
+  _readImage(file, 520, 0.7, dataURL => { _tplImgObj(tpl).model = dataURL; _saveTmplImages(); renderTmplImages(); renderHotspotEditor(); });
 }
 function removeTmplModel() {
   const tpl = document.getElementById('mset-template').value;
@@ -4438,7 +4479,7 @@ function removeTmplModel() {
 function uploadPartImg(part, opt, inputId) {
   const tpl = document.getElementById('mset-template').value;
   const file = document.getElementById(inputId).files[0]; if (!file) return;
-  _resizeImg(file, 240, 0.65, dataURL => {
+  _readImage(file, 240, 0.65, dataURL => {
     const o = _tplImgObj(tpl); o.parts[part] = o.parts[part]||{}; o.parts[part][opt] = dataURL;
     _saveTmplImages(); renderTmplImages();
   });
@@ -4468,7 +4509,7 @@ function renderTmplImages() {
               <div style="width:78px;height:78px;border:1.5px solid ${img?'#66bb6a':'#ddd'};border-radius:10px;overflow:hidden;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
                 ${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover">`:'➕'}
               </div>
-              <input type="file" accept="image/*" id="${iid}" onchange="uploadPartImg('${part}','${opt.replace(/'/g,"\\'")}','${iid}')" style="display:none">
+              <input type="file" accept="image/*,.svg" id="${iid}" onchange="uploadPartImg('${part}','${opt.replace(/'/g,"\\'")}','${iid}')" style="display:none">
             </label>
             <div style="font-size:.68rem;margin-top:2px">${opt}</div>
             ${img?`<span style="font-size:.62rem;color:#c62828;cursor:pointer" onclick="removePartImg('${part}','${opt.replace(/'/g,"\\'")}')">حذف</span>`:''}
