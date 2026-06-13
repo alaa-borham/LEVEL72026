@@ -473,6 +473,7 @@ const fbDB   = firebase.firestore();
   <a id="sb-branches" onclick="showBranches();closeSb()">🏬 الفروع</a>
   <a data-perm="archive" onclick="showScreen('archive-screen');closeSb()">🗂️ الأرشيف</a>
   <a onclick="showAIInsights();closeSb()">🤖 الرؤى الذكية</a>
+  <a id="sb-audit" onclick="showAudit();closeSb()">📜 سجل العمليات</a>
   <a id="sb-terms" onclick="showTerms();closeSb()">🏷️ المسميات</a>
   <a data-perm="settings" onclick="showScreen('settings-screen');closeSb()">⚙️ الإعدادات</a>
 </div>
@@ -1564,6 +1565,28 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: AUDIT LOG (سجل العمليات) -->
+<div class="moverlay" id="audit-modal">
+  <div class="mbox" style="max-width:820px">
+    <div class="mhdr"><h3>📜 سجل العمليات</h3><button class="mcls" onclick="closeModal('audit-modal')">✕</button></div>
+    <div style="padding:10px 13px;border-bottom:1px solid #eee">
+      <input type="text" id="audit-search" placeholder="🔍 بحث بالموظف أو العملية..." oninput="renderAudit()" style="width:100%;padding:8px 11px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
+    </div>
+    <div class="mlist">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الوقت</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المستخدم</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العملية</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">التفاصيل</th>
+        </tr></thead>
+        <tbody id="audit-tbody"></tbody>
+      </table>
+      <div id="audit-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد عمليات مسجّلة بعد</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: REPORTS (التقارير) -->
 <div class="moverlay" id="reports-modal">
   <div class="mbox" style="max-width:920px">
@@ -2297,7 +2320,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2392,6 +2415,7 @@ function loadAccountData() {
   deliveries      = JSON.parse(lsGet('deliveries','[]'));
   patterns        = JSON.parse(lsGet('patterns','[]'));
   quotations      = JSON.parse(lsGet('quotations','[]'));
+  auditLog        = JSON.parse(lsGet('auditLog','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
   measVisible     = JSON.parse(lsGet('measVisible','{}'));
   qcDefects       = JSON.parse(lsGet('qcDefects','[]'));
@@ -2622,6 +2646,7 @@ function _afterFirebaseLogin(user) {
     currentAccId = tid;
     currentMember = member;
     currentAccProfile = profile;
+    try{ logAction("تسجيل دخول", _actor()); }catch(_){}
     loadAccountData();
     if (!settings.coName || settings.coName===DEF_SETTINGS.coName) {
       settings.coName = profile.biz;
@@ -2631,7 +2656,7 @@ function _afterFirebaseLogin(user) {
     document.getElementById('acc-name').textContent = '👤 '+profile.biz
       + (member ? ' — '+member.name + (member.branchName ? ' (🏬 '+member.branchName+')' : '') : '');
     // إدارة المستخدمين والفروع متاحة لصاحب المنشأة فقط
-    ['members-btn','card-members','card-branches','sb-members','sb-branches','sb-terms'].forEach(i=>{
+    ['members-btn','card-members','card-branches','sb-members','sb-branches','sb-terms','sb-audit'].forEach(i=>{
       const el = document.getElementById(i);
       if (el) el.style.display = member ? 'none' : '';
     });
@@ -3948,6 +3973,7 @@ function _storeInvoice(inv) {
     invoices.push(inv);
     nextInvNum++;
     lsSet('nextInvNum', nextInvNum);
+    logAction('إنشاء فاتورة', (inv.type||'فاتورة')+' — '+inv.clientName+' — '+formatNum(inv.grand)+' '+curName());
   }
   save('invoices');
 }
@@ -4105,6 +4131,7 @@ function archiveInvoice(id) {
   deletedInvoices.push(inv);
   invoices = invoices.filter(i=>i.id!==id);
   save('invoices'); save('deletedInvoices');
+  logAction('أرشفة فاتورة', '#'+inv.invNum+' — '+inv.clientName);
   renderInvoiceList();
 }
 
@@ -5491,6 +5518,7 @@ function _doDeliver(clientId, ref, onDone) {
   deliveries.push({ id: Date.now(), clientId, ref, method: method.trim()||'استلام من الفرع',
     receiver: receiver.trim(), date: new Date().toISOString().split('T')[0] });
   save('deliveries');
+  logAction('تسليم', _custName(clientId)+' — '+ref);
   if (onDone) onDone();
   renderDeliveries();
   const c = _custById(clientId);
@@ -5682,6 +5710,33 @@ function printReport(){
     ${R.foot?`<div class="f">${escHtml(R.foot)}</div>`:''}
     <script>onload=()=>print()<\/script></body></html>`);
   w.document.close();
+}
+
+// ═══════════════ AUDIT LOG — سجل العمليات (من فعل ماذا ومتى)
+let auditLog = [];
+function _actor(){ return currentMember ? currentMember.name : (currentAccProfile && currentAccProfile.biz ? 'صاحب المنشأة' : 'النظام'); }
+function logAction(action, detail){
+  auditLog.push({ at:new Date().toISOString(), by:_actor(), action, detail:detail||'' });
+  if (auditLog.length > 600) auditLog = auditLog.slice(-600);
+  lsSet('auditLog', JSON.stringify(auditLog));
+}
+function showAudit(){
+  if (currentMember) { alert('سجل العمليات لصاحب المنشأة'); return; }
+  renderAudit();
+  document.getElementById('audit-modal').classList.add('open');
+}
+function renderAudit(){
+  const q=(document.getElementById('audit-search').value||'').trim().toLowerCase();
+  const list=[...auditLog].reverse().filter(e=>!q||(e.by||'').toLowerCase().includes(q)||(e.action||'').toLowerCase().includes(q)||(e.detail||'').toLowerCase().includes(q)).slice(0,400);
+  document.getElementById('audit-empty').style.display=list.length?'none':'block';
+  document.getElementById('audit-tbody').innerHTML=list.map(e=>{
+    const dt=isoToDMY(e.at.split('T')[0])+' '+e.at.split('T')[1].slice(0,5);
+    return `<tr>
+      <td style="text-align:center;white-space:nowrap;font-size:.76rem;direction:ltr">${dt}</td>
+      <td style="text-align:center;font-weight:600">${escHtml(e.by)}</td>
+      <td style="text-align:center">${escHtml(e.action)}</td>
+      <td style="text-align:start;font-size:.8rem;color:#666">${escHtml(e.detail)}</td>
+    </tr>`;}).join('');
 }
 
 // ═══════════════ QUOTATIONS — عروض الأسعار (عرض → اعتماد → فاتورة)
@@ -6113,6 +6168,7 @@ function advanceProdStage(id) {
   else o.stageIdx++;
   if (o.done) o.stageIdx = PROD_STAGES.length - 1;
   save('prodOrders');
+  logAction('إنجاز مرحلة إنتاج', 'أمر #'+o.num+' — '+st+(o.done?' — اكتمل':''));
   renderProduction();
   renderDashStats();
 }
@@ -6710,6 +6766,7 @@ function savePayment() {
   if (pay.type === 'استرداد') { pay.dsbNum = nextDsbNum++; lsSet('nextDsbNum', String(nextDsbNum)); }
   payments.push(pay);
   save('payments');
+  logAction('دفعة عميل', (pay.type||'دفعة')+' — '+formatNum(pay.amount)+' '+curName());
   closeModal('payment-modal');
   if (stmtClientId) renderStatement(stmtClientId);
   const vName = pay.type === 'دفعة' ? (ar?'سند القبض':'receipt') : (ar?'سند الصرف':'disbursement');
