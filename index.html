@@ -580,23 +580,35 @@ const fbDB   = firebase.firestore();
     </div>
   </div>
   <div class="dash-stats" id="dash-stats" style="margin:0 auto 10px"></div>
+  <div style="max-width:1150px;margin:0 auto 7px;display:flex;justify-content:flex-end;position:relative;z-index:1">
+    <button onclick="openCardSettings()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:9px;padding:5px 12px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit">⚙️ تخصيص الأيقونات</button>
+  </div>
   <div class="dash-cards">
-    <div class="dash-card" onclick="showTailorHub()"><div class="icon">✂️</div><h3>التفصيل</h3><p>العملاء، القياسات، التطريز، التعديل، التسليم</p></div>
-    <div class="dash-card" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
-    <div class="dash-card" onclick="showMessaging()"><div class="icon">💬</div><h3>الرسائل</h3><p>إشعار العملاء عبر واتساب</p></div>
-    <div class="dash-card" onclick="showProduction()" data-perm="production"><div class="icon">🏭</div><h3>الإنتاج</h3><p>أوامر العمل وتتبع المراحل</p></div>
-    <div class="dash-card" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
-    <div class="dash-card" onclick="showScreen('invoice-list')" data-perm="invoices"><div class="icon">📋</div><h3 data-i18n="invoices">الفواتير</h3><p data-i18n="invoicesSub">قائمة الفواتير</p></div>
-    <div class="dash-card" onclick="showScreen('products-screen')" data-perm="products"><div class="icon">📦</div><h3 data-i18n="warehouse">المستودع</h3><p>الأصناف والمخزون والأقمشة</p></div>
-    <div class="dash-card" onclick="showAccounts()"><div class="icon">💰</div><h3>الحسابات</h3><p>المصروفات والمشتريات</p></div>
-    <div class="dash-card" onclick="showVouchersLog()"><div class="icon">📒</div><h3>سجل السندات</h3><p>قبض وصرف — بحث وطباعة</p></div>
-    <div class="dash-card" id="card-members" onclick="showMembers()"><div class="icon">🧑‍💼</div><h3>المستخدمون</h3><p>الموظفون وصلاحياتهم</p></div>
-    <div class="dash-card" id="card-branches" onclick="showBranches()"><div class="icon">🏬</div><h3>الفروع</h3><p>فروع المنشأة وبياناتها</p></div>
-    <div class="dash-card" onclick="showScreen('analytics-screen')" data-perm="analytics"><div class="icon">📊</div><h3 data-i18n="analytics">التحليلات</h3><p data-i18n="analyticsSub">إحصائيات وتقارير</p></div>
-    <div class="dash-card" onclick="showScreen('archive-screen')" data-perm="archive"><div class="icon">🗂️</div><h3 data-i18n="archive">الأرشيف</h3><p data-i18n="archiveSub">الفواتير المحذوفة</p></div>
-    <div class="dash-card" onclick="showScreen('settings-screen')" data-perm="settings"><div class="icon">⚙️</div><h3 data-i18n="settings">الإعدادات</h3><p data-i18n="settingsSub">ضبط النظام</p></div>
+    <div class="dash-card" data-card="tailor" onclick="showTailorHub()"><div class="icon">✂️</div><h3>التفصيل</h3><p>العملاء، القياسات، التطريز، التعديل، التسليم</p></div>
+    <div class="dash-card" data-card="appts" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
+    <div class="dash-card" data-card="messages" onclick="showMessaging()"><div class="icon">💬</div><h3>الرسائل</h3><p>إشعار العملاء عبر واتساب</p></div>
+    <div class="dash-card" data-card="production" onclick="showProduction()" data-perm="production"><div class="icon">🏭</div><h3>الإنتاج</h3><p>أوامر العمل وتتبع المراحل</p></div>
+    <div class="dash-card" data-card="newinv" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
+    <div class="dash-card" data-card="invoices" onclick="showScreen('invoice-list')" data-perm="invoices"><div class="icon">📋</div><h3 data-i18n="invoices">الفواتير</h3><p data-i18n="invoicesSub">قائمة الفواتير</p></div>
+    <div class="dash-card" data-card="warehouse" onclick="showScreen('products-screen')" data-perm="products"><div class="icon">📦</div><h3 data-i18n="warehouse">المستودع</h3><p>الأصناف والمخزون والأقمشة</p></div>
+    <div class="dash-card" data-card="accounts" onclick="showAccounts()"><div class="icon">💰</div><h3>الحسابات</h3><p>المصروفات والمشتريات</p></div>
+    <div class="dash-card" data-card="vouchers" onclick="showVouchersLog()"><div class="icon">📒</div><h3>سجل السندات</h3><p>قبض وصرف — بحث وطباعة</p></div>
+    <div class="dash-card" data-card="members" id="card-members" onclick="showMembers()"><div class="icon">🧑‍💼</div><h3>المستخدمون</h3><p>الموظفون وصلاحياتهم</p></div>
+    <div class="dash-card" data-card="branches" id="card-branches" onclick="showBranches()"><div class="icon">🏬</div><h3>الفروع</h3><p>فروع المنشأة وبياناتها</p></div>
+    <div class="dash-card" data-card="analytics" onclick="showScreen('analytics-screen')" data-perm="analytics"><div class="icon">📊</div><h3 data-i18n="analytics">التحليلات</h3><p data-i18n="analyticsSub">إحصائيات وتقارير</p></div>
+    <div class="dash-card" data-card="archive" onclick="showScreen('archive-screen')" data-perm="archive"><div class="icon">🗂️</div><h3 data-i18n="archive">الأرشيف</h3><p data-i18n="archiveSub">الفواتير المحذوفة</p></div>
+    <div class="dash-card" data-card="settings" onclick="showScreen('settings-screen')" data-perm="settings"><div class="icon">⚙️</div><h3 data-i18n="settings">الإعدادات</h3><p data-i18n="settingsSub">ضبط النظام</p></div>
   </div>
   <div class="dash-analytics" id="dash-analytics"></div>
+</div>
+
+<!-- ═══════════════ MODAL: CARD SETTINGS (تخصيص الأيقونات) -->
+<div class="moverlay" id="card-settings-modal">
+  <div class="mbox" style="max-width:440px">
+    <div class="mhdr"><h3>⚙️ تخصيص الأيقونات الظاهرة</h3><button class="mcls" onclick="closeModal('card-settings-modal')">✕</button></div>
+    <div style="padding:8px 16px;background:#f1f8e9;font-size:.77rem;color:#33691e">أزل العلامة عن أي أيقونة لإخفائها من الرئيسية — يُحفظ فوراً.</div>
+    <div class="mlist" id="card-settings-body" style="padding:10px 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px"></div>
+  </div>
 </div>
 
 <!-- ═══════════════ MODAL: DASHBOARD SETTINGS -->
@@ -2117,7 +2129,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2219,6 +2231,7 @@ function loadAccountData() {
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
+  cardHidden      = JSON.parse(lsGet('cardHidden','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -2452,6 +2465,7 @@ function _afterFirebaseLogin(user) {
     });
     // تطبيق صلاحيات الموظف على بطاقات وأزرار الواجهة
     applyMemberPerms();
+    applyCardVisibility();
     // إشعار قرب انتهاء الاشتراك (آخر 7 أيام)
     const sn = document.getElementById('sub-notice');
     if (sn && profile.subEnd) {
@@ -2845,12 +2859,33 @@ function showScreen(id) {
   if (id === 'products-screen')  renderProducts();
   if (id === 'archive-screen')   renderArchive();
   if (id === 'analytics-screen') renderAnalytics();
-  if (id === 'dashboard')        { renderDashStats(); renderDashboard(); }
+  if (id === 'dashboard')        { renderDashStats(); renderDashboard(); applyCardVisibility(); }
   if (id === 'settings-screen')  openSettingsForm();
 }
 
 // ═══════════════ DASHBOARD
 function isSaleInv(i){ return i.type!=='فاتورة مرتجع' && i.type!=='فاتورة مشتريات' && i.type!=='مرتجع مشتريات'; }
+let cardHidden = {};
+const CARD_LABELS = { tailor:'✂️ التفصيل', appts:'📅 المواعيد', messages:'💬 الرسائل', production:'🏭 الإنتاج', newinv:'➕ فاتورة جديدة', invoices:'📋 الفواتير', warehouse:'📦 المستودع', accounts:'💰 الحسابات', vouchers:'📒 سجل السندات', members:'🧑‍💼 المستخدمون', branches:'🏬 الفروع', analytics:'📊 التحليلات', archive:'🗂️ الأرشيف', settings:'⚙️ الإعدادات' };
+function applyCardVisibility(){
+  document.querySelectorAll('.dash-card[data-card]').forEach(c=>{
+    if (cardHidden[c.dataset.card]) c.style.display='none';
+  });
+}
+function openCardSettings(){
+  document.getElementById('card-settings-body').innerHTML = Object.keys(CARD_LABELS).map(k=>`
+    <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:.85rem;padding:4px 0">
+      <input type="checkbox" ${cardHidden[k]?'':'checked'} onchange="toggleCard('${k}',this.checked)" style="width:auto">
+      <span>${CARD_LABELS[k]}</span>
+    </label>`).join('');
+  document.getElementById('card-settings-modal').classList.add('open');
+}
+function toggleCard(k,on){
+  if (on) delete cardHidden[k]; else cardHidden[k]=true;
+  lsSet('cardHidden', JSON.stringify(cardHidden));
+  const c = document.querySelector('.dash-card[data-card="'+k+'"]');
+  if (c) c.style.display = on ? '' : 'none';
+}
 let dashWidgets = {};
 const DASH_WIDGETS = [
   ['kpis','المؤشرات السريعة'],
