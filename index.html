@@ -360,6 +360,7 @@ const fbDB   = firebase.firestore();
   <a onclick="showMessaging();closeSb()">💬 الرسائل (واتساب)</a>
   <div class="sb-sec">الإنتاج والمخزون</div>
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
+  <a data-perm="production" onclick="showQRScan();closeSb()">📷 مسح QR</a>
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
   <div class="sb-sec">المبيعات والمالية</div>
   <a data-perm="invoices" onclick="newInvoice();closeSb()">➕ فاتورة جديدة</a>
@@ -1384,6 +1385,23 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: QR SCAN (مسح أوامر الإنتاج) -->
+<div class="moverlay" id="qrscan-modal">
+  <div class="mbox" style="max-width:420px">
+    <div class="mhdr"><h3>📷 مسح QR — تتبع الإنتاج</h3><button class="mcls" onclick="closeQRScan()">✕</button></div>
+    <div style="padding:16px">
+      <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;background:#000;min-height:60px"></div>
+      <div id="qrscan-result" style="margin-top:12px"></div>
+      <div style="margin-top:12px;display:flex;gap:7px">
+        <input type="number" id="qrscan-manual" placeholder="أو أدخل رقم الأمر يدوياً" onkeydown="if(event.key==='Enter')qrManualFind()"
+          style="flex:1;padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;direction:ltr;text-align:center">
+        <button class="btn btn-primary" onclick="qrManualFind()">بحث</button>
+      </div>
+      <div style="font-size:.74rem;color:#999;text-align:center;margin-top:8px">امسح الكود المطبوع على أمر الإنتاج لتحريك مرحلته فوراً</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: QUALITY CONTROL (مراقبة الجودة) -->
 <div class="moverlay" id="qc-modal">
   <div class="mbox" style="max-width:900px">
@@ -1456,6 +1474,7 @@ const fbDB   = firebase.firestore();
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openProdPanel()">＋ أمر إنتاج جديد</button>
       <button class="btn btn-info" onclick="showQC()">🔍 مراقبة الجودة</button>
+      <button class="btn" style="background:#5c6bc0;color:white" onclick="showQRScan()">📷 مسح QR</button>
       <select id="po-filter" onchange="renderProduction()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
         <option value="جاري">⏳ تحت التنفيذ</option>
         <option value="جاهز">✅ الجاهزة</option>
@@ -4873,6 +4892,62 @@ function printProdOrder(id) {
     QRCode.toCanvas(cv, 'PO-'+o.num, { width: 92, margin: 1 });
   }).catch(()=>{});
   showScreen('prod-print-screen');
+}
+
+// ═══════════════ QR SCAN — مسح أوامر الإنتاج وتحريك المراحل من الجوال
+let _qrScanner = null;
+function showQRScan() {
+  if (!canAccess('production')) { permDenied('production'); return; }
+  document.getElementById('qrscan-result').innerHTML = '';
+  document.getElementById('qrscan-manual').value = '';
+  document.getElementById('qr-reader').innerHTML = '<div style="padding:20px;text-align:center;color:#999">جارٍ تشغيل الكاميرا...</div>';
+  document.getElementById('qrscan-modal').classList.add('open');
+  _startQRScanner();
+}
+function _startQRScanner() {
+  const lib = window.Html5Qrcode ? Promise.resolve() : new Promise((res,rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    sc.onload = res; sc.onerror = rej;
+    document.head.appendChild(sc);
+  });
+  lib.then(()=>{
+    document.getElementById('qr-reader').innerHTML = '';
+    _qrScanner = new Html5Qrcode('qr-reader');
+    return _qrScanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 220 },
+      txt => onQRScanned(txt), ()=>{});
+  }).catch(()=>{
+    document.getElementById('qr-reader').innerHTML =
+      '<div style="padding:18px;text-align:center;color:#e65100;font-size:.85rem">📷 تعذّر تشغيل الكاميرا — استخدم الإدخال اليدوي بالأسفل</div>';
+  });
+}
+function _stopQRScanner() {
+  if (_qrScanner) { try { _qrScanner.stop().then(()=>_qrScanner.clear()).catch(()=>{}); } catch(_){} _qrScanner = null; }
+}
+function closeQRScan() { _stopQRScanner(); closeModal('qrscan-modal'); }
+function onQRScanned(txt) {
+  const m = String(txt).match(/PO-?(\d+)/i);
+  const num = m ? parseInt(m[1]) : parseInt(String(txt).replace(/\D/g,''));
+  _showScannedOrder(num);
+}
+function qrManualFind() {
+  const num = parseInt(document.getElementById('qrscan-manual').value);
+  if (!num) { alert('أدخل رقم الأمر'); return; }
+  _showScannedOrder(num);
+}
+function _showScannedOrder(num) {
+  const o = prodOrders.find(x=>x.num===num);
+  const box = document.getElementById('qrscan-result');
+  if (!o) { box.innerHTML = `<div style="background:#ffebee;color:#c62828;padding:12px;border-radius:10px;text-align:center">لا يوجد أمر إنتاج رقم #${num}</div>`; return; }
+  const stage = o.done ? 'جاهز' : PROD_STAGES[o.stageIdx];
+  box.innerHTML = `
+    <div style="background:#f1f8e9;border:1.5px solid #aed581;border-radius:12px;padding:14px;text-align:center">
+      <div style="font-weight:800;font-size:1.05rem;direction:ltr">أمر #${o.num}</div>
+      <div style="margin:4px 0">${escHtml(_custName(o.clientId))} — ${escHtml(o.desc)}</div>
+      <div style="margin:6px 0">المرحلة الحالية: <b style="color:#1b5e20">${escHtml(stage)}</b></div>
+      ${!o.done?`<button class="btn btn-success" onclick="advanceProdStage(${o.id});_showScannedOrder(${o.num})" style="margin-top:6px">✔ إتمام مرحلة «${escHtml(PROD_STAGES[o.stageIdx])}»</button>`
+        :`<div style="color:#2e7d32;font-weight:700;margin-top:6px">✅ الأمر مكتمل وجاهز</div>`}
+    </div>`;
 }
 
 // ═══════════════ APPOINTMENTS — المواعيد (قياس / بروفة / استلام)
