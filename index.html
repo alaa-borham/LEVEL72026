@@ -5635,6 +5635,7 @@ const REPORT_TYPES = [
   ['customers','👥 أكثر العملاء'],
   ['templates','🧵 أكثر القوالب طلباً'],
   ['fabrics','🎽 الأقمشة منخفضة المخزون'],
+  ['receivables','💳 أعمار الديون (المستحقات)'],
 ];
 function showReports(){
   if (!canAccess('analytics')) { permDenied('analytics'); return; }
@@ -5692,6 +5693,20 @@ function genReport(){
     const m={}; measurements.filter(x=>inR(x.date)).forEach(x=>m[x.template]=(m[x.template]||0)+1);
     head=['القالب','عدد الطلبات'];
     rows=Object.keys(m).map(k=>[L(k),m[k]]).sort((a,b)=>b[1]-a[1]);
+  }else if(type==='receivables'){
+    const td=_todayISO();
+    const ageBucket=days=>days<=30?'٠-٣٠ يوم':days<=60?'٣١-٦٠ يوم':days<=90?'٦١-٩٠ يوم':'أكثر من ٩٠ يوم';
+    const list=customers.map(c=>{
+      const bal=clientBalance(c.id);
+      if(bal<=0.001) return null;
+      const unpaid=invoices.filter(i=>String(i.clientId)===String(c.id)&&isSaleInv(i)).map(i=>i.date).filter(Boolean).sort();
+      const oldest=unpaid[0]||'';
+      const days=oldest?Math.round((new Date(td)-new Date(oldest))/864e5):0;
+      return {name:c.name,bal,oldest,days};
+    }).filter(Boolean).sort((a,b)=>b.bal-a.bal);
+    head=['العميل','المستحق ('+curName()+')','أقدم فاتورة','العمر','الفئة'];
+    rows=list.map(r=>[r.name,formatNum(r.bal),r.oldest?isoToDMY(r.oldest):'-',r.days+' يوم',ageBucket(r.days)]);
+    foot='إجمالي المستحقات: '+formatNum(list.reduce((s,r)=>s+r.bal,0))+' '+curName()+' — عدد العملاء المدينين: '+list.length;
   }else if(type==='fabrics'){
     const list=fabrics.filter(f=>(f.minQty||0)>0&&(f.qty||0)<=f.minQty);
     head=['الكود','القماش','اللون','المتاح (متر)','حد التنبيه'];
