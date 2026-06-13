@@ -327,8 +327,8 @@ body.ltr .dash-card::after{content:'›'}
 .ap-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.76rem;font-weight:700}
 /* ═══ شاشة أوردر التفصيل البصرية */
 #measure-panel .spb{max-width:1180px}
-.order-grid{display:grid;grid-template-columns:440px 1fr;gap:18px;align-items:start}
-@media(max-width:820px){.order-grid{grid-template-columns:1fr}}
+.order-grid{display:grid;grid-template-columns:540px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.order-grid{grid-template-columns:1fr}}
 /* حاوية الصورة التفاعلية ونقاطها */
 .order-canvas{position:relative;width:100%;background:#fff;border-radius:12px;overflow:hidden}
 .order-canvas img,.order-canvas svg{display:block;width:100%;height:auto}
@@ -352,9 +352,9 @@ body.ltr .dash-card::after{content:'›'}
 .part-menu button{display:block;width:100%;text-align:start;background:#f7faf5;border:1px solid #eef2ea;border-radius:8px;padding:8px 11px;margin:3px 0;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;color:#333;transition:all .12s}
 .part-menu button:hover{background:#e8f5e9;border-color:#aed581}
 .part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
-.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:5px 7px}
-.ms-fields-grid .fg label{font-size:.68rem !important;margin-bottom:1px}
-.ms-fields-grid .fg input{padding:5px 6px !important;font-size:.82rem}
+.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:4px 5px}
+.ms-fields-grid .fg label{font-size:.62rem !important;margin-bottom:0;line-height:1.15;display:block}
+.ms-fields-grid .fg input{padding:3px 5px !important;font-size:.78rem}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
 @page{size:A4 portrait;margin:0 10mm}
 </style>
@@ -1193,18 +1193,6 @@ const fbDB   = firebase.firestore();
         <div class="thobe-wrap">
           <div style="text-align:center;font-size:.8rem;font-weight:800;color:#33691e;margin-bottom:6px">👆 اضغط أي نقطة لاختيار تفصيلها</div>
           <div class="order-canvas" id="order-canvas"></div>
-          <!-- خيارات إضافية أسفل الرسم -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px">
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية / معدنية"></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">التطريز</label><input type="text" id="mm-embroidery"></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">التكتك</label><input type="text" id="mm-taktak"></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">معدنيات/شعار</label><input type="text" id="mm-metal"></div>
-            <div class="fg" style="margin:0;grid-column:span 2"><label style="font-size:.72rem">القماش (من المخزون)</label><select id="mm-fabric"></select></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">قماش العميل</label><input type="text" id="mm-extfabric"></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">عرضه (سم)</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
-            <div class="fg" style="margin:0"><label style="font-size:.72rem">عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
-            <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:5px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:.78rem"><input type="checkbox" id="mm-proofa" style="width:auto"> بروفة</label></div>
-          </div>
         </div>
 
         <!-- ═══ جدول القياسات -->
@@ -1213,6 +1201,21 @@ const fbDB   = firebase.firestore();
           <div id="ms-fields" class="ms-fields-grid"></div>
           <div id="ms-warnings" style="margin-top:8px"></div>
           <div class="fg" style="margin-top:10px"><label>ملاحظات إضافية</label><textarea id="ms-notes" rows="2"></textarea></div>
+          <!-- ═══ تفاصيل الموديل (أسفل الملاحظات) -->
+          <div style="background:#f7f4ed;border:1px solid #e6e0d4;border-radius:12px;padding:11px 13px;margin-top:12px">
+            <div style="font-size:.8rem;font-weight:800;color:#7a6a3a;margin-bottom:8px">🧵 تفاصيل التفصيل</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:7px 9px">
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية / معدنية"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">التطريز</label><input type="text" id="mm-embroidery"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">التكتك</label><input type="text" id="mm-taktak"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">معدنيات/شعار</label><input type="text" id="mm-metal"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">القماش (من المخزون)</label><select id="mm-fabric"></select></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">قماش العميل</label><input type="text" id="mm-extfabric"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">عرضه (سم)</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
+              <div class="fg" style="margin:0"><label style="font-size:.72rem">عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
+              <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:5px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:.78rem"><input type="checkbox" id="mm-proofa" style="width:auto"> بروفة</label></div>
+            </div>
+          </div>
         </div>
       </div>
 
