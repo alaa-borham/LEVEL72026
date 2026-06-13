@@ -144,12 +144,23 @@ body.ltr .dash-card::after{content:'›'}
 .page-header{background:linear-gradient(90deg,#2e7d32,#43a047);color:white;padding:13px 16px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;box-shadow:0 3px 10px rgba(46,125,50,.3);flex-wrap:wrap;gap:8px}
 .page-header h2{font-size:1.15rem}
 .btn{padding:7px 16px;border:none;border-radius:7px;cursor:pointer;font-size:.86rem;font-family:inherit;transition:opacity .15s,transform .1s}
-.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn:hover{opacity:.92;transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
 .btn-primary{background:#1565c0;color:white}.btn-success{background:#2e7d32;color:white}
 .btn-danger{background:#c62828;color:white}.btn-warning{background:#e65100;color:white}
 .btn-info{background:#00838f;color:white}.btn-purple{background:#6a1b9a;color:white}
 .btn-outline{background:transparent;color:white;border:2px solid rgba(255,255,255,.7)}
 .btn-sm{padding:4px 10px;font-size:.77rem}
+@media(max-width:640px){
+  .moverlay{padding:7px}
+  .mbox{border-radius:15px;max-height:95vh}
+  .mhdr{padding:12px 14px}
+  .mhdr h3{font-size:.96rem}
+  .dash-hero{flex-direction:column;align-items:stretch}
+  .dash-hero .hero-cta{width:100%}
+  .da-kpi .v{font-size:1.5rem}
+  .mlist table{min-width:540px}
+}
 /* TABLES */
 .data-table-wrap{background:white;border-radius:10px;overflow:auto;box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .data-table-wrap table{width:100%;border-collapse:collapse;min-width:700px}
@@ -273,7 +284,7 @@ body.ltr .dash-card::after{content:'›'}
 .msearch{padding:10px 14px;border-bottom:1px solid #eee;flex-shrink:0}
 .msearch input{width:100%;padding:7px 11px;border:1.5px solid #ddd;border-radius:7px;font-size:.87rem;font-family:inherit}
 .msearch input:focus{outline:none;border-color:#5d9e3f}
-.mlist{overflow-y:auto;flex:1}
+.mlist{overflow:auto;flex:1}
 .picker-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer}
 .picker-item:hover{background:#f1f8e9}
 .picker-item .pn{font-weight:600;color:#1b5e20;font-size:.87rem}
