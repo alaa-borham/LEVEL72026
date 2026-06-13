@@ -5751,6 +5751,7 @@ function renderProduction() {
         ${o.done&&!o.delivered?`<button class="btn btn-info btn-sm" onclick="deliverProdOrder(${o.id})" title="تسليم للعميل">📦</button>
         <button class="btn btn-sm" style="background:#25d366;color:white" onclick="sendWA('${o.clientId}','ready')" title="إشعار العميل: جاهز">📲</button>`:''}
         <button class="btn btn-info btn-sm" onclick="printProdOrder(${o.id})" title="طباعة أمر الإنتاج">🖨️</button>
+        <button class="btn btn-sm" style="background:#1565c0;color:white" data-perm="invoices" onclick="invoiceFromOrder(${o.id})" title="إنشاء فاتورة من هذا الأمر">🧾</button>
         <button class="btn btn-primary btn-sm" onclick="openProdPanel(${o.id})" title="تعديل">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteProdOrder(${o.id})" title="حذف">🗑</button>
       </td>
@@ -5830,6 +5831,23 @@ function advanceProdStage(id) {
   save('prodOrders');
   renderProduction();
   renderDashStats();
+}
+function invoiceFromOrder(orderId){
+  if (!canAccess('invoices')) { permDenied('invoices'); return; }
+  const o = prodOrders.find(x=>x.id===orderId); if(!o) return;
+  const c = _custById(o.clientId);
+  closeModal('production-modal');
+  newInvoice();
+  if (c){
+    document.getElementById('f-client-num').value   = c.num||'';
+    document.getElementById('f-client-name').value  = c.name;
+    document.getElementById('f-client-phone').value = c.phone||'';
+    if (c.id) document.getElementById('f-client-inv-num').value = getNextClientInvNum(c.id);
+  }
+  document.getElementById('items-tbody').innerHTML=''; rowCount=0;
+  addRow({ desc:o.desc, qty:o.qty||1, price:'' });
+  addRow();
+  recalc();
 }
 function deleteProdOrder(id) {
   if (!confirm('حذف أمر الإنتاج نهائياً؟')) return;
