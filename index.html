@@ -6955,6 +6955,7 @@ function exportToExcel() {
     const tjRows = tailorJobs.map(j=>({ 'رقم':j.num, 'النوع':j.type, 'العميل':_custName(j.clientId), 'الوصف':j.desc,
       'المنفذ':j.assignee||'', 'الاستلام':j.recv||'', 'التسليم':j.due||'', 'السعر':j.price||0, 'التكلفة':j.cost||0, 'الحالة':j.status, 'ملاحظات':j.notes||'' }));
     const dvRows = deliveries.map(d=>({ 'التاريخ':d.date, 'العميل':_custName(d.clientId), 'المرجع':d.ref, 'الطريقة':d.method||'', 'المستلم':d.receiver||'' }));
+    const qRows = quotations.map(q=>({ 'رقم العرض':q.num, 'التاريخ':q.date, 'العميل':q.clientName, 'الإجمالي':q.grand, 'الضريبة':q.tax, 'الحالة':q.status, 'ملاحظات':q.notes||'' }));
     const prodRows = products.map(p=>({ 'الكود':p.code, 'الاسم':p.name, 'الفئة':p.category||'',
       'الوحدة':p.unit||'', 'سعر البيع':p.sellPrice, 'سعر الشراء':p.isService?'':(p.buyPrice||0),
       'الكمية':p.isService?'خدمة':(p.qty||0) }));
@@ -6965,7 +6966,7 @@ function exportToExcel() {
     const supRows = suppliers.map(s=>({ 'رقم المورد':s.num, 'الاسم':s.name, 'الهاتف':s.phone||'', 'الرقم الضريبي':s.taxNo||'', 'المستحق له':supplierBalance(s.id) }));
     const supPayRows = supPayments.map(p=>{ const s=suppliers.find(x=>String(x.id)===String(p.supplierId)); return { 'رقم السند':p.dsbNum||'', 'التاريخ':p.date, 'المورد':s?s.name:'', 'المبلغ':p.amount, 'الطريقة':p.method||'', 'ملاحظات':p.notes||'' }; });
     const exRows = expenses.map(e=>({ 'التاريخ':e.date, 'الفئة':e.category, 'البيان':e.desc||'', 'الفرع':e.branchName||'المركز', 'المبلغ':e.amount }));
-    [[invRows,'الفواتير'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[poRows,'أوامر الإنتاج'],[tjRows,'التعديل والتطريز'],[dvRows,'التسليمات'],[fabRows,'الأقمشة'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
+    [[invRows,'الفواتير'],[qRows,'عروض الأسعار'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[poRows,'أوامر الإنتاج'],[tjRows,'التعديل والتطريز'],[dvRows,'التسليمات'],[fabRows,'الأقمشة'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
       .forEach(([rows,name])=>{
         const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'لا توجد بيانات':''}]);
         if (!wb.Workbook) wb.Workbook = {};
