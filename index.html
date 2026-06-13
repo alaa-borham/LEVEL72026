@@ -154,6 +154,7 @@ body.ltr .dash-card::after{content:'›'}
 #measure-panel{z-index:350}
 #fabric-panel{z-index:350}
 #prod-panel{z-index:350}
+#tj-panel{z-index:350}
 /* نافذتا الفروع وQR تُفتحان فوق نوافذ أخرى */
 #branches-modal,#qr-modal,#sup-stmt-modal{z-index:355}
 #supplier-panel{z-index:365}
@@ -349,10 +350,13 @@ const fbDB   = firebase.firestore();
 <div id="sidebar">
   <div class="sb-brand">✂️ LEVEL7 Tailor<small>نظام إدارة الخياطة والتفصيل</small></div>
   <a onclick="showScreen('dashboard');closeSb()">🏠 الرئيسية</a>
-  <div class="sb-sec">العملاء والقياس</div>
+  <div class="sb-sec">✂️ التفصيل</div>
   <a data-perm="customers" onclick="showCustomers();closeSb()">👥 العملاء</a>
   <a data-perm="tailoring" onclick="showMeasurements();closeSb()">📐 القياسات</a>
   <a data-perm="appointments" onclick="showAppointments();closeSb()">📅 المواعيد</a>
+  <a data-perm="tailoring" onclick="showTailorJobs('تطريز');closeSb()">🪡 التطريز</a>
+  <a data-perm="tailoring" onclick="showTailorJobs('تعديل');closeSb()">🧷 التعديل</a>
+  <a data-perm="tailoring" onclick="showDeliveries();closeSb()">📦 التسليم</a>
   <div class="sb-sec">الإنتاج والمخزون</div>
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
@@ -494,8 +498,7 @@ const fbDB   = firebase.firestore();
   </div>
   <div class="dash-stats" id="dash-stats" style="margin:0 auto 10px"></div>
   <div class="dash-cards">
-    <div class="dash-card" onclick="showCustomers()" data-perm="customers"><div class="icon">👥</div><h3 data-i18n="customers">العملاء</h3><p data-i18n="customersSub">بيانات العملاء</p></div>
-    <div class="dash-card" onclick="showMeasurements()" data-perm="tailoring"><div class="icon">📐</div><h3>القياسات</h3><p>قياسات الخياطة وقوالبها</p></div>
+    <div class="dash-card" onclick="showTailorHub()"><div class="icon">✂️</div><h3>التفصيل</h3><p>العملاء، القياسات، التطريز، التعديل، التسليم</p></div>
     <div class="dash-card" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
     <div class="dash-card" onclick="showProduction()" data-perm="production"><div class="icon">🏭</div><h3>الإنتاج</h3><p>أوامر العمل وتتبع المراحل</p></div>
     <div class="dash-card" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
@@ -1265,6 +1268,106 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: TAILOR HUB (بوابة التفصيل) -->
+<div class="moverlay" id="tailor-modal">
+  <div class="mbox" style="max-width:520px">
+    <div class="mhdr"><h3>✂️ التفصيل</h3><button class="mcls" onclick="closeModal('tailor-modal')">✕</button></div>
+    <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      <button class="btn" data-perm="customers" onclick="closeModal('tailor-modal');showCustomers()" style="background:#e8f5e9;border:1.5px solid #a5d6a7;color:#1b5e20;padding:15px;border-radius:14px;font-size:.92rem;font-weight:700">👥 العملاء</button>
+      <button class="btn" data-perm="tailoring" onclick="closeModal('tailor-modal');showMeasurements()" style="background:#ede7f6;border:1.5px solid #b39ddb;color:#4527a0;padding:15px;border-radius:14px;font-size:.92rem;font-weight:700">📐 القياسات</button>
+      <button class="btn" data-perm="tailoring" onclick="closeModal('tailor-modal');showTailorJobs('تطريز')" style="background:#fce4ec;border:1.5px solid #f48fb1;color:#ad1457;padding:15px;border-radius:14px;font-size:.92rem;font-weight:700">🪡 التطريز</button>
+      <button class="btn" data-perm="tailoring" onclick="closeModal('tailor-modal');showTailorJobs('تعديل')" style="background:#fff3e0;border:1.5px solid #ffcc80;color:#e65100;padding:15px;border-radius:14px;font-size:.92rem;font-weight:700">🧷 التعديل</button>
+      <button class="btn" data-perm="tailoring" onclick="closeModal('tailor-modal');showDeliveries()" style="grid-column:span 2;background:#e0f2f1;border:1.5px solid #80cbc4;color:#00695c;padding:15px;border-radius:14px;font-size:.92rem;font-weight:700">📦 التسليم — الجاهز وسجل التسليمات</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: TAILOR JOBS (أعمال التعديل والتطريز) -->
+<div class="moverlay" id="tjobs-modal">
+  <div class="mbox" style="max-width:1050px">
+    <div class="mhdr"><h3 id="tj-title">🧷 أعمال التعديل والتطريز</h3><button class="mcls" onclick="closeModal('tjobs-modal')">✕</button></div>
+    <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="openTJPanel()">＋ عمل جديد</button>
+      <select id="tj-filter-type" onchange="renderTailorJobs()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+        <option value="">الكل</option><option>تعديل</option><option>تطريز</option>
+      </select>
+      <select id="tj-filter-status" onchange="renderTailorJobs()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+        <option value="نشط">⏳ غير المسلَّم</option><option value="">الكل</option>
+        <option>قيد التنفيذ</option><option>جاهز</option><option>تم التسليم</option>
+      </select>
+      <input type="text" id="tj-search" placeholder="🔍 بحث بالعميل أو الوصف..." oninput="renderTailorJobs()"
+        style="flex:1;min-width:140px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+    </div>
+    <div class="mlist">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">#</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">النوع</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العميل</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الوصف</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المنفذ/الورشة</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">التسليم</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">السعر</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الحالة</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">إجراءات</th>
+        </tr></thead>
+        <tbody id="tjobs-tbody"></tbody>
+      </table>
+      <div id="tj-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد أعمال — اضغط "عمل جديد"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SIDE PANEL: TAILOR JOB -->
+<div class="side-panel" id="tj-panel">
+  <div class="spb">
+    <div class="sph"><h3 id="tj-panel-title">🧷 عمل جديد</h3><button class="spc" onclick="closeModal2('tj-panel')">✕</button></div>
+    <div class="spbody">
+      <input type="hidden" id="tj-edit-id">
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
+        <div class="fg"><label>النوع</label><select id="tj-type"><option>تعديل</option><option>تطريز</option></select></div>
+        <div class="fg"><label>العميل <span class="req">*</span></label><select id="tj-client"></select></div>
+      </div>
+      <div class="fg"><label>وصف العمل <span class="req">*</span></label><input type="text" id="tj-desc" placeholder="مثال: تقصير أكمام ثوبين / تطريز شعار على الصدر"></div>
+      <div class="fg"><label>المنفذ / الورشة (الخارجية أو الداخلية)</label><input type="text" id="tj-assignee"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px">
+        <div class="fg" style="margin:0"><label>تاريخ الاستلام</label><span class="dmy"><input type="text" id="tj-recv" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="fg" style="margin:0"><label>موعد التسليم</label><span class="dmy"><input type="text" id="tj-due" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="fg" style="margin:0"><label>السعر (من العميل)</label><input type="number" id="tj-price" min="0" step="0.01"></div>
+        <div class="fg" style="margin:0"><label>التكلفة (للورشة)</label><input type="number" id="tj-cost" min="0" step="0.01"></div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label>ملاحظات</label><textarea id="tj-notes" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-success" style="flex:1" onclick="saveTailorJob()">✔ حفظ</button>
+        <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('tj-panel')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: DELIVERIES (التسليم) -->
+<div class="moverlay" id="deliveries-modal">
+  <div class="mbox" style="max-width:1000px">
+    <div class="mhdr"><h3>📦 التسليم</h3><button class="mcls" onclick="closeModal('deliveries-modal')">✕</button></div>
+    <div class="mlist" style="padding:14px 16px">
+      <div style="font-weight:800;color:#00695c;font-size:.92rem;margin-bottom:8px">⏳ جاهز بانتظار التسليم</div>
+      <div id="dv-ready"></div>
+      <div style="font-weight:800;color:#555;font-size:.92rem;margin:18px 0 8px">📒 سجل التسليمات</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">التاريخ</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">العميل</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المرجع</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الطريقة</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المستلم</th>
+        </tr></thead>
+        <tbody id="dv-tbody"></tbody>
+      </table>
+      <div id="dv-empty" style="display:none;text-align:center;padding:24px;color:#bbb">لا توجد تسليمات مسجلة بعد</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: ACCOUNTS (الحسابات) -->
 <div class="moverlay" id="accounts-modal">
   <div class="mbox" style="max-width:480px">
@@ -1790,7 +1893,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -1843,7 +1946,7 @@ function _dailyBackup(uid, data) {
 }
 
 // ═══════════════ STATE (loaded per account)
-let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[];
+let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[], tailorJobs=[], deliveries=[];
 let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة — أساس التوزيع التلقائي للمهام
 let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
@@ -1877,6 +1980,8 @@ function loadAccountData() {
   appointments    = JSON.parse(lsGet('appointments','[]'));
   fabrics         = JSON.parse(lsGet('fabrics','[]'));
   prodOrders      = JSON.parse(lsGet('prodOrders','[]'));
+  tailorJobs      = JSON.parse(lsGet('tailorJobs','[]'));
+  deliveries      = JSON.parse(lsGet('deliveries','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
   measVisible     = JSON.parse(lsGet('measVisible','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
@@ -4232,6 +4337,171 @@ function deleteFabric(id) {
   save('fabrics'); renderFabrics();
 }
 
+// ═══════════════ TAILORING HUB — بوابة التفصيل
+function showTailorHub() {
+  document.getElementById('tailor-modal').classList.add('open');
+}
+
+// ═══════════════ TAILOR JOBS — أعمال التعديل والتطريز
+const TJ_STATUS = ['قيد التنفيذ','جاهز','تم التسليم'];
+function getNextTJNum(){
+  const nums = tailorJobs.map(j=>parseInt(j.num)).filter(n=>!isNaN(n));
+  return nums.length ? Math.max(...nums)+1 : 1;
+}
+function showTailorJobs(type) {
+  if (!canAccess('tailoring')) { permDenied('tailoring'); return; }
+  document.getElementById('tj-title').textContent = type==='تطريز' ? '🪡 أعمال التطريز' : (type==='تعديل' ? '🧷 أعمال التعديل' : '🧷 أعمال التعديل والتطريز');
+  document.getElementById('tj-filter-type').value = type==='تطريز'||type==='تعديل' ? type : '';
+  document.getElementById('tj-filter-status').value = 'نشط';
+  renderTailorJobs();
+  document.getElementById('tjobs-modal').classList.add('open');
+}
+function renderTailorJobs() {
+  const ft = document.getElementById('tj-filter-type').value;
+  const fs = document.getElementById('tj-filter-status').value;
+  const q  = (document.getElementById('tj-search').value||'').trim().toLowerCase();
+  const today = new Date().toISOString().split('T')[0];
+  const list = tailorJobs
+    .filter(j => !ft || j.type===ft)
+    .filter(j => fs==='نشط' ? j.status!=='تم التسليم' : (!fs || j.status===fs))
+    .filter(j => !q || _custName(j.clientId).toLowerCase().includes(q) || (j.desc||'').toLowerCase().includes(q))
+    .sort((a,b)=> (a.status==='تم التسليم'?1:0)-(b.status==='تم التسليم'?1:0) || (a.due||'9999').localeCompare(b.due||'9999') || b.id-a.id);
+  document.getElementById('tj-empty').style.display = list.length ? 'none' : 'block';
+  const stColor = { 'قيد التنفيذ':'background:#fff8e1;color:#b28704', 'جاهز':'background:#e8f5e9;color:#2e7d32', 'تم التسليم':'background:#eef;color:#5c6bc0' };
+  document.getElementById('tjobs-tbody').innerHTML = list.map(j=>{
+    const late = j.status!=='تم التسليم' && j.due && j.due < today;
+    const tBadge = j.type==='تطريز' ? 'background:#fce4ec;color:#ad1457' : 'background:#fff3e0;color:#e65100';
+    return `
+    <tr style="${late?'background:#ffebee':''}">
+      <td style="text-align:center;font-weight:700;direction:ltr">#${j.num}</td>
+      <td style="text-align:center"><span class="ap-badge" style="${tBadge}">${escHtml(j.type)}</span></td>
+      <td style="text-align:center;font-weight:600">${escHtml(_custName(j.clientId))}</td>
+      <td style="text-align:center;font-size:.82rem">${escHtml(j.desc)}</td>
+      <td style="text-align:center;font-size:.82rem">${escHtml(j.assignee||'-')}</td>
+      <td style="text-align:center;white-space:nowrap${late?';color:#c62828;font-weight:700':''}">${j.due?isoToDMY(j.due):'-'}${late?' ⚠️':''}</td>
+      <td style="text-align:center">${j.price?formatNum(j.price):'-'}</td>
+      <td style="text-align:center"><span class="ap-badge" style="${stColor[j.status]||''}">${escHtml(j.status)}</span></td>
+      <td style="text-align:center;white-space:nowrap">
+        ${j.status==='قيد التنفيذ'?`<button class="btn btn-success btn-sm" onclick="setTJStatus(${j.id},'جاهز')" title="تم الإنجاز">✔</button>`:''}
+        ${j.status==='جاهز'?`<button class="btn btn-info btn-sm" onclick="deliverTailorJob(${j.id})" title="تسليم للعميل">📦</button>`:''}
+        <button class="btn btn-primary btn-sm" onclick="openTJPanel(${j.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTailorJob(${j.id})">🗑</button>
+      </td>
+    </tr>`;}).join('');
+}
+function openTJPanel(editId) {
+  if (!customers.length) { alert('أضف عميلاً أولاً'); return; }
+  const j = editId ? tailorJobs.find(x=>x.id===editId) : null;
+  const presetType = document.getElementById('tj-filter-type').value;
+  document.getElementById('tj-panel-title').textContent = j ? '✏️ تعديل عمل #'+j.num : '🧷 عمل جديد';
+  document.getElementById('tj-edit-id').value = j ? j.id : '';
+  document.getElementById('tj-type').value = j ? j.type : (presetType||'تعديل');
+  document.getElementById('tj-client').innerHTML = _custOptions(j ? j.clientId : null);
+  document.getElementById('tj-desc').value = j ? j.desc : '';
+  document.getElementById('tj-assignee').value = j ? (j.assignee||'') : '';
+  document.getElementById('tj-recv').value = j && j.recv ? isoToDMY(j.recv) : todayDMY();
+  document.getElementById('tj-due').value = j && j.due ? isoToDMY(j.due) : '';
+  document.getElementById('tj-price').value = j ? (j.price||'') : '';
+  document.getElementById('tj-cost').value = j ? (j.cost||'') : '';
+  document.getElementById('tj-notes').value = j ? (j.notes||'') : '';
+  document.getElementById('tj-panel').classList.add('open');
+}
+function saveTailorJob() {
+  const clientId = document.getElementById('tj-client').value;
+  const desc = document.getElementById('tj-desc').value.trim();
+  if (!clientId) { alert('اختر العميل'); return; }
+  if (!desc) { alert('أدخل وصف العمل'); return; }
+  const recvRaw = document.getElementById('tj-recv').value.trim();
+  const dueRaw = document.getElementById('tj-due').value.trim();
+  const data = {
+    clientId, desc,
+    type: document.getElementById('tj-type').value,
+    assignee: document.getElementById('tj-assignee').value.trim(),
+    recv: recvRaw ? readDMY('tj-recv') : '',
+    due: dueRaw ? readDMY('tj-due') : '',
+    price: parseFloat(document.getElementById('tj-price').value)||0,
+    cost: parseFloat(document.getElementById('tj-cost').value)||0,
+    notes: document.getElementById('tj-notes').value.trim(),
+  };
+  const editId = document.getElementById('tj-edit-id').value;
+  if (editId) {
+    const j = tailorJobs.find(x=>String(x.id)===editId);
+    if (j) Object.assign(j, data);
+  } else {
+    tailorJobs.push({ id: Date.now(), num: getNextTJNum(), status:'قيد التنفيذ', ...data });
+  }
+  save('tailorJobs');
+  closeModal2('tj-panel');
+  renderTailorJobs();
+}
+function setTJStatus(id, st) {
+  const j = tailorJobs.find(x=>x.id===id); if (!j) return;
+  j.status = st; save('tailorJobs'); renderTailorJobs();
+}
+function deleteTailorJob(id) {
+  if (!confirm('حذف هذا العمل نهائياً؟')) return;
+  tailorJobs = tailorJobs.filter(j=>j.id!==id);
+  save('tailorJobs'); renderTailorJobs();
+}
+function deliverTailorJob(id) {
+  const j = tailorJobs.find(x=>x.id===id); if (!j) return;
+  _doDeliver(j.clientId, (j.type==='تطريز'?'تطريز #':'تعديل #')+j.num+' — '+j.desc, ()=>{
+    j.status = 'تم التسليم'; save('tailorJobs'); renderTailorJobs();
+  });
+}
+
+// ═══════════════ DELIVERIES — التسليم
+function showDeliveries() {
+  if (!canAccess('tailoring')) { permDenied('tailoring'); return; }
+  renderDeliveries();
+  document.getElementById('deliveries-modal').classList.add('open');
+}
+function renderDeliveries() {
+  // الجاهز بانتظار التسليم: أوامر إنتاج جاهزة + أعمال تعديل/تطريز جاهزة
+  const readyProd = prodOrders.filter(o=>o.done && !o.delivered);
+  const readyJobs = tailorJobs.filter(j=>j.status==='جاهز');
+  const rows = [];
+  readyProd.forEach(o=>rows.push({ kind:'أمر إنتاج #'+o.num, client:_custName(o.clientId), desc:o.desc,
+    act:`<button class="btn btn-success btn-sm" onclick="deliverProdOrder(${o.id})">📦 تسليم</button>` }));
+  readyJobs.forEach(j=>rows.push({ kind:(j.type==='تطريز'?'تطريز #':'تعديل #')+j.num, client:_custName(j.clientId), desc:j.desc,
+    act:`<button class="btn btn-success btn-sm" onclick="deliverTailorJob(${j.id})">📦 تسليم</button>` }));
+  document.getElementById('dv-ready').innerHTML = rows.length
+    ? `<table style="width:100%;border-collapse:collapse"><tbody>${rows.map(r=>`
+        <tr><td style="text-align:center;font-weight:700;padding:7px;border-bottom:1px solid #eee">${escHtml(r.kind)}</td>
+        <td style="text-align:center;padding:7px;border-bottom:1px solid #eee">${escHtml(r.client)}</td>
+        <td style="text-align:center;font-size:.82rem;padding:7px;border-bottom:1px solid #eee">${escHtml(r.desc)}</td>
+        <td style="text-align:center;padding:7px;border-bottom:1px solid #eee">${r.act}</td></tr>`).join('')}</tbody></table>`
+    : '<div style="color:#bbb;padding:14px;text-align:center">لا يوجد شيء جاهز بانتظار التسليم</div>';
+  const dlist = [...deliveries].sort((a,b)=>b.id-a.id);
+  document.getElementById('dv-empty').style.display = dlist.length ? 'none' : 'block';
+  document.getElementById('dv-tbody').innerHTML = dlist.map(d=>`
+    <tr>
+      <td style="text-align:center;white-space:nowrap">${isoToDMY(d.date)}</td>
+      <td style="text-align:center;font-weight:600">${escHtml(_custName(d.clientId))}</td>
+      <td style="text-align:center;font-size:.82rem">${escHtml(d.ref)}</td>
+      <td style="text-align:center">${escHtml(d.method||'استلام من الفرع')}</td>
+      <td style="text-align:center">${escHtml(d.receiver||'-')}</td>
+    </tr>`).join('');
+}
+// تسجيل تسليم موحّد لأي مرجع (أمر إنتاج أو عمل تعديل/تطريز)
+function _doDeliver(clientId, ref, onDone) {
+  const method = prompt('طريقة التسليم:\n- استلام من الفرع\n- توصيل للمنزل\n\nاكتب الطريقة أو اتركها فارغة:', 'استلام من الفرع');
+  if (method === null) return;
+  const receiver = prompt('اسم المستلم (اختياري):', '') || '';
+  deliveries.push({ id: Date.now(), clientId, ref, method: method.trim()||'استلام من الفرع',
+    receiver: receiver.trim(), date: new Date().toISOString().split('T')[0] });
+  save('deliveries');
+  if (onDone) onDone();
+  renderDeliveries();
+  alert('✔ تم تسجيل التسليم');
+}
+function deliverProdOrder(id) {
+  const o = prodOrders.find(x=>x.id===id); if (!o) return;
+  _doDeliver(o.clientId, 'أمر إنتاج #'+o.num+' — '+o.desc, ()=>{
+    o.delivered = true; save('prodOrders'); renderDeliveries();
+  });
+}
+
 // ═══════════════ ACCOUNTS — الحسابات: بوابة المصروفات والمشتريات والسندات
 function showAccounts() {
   const totalExp = expenses.reduce((t,e)=>t+e.amount,0);
@@ -4266,7 +4536,7 @@ function renderProduction() {
     const late = !o.done && o.due && o.due < today;
     const bar = PROD_STAGES.map((st,i)=>
       `<span class="${i < o.stageIdx ? 'don' : (i === o.stageIdx && !o.done ? 'cur' : (o.done?'don':''))}" title="${st}"></span>`).join('');
-    const curStage = o.done ? '✅ جاهز' : PROD_STAGES[o.stageIdx] + ' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')';
+    const curStage = o.delivered ? '📦 تم التسليم' : (o.done ? '✅ جاهز للتسليم' : PROD_STAGES[o.stageIdx] + ' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')');
     const who = !o.done && (o.assignees||{})[PROD_STAGES[o.stageIdx]] || '';
     return `
     <tr style="${late?'background:#ffebee':''}">
@@ -4280,6 +4550,7 @@ function renderProduction() {
       </td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
         ${!o.done?`<button class="btn btn-success btn-sm" onclick="advanceProdStage(${o.id})" title="إتمام مرحلة ${PROD_STAGES[o.stageIdx]}">✔ ${PROD_STAGES[o.stageIdx]}</button>`:''}
+        ${o.done&&!o.delivered?`<button class="btn btn-info btn-sm" onclick="deliverProdOrder(${o.id})" title="تسليم للعميل">📦</button>`:''}
         <button class="btn btn-info btn-sm" onclick="printProdOrder(${o.id})" title="طباعة أمر الإنتاج">🖨️</button>
         <button class="btn btn-primary btn-sm" onclick="openProdPanel(${o.id})" title="تعديل">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteProdOrder(${o.id})" title="حذف">🗑</button>
@@ -5063,7 +5334,7 @@ function applyBranding() {
 // ═══════════════ UTILS — English numerals everywhere
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function save(key) {
-  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders};
+  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders,tailorJobs,deliveries};
   lsSet(key, JSON.stringify(map[key]));
 }
 function formatNum(n) { return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2}); }
@@ -5233,6 +5504,9 @@ function exportToExcel() {
     const poRows = prodOrders.map(o=>({ 'رقم الأمر':o.num, 'العميل':_custName(o.clientId), 'الوصف':o.desc,
       'الكمية':o.qty||1, 'التسليم':o.due||'', 'الحالة':o.done?'جاهز':PROD_STAGES[o.stageIdx],
       'سجل المراحل':(o.log||[]).map(l=>l.stage+': '+l.by+' ('+l.at.split('T')[0]+')').join(' | '), 'ملاحظات':o.notes||'' }));
+    const tjRows = tailorJobs.map(j=>({ 'رقم':j.num, 'النوع':j.type, 'العميل':_custName(j.clientId), 'الوصف':j.desc,
+      'المنفذ':j.assignee||'', 'الاستلام':j.recv||'', 'التسليم':j.due||'', 'السعر':j.price||0, 'التكلفة':j.cost||0, 'الحالة':j.status, 'ملاحظات':j.notes||'' }));
+    const dvRows = deliveries.map(d=>({ 'التاريخ':d.date, 'العميل':_custName(d.clientId), 'المرجع':d.ref, 'الطريقة':d.method||'', 'المستلم':d.receiver||'' }));
     const prodRows = products.map(p=>({ 'الكود':p.code, 'الاسم':p.name, 'الفئة':p.category||'',
       'الوحدة':p.unit||'', 'سعر البيع':p.sellPrice, 'سعر الشراء':p.isService?'':(p.buyPrice||0),
       'الكمية':p.isService?'خدمة':(p.qty||0) }));
@@ -5243,7 +5517,7 @@ function exportToExcel() {
     const supRows = suppliers.map(s=>({ 'رقم المورد':s.num, 'الاسم':s.name, 'الهاتف':s.phone||'', 'الرقم الضريبي':s.taxNo||'', 'المستحق له':supplierBalance(s.id) }));
     const supPayRows = supPayments.map(p=>{ const s=suppliers.find(x=>String(x.id)===String(p.supplierId)); return { 'رقم السند':p.dsbNum||'', 'التاريخ':p.date, 'المورد':s?s.name:'', 'المبلغ':p.amount, 'الطريقة':p.method||'', 'ملاحظات':p.notes||'' }; });
     const exRows = expenses.map(e=>({ 'التاريخ':e.date, 'الفئة':e.category, 'البيان':e.desc||'', 'الفرع':e.branchName||'المركز', 'المبلغ':e.amount }));
-    [[invRows,'الفواتير'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[poRows,'أوامر الإنتاج'],[fabRows,'الأقمشة'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
+    [[invRows,'الفواتير'],[itemRows,'بنود الفواتير'],[custRows,'العملاء'],[measRows,'القياسات'],[apRows,'المواعيد'],[poRows,'أوامر الإنتاج'],[tjRows,'التعديل والتطريز'],[dvRows,'التسليمات'],[fabRows,'الأقمشة'],[prodRows,'المستودع'],[payRows,'الدفعات'],[supRows,'الموردون'],[supPayRows,'دفعات الموردين'],[exRows,'المصروفات']]
       .forEach(([rows,name])=>{
         const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'لا توجد بيانات':''}]);
         if (!wb.Workbook) wb.Workbook = {};
