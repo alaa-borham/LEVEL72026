@@ -195,6 +195,7 @@ body.ltr .dash-card::after{content:'›'}
 #fabric-panel{z-index:350}
 #prod-panel{z-index:350}
 #tj-panel{z-index:350}
+#pattern-panel{z-index:350}
 /* نافذتا الفروع وQR تُفتحان فوق نوافذ أخرى */
 #branches-modal,#qr-modal,#sup-stmt-modal{z-index:355}
 #supplier-panel{z-index:365}
@@ -452,6 +453,7 @@ const fbDB   = firebase.firestore();
   <a onclick="showMessaging();closeSb()">💬 الرسائل (واتساب)</a>
   <div class="sb-sec">الإنتاج والمخزون</div>
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
+  <a data-perm="production" onclick="showPatterns();closeSb()">🧩 البترونات</a>
   <a data-perm="production" onclick="showQRScan();closeSb()">📷 مسح QR</a>
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
   <div class="sb-sec">المبيعات والمالية</div>
@@ -684,6 +686,8 @@ const fbDB   = firebase.firestore();
         <h4 style="color:#2e7d32;margin:18px 0 12px">📦 تصدير البيانات</h4>
         <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="exportToExcel()">📊 تصدير كل البيانات إلى Excel (نسخة احتياطية)</button>
         <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="showTerms()">🏷️ إدارة المسميات (تغيير الأسماء عربي/إنجليزي)</button>
+        <div class="fg" style="margin-top:8px"><label>نظام القص للتصدير XML</label>
+          <select id="set-cad"><option>Gerber</option><option>Lectra</option><option>Optitex</option><option>Grafis</option><option>Gemini</option><option>Bullmer</option><option>عام / Generic</option></select></div>
 
         <div id="members-btn">
           <h4 style="color:#2e7d32;margin:18px 0 12px">👤 مستخدمو المنشأة</h4>
@@ -1551,6 +1555,52 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: PATTERNS (محرّك البترونات) -->
+<div class="moverlay" id="patterns-modal">
+  <div class="mbox" style="max-width:920px">
+    <div class="mhdr"><h3>🧩 محرّك البترونات</h3><button class="mcls" onclick="closeModal('patterns-modal')">✕</button></div>
+    <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="openPatternPanel()">＋ بترون جديد</button>
+      <select id="pt-filter" onchange="renderPatterns()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"><option value="">— كل الأنواع —</option></select>
+      <input type="text" id="pt-search" placeholder="🔍 بحث باسم البترون..." oninput="renderPatterns()" style="flex:1;min-width:140px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+    </div>
+    <div class="mlist">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">البترون</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">النوع</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">الإصدار</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">المكوّنات</th>
+          <th style="background:#5d9e3f;color:white;padding:8px;text-align:center">إجراءات</th>
+        </tr></thead>
+        <tbody id="patterns-tbody"></tbody>
+      </table>
+      <div id="pt-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد بترونات — اضغط "بترون جديد"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SIDE PANEL: PATTERN -->
+<div class="side-panel" id="pattern-panel">
+  <div class="spb">
+    <div class="sph"><h3 id="pt-panel-title">🧩 بترون جديد</h3><button class="spc" onclick="closeModal2('pattern-panel')">✕</button></div>
+    <div class="spbody">
+      <input type="hidden" id="pt-edit-id">
+      <div class="fg"><label>اسم البترون <span class="req">*</span></label><input type="text" id="pt-name" placeholder="مثال: ثوب كلاسيك"></div>
+      <div style="display:grid;grid-template-columns:1fr 100px;gap:10px">
+        <div class="fg"><label>النوع</label><select id="pt-garment"></select></div>
+        <div class="fg"><label>الإصدار</label><input type="text" id="pt-version" value="V1" style="text-align:center"></div>
+      </div>
+      <div class="fg"><label>المكوّنات</label><div id="pt-components" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f7faf5;border-radius:9px;padding:10px"></div></div>
+      <div class="fg"><label>ملاحظات</label><textarea id="pt-notes" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-success" style="flex:1" onclick="savePattern()">✔ حفظ</button>
+        <button class="btn" style="background:#9e9e9e;color:white" onclick="closeModal2('pattern-panel')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: LEAD TIME (مدة التنفيذ) -->
 <div class="moverlay" id="lead-modal" style="z-index:360">
   <div class="mbox" style="max-width:440px">
@@ -1658,6 +1708,7 @@ const fbDB   = firebase.firestore();
       <button class="btn btn-info" onclick="showQC()">🔍 مراقبة الجودة</button>
       <button class="btn" style="background:#5c6bc0;color:white" onclick="showQRScan()">📷 مسح QR</button>
       <button class="btn btn-outline" onclick="openLeadSettings()">⏱️ مدة التنفيذ</button>
+      <button class="btn" style="background:#7e57c2;color:white" onclick="showPatterns()">🧩 البترونات</button>
       <select id="po-filter" onchange="renderProduction()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
         <option value="جاري">⏳ تحت التنفيذ</option>
         <option value="جاهز">✅ الجاهزة</option>
@@ -2158,7 +2209,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2211,7 +2262,7 @@ function _dailyBackup(uid, data) {
 }
 
 // ═══════════════ STATE (loaded per account)
-let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[], tailorJobs=[], deliveries=[];
+let invoices=[], deletedInvoices=[], customers=[], products=[], payments=[], branches=[], suppliers=[], supPayments=[], expenses=[], measurements=[], appointments=[], fabrics=[], prodOrders=[], tailorJobs=[], deliveries=[], patterns=[];
 let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة — أساس التوزيع التلقائي للمهام
 let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
@@ -2251,6 +2302,7 @@ function loadAccountData() {
   prodOrders      = JSON.parse(lsGet('prodOrders','[]'));
   tailorJobs      = JSON.parse(lsGet('tailorJobs','[]'));
   deliveries      = JSON.parse(lsGet('deliveries','[]'));
+  patterns        = JSON.parse(lsGet('patterns','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
   measVisible     = JSON.parse(lsGet('measVisible','{}'));
   qcDefects       = JSON.parse(lsGet('qcDefects','[]'));
@@ -4522,6 +4574,7 @@ function renderMeasurements() {
         <button class="btn btn-primary btn-sm" onclick="openMeasurePanel(${m.id})" title="تعديل">✏️</button>
         <button class="btn btn-info btn-sm" onclick="printMeasurement(${m.id})" title="طباعة بطاقة القياس">🖨️</button>
         <button class="btn btn-warning btn-sm" onclick="copyMeasurement(${m.id})" title="قياس جديد بنفس القيم">📋</button>
+        <button class="btn btn-sm" style="background:#5c6bc0;color:white" onclick="exportMeasurementXML(${m.id})" title="تصدير XML لأنظمة القص">🧬 XML</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeasurement(${m.id})" title="حذف">🗑</button>
       </td>
     </tr>`;}).join('');
@@ -5435,6 +5488,104 @@ function getNextProdNum(){
   const nums = prodOrders.map(o=>parseInt(o.num)).filter(n=>!isNaN(n));
   return nums.length ? Math.max(...nums)+1 : 1;
 }
+// ═══════════════ PATTERN ENGINE — محرّك البترونات (مكتبة + إصدارات + مكوّنات)
+const PATTERN_COMPONENTS = ['أمام','خلف','كم','ياقة','كبك','جيب','جبزور','قلاب'];
+const CAD_SYSTEMS = ['Gerber','Lectra','Optitex','Grafis','Gemini','Bullmer','عام / Generic'];
+function showPatterns(){
+  if (!canAccess('production')) { permDenied('production'); return; }
+  document.getElementById('pt-filter').innerHTML = '<option value="">— كل الأنواع —</option>' + Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
+  renderPatterns();
+  document.getElementById('patterns-modal').classList.add('open');
+}
+function renderPatterns(){
+  const q=(document.getElementById('pt-search').value||'').trim().toLowerCase();
+  const ft=document.getElementById('pt-filter').value;
+  const list=patterns.filter(p=>(!ft||p.garment===ft)&&(!q||(p.name||'').toLowerCase().includes(q)));
+  document.getElementById('pt-empty').style.display=list.length?'none':'block';
+  document.getElementById('patterns-tbody').innerHTML=list.map(p=>`
+    <tr>
+      <td style="text-align:center;font-weight:700">${escHtml(p.name)}</td>
+      <td style="text-align:center">${escHtml(L(p.garment||'-'))}</td>
+      <td style="text-align:center"><span class="ap-badge" style="background:#ede7f6;color:#4527a0">${escHtml(p.version||'V1')}</span></td>
+      <td style="text-align:center;font-size:.78rem;color:#666">${(p.components||[]).map(escHtml).join('، ')||'-'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openPatternPanel(${p.id})">✏️</button>
+        <button class="btn btn-warning btn-sm" onclick="newPatternVersion(${p.id})" title="إصدار جديد">⎘ إصدار</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePattern(${p.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+function openPatternPanel(id){
+  const p=id?patterns.find(x=>x.id===id):null;
+  document.getElementById('pt-panel-title').textContent=p?'✏️ تعديل بترون':'🧩 بترون جديد';
+  document.getElementById('pt-edit-id').value=p?p.id:'';
+  document.getElementById('pt-name').value=p?p.name:'';
+  document.getElementById('pt-garment').innerHTML=Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}" ${p&&p.garment===t?'selected':''}>${escHtml(L(t))}</option>`).join('');
+  document.getElementById('pt-version').value=p?(p.version||'V1'):'V1';
+  document.getElementById('pt-notes').value=p?(p.notes||''):'';
+  document.getElementById('pt-components').innerHTML=PATTERN_COMPONENTS.map(c=>`
+    <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:.82rem"><input type="checkbox" value="${c}" ${p&&(p.components||[]).includes(c)?'checked':''} style="width:auto"> ${c}</label>`).join('');
+  document.getElementById('pattern-panel').classList.add('open');
+}
+function savePattern(){
+  const name=document.getElementById('pt-name').value.trim();
+  if(!name){alert('أدخل اسم البترون');return;}
+  const data={ name, garment:document.getElementById('pt-garment').value,
+    version:document.getElementById('pt-version').value.trim()||'V1',
+    components:[...document.querySelectorAll('#pt-components input:checked')].map(c=>c.value),
+    notes:document.getElementById('pt-notes').value.trim() };
+  const editId=document.getElementById('pt-edit-id').value;
+  if(editId){ const p=patterns.find(x=>String(x.id)===editId); if(p)Object.assign(p,data); }
+  else patterns.push({id:Date.now(),...data,createdAt:new Date().toISOString()});
+  save('patterns'); closeModal2('pattern-panel'); renderPatterns();
+}
+function newPatternVersion(id){
+  const p=patterns.find(x=>x.id===id); if(!p)return;
+  const m=String(p.version||'V1').match(/(\d+)/); const next='V'+((m?+m[1]:1)+1);
+  patterns.push({...p,id:Date.now(),version:next,createdAt:new Date().toISOString()});
+  save('patterns'); renderPatterns();
+  alert('✔ أُنشئ إصدار جديد ('+next+') من البترون «'+p.name+'»');
+}
+function deletePattern(id){ if(!confirm('حذف البترون؟'))return; patterns=patterns.filter(p=>p.id!==id); save('patterns'); renderPatterns(); }
+
+// ═══════════════ XML ENGINE — تصدير القياسات لأنظمة القص (Gerber/Lectra/Optitex...)
+function _xmlEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function exportMeasurementXML(measId){
+  const m=measurements.find(x=>x.id===measId); if(!m)return;
+  const c=_custById(m.clientId);
+  const sys=settings.cadSystem||'عام / Generic';
+  const mod=m.model||{};
+  const fab=mod.fabricId?_fabricById(mod.fabricId):null;
+  const keys=getTemplateKeys(m.template).filter(k=>m.values&&m.values[k]!=null);
+  let xml='<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml+='<TailorOrder system="'+_xmlEsc(sys)+'" generator="LEVEL7 Tailor">\n';
+  xml+='  <Company>'+_xmlEsc(settings.coName)+'</Company>\n';
+  xml+='  <Customer id="'+_xmlEsc(c?c.num:'')+'" name="'+_xmlEsc(c?c.name:'')+'" phone="'+_xmlEsc(c?c.phone:'')+'"/>\n';
+  xml+='  <Template>'+_xmlEsc(m.template)+'</Template>\n';
+  xml+='  <Date>'+_xmlEsc(m.date)+'</Date>\n';
+  xml+='  <Unit>'+(m.unit==='inch'?'inch':'cm')+'</Unit>\n';
+  xml+='  <Measurements>\n';
+  keys.forEach(k=>{ xml+='    <M key="'+_xmlEsc(k)+'" name_ar="'+_xmlEsc(MEAS_DICT[k]||k)+'" name_en="'+_xmlEsc(MEAS_EN[k]||k)+'" value="'+_xmlEsc(m.values[k])+'"/>\n'; });
+  xml+='  </Measurements>\n';
+  // الموديل
+  xml+='  <Model>\n';
+  (mod.partsSel||[]).forEach(p=>{ xml+='    <Part name="'+_xmlEsc(p.label)+'" value="'+_xmlEsc(p.value)+'"/>\n'; });
+  ['buttons','embroidery','taktak','metal'].forEach(k=>{ if(mod[k]) xml+='    <Detail name="'+k+'" value="'+_xmlEsc(mod[k])+'"/>\n'; });
+  if(mod.qty) xml+='    <Qty>'+_xmlEsc(mod.qty)+'</Qty>\n';
+  xml+='  </Model>\n';
+  if(fab) xml+='  <Fabric code="'+_xmlEsc(fab.code)+'" name="'+_xmlEsc(fab.name)+'" color="'+_xmlEsc(fab.color)+'" width="'+_xmlEsc(fab.width)+'"/>\n';
+  else if(mod.extFabric) xml+='  <Fabric name="'+_xmlEsc(mod.extFabric)+'" width="'+_xmlEsc(mod.extFabricW)+'" source="customer"/>\n';
+  // البترون المرتبط بالقالب
+  const pat=patterns.find(p=>p.garment===m.template);
+  if(pat) xml+='  <Pattern name="'+_xmlEsc(pat.name)+'" version="'+_xmlEsc(pat.version)+'" components="'+_xmlEsc((pat.components||[]).join(','))+'"/>\n';
+  xml+='</TailorOrder>\n';
+  const blob=new Blob([xml],{type:'application/xml'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='order-'+(c?c.num||'':'')+'-'+m.template+'-'+(m.date||'')+'.xml';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 let leadDays = {};
 let _prodEditing = false;
 function _todayISO(){ return new Date().toISOString().split('T')[0]; }
@@ -6342,7 +6493,7 @@ function applyBranding() {
 // ═══════════════ UTILS — English numerals everywhere
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function save(key) {
-  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders,tailorJobs,deliveries};
+  const map = {invoices,deletedInvoices,customers,products,payments,branches,suppliers,supPayments,expenses,measurements,appointments,fabrics,prodOrders,tailorJobs,deliveries,patterns};
   lsSet(key, JSON.stringify(map[key]));
 }
 function formatNum(n) { return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2}); }
@@ -6363,6 +6514,7 @@ function openSettingsForm() {
   document.getElementById('set-def-pay').value = settings.defPay;
   document.getElementById('set-terms').value   = settings.invTerms||'';
   document.getElementById('set-lang').value    = lang;
+  if(document.getElementById('set-cad')) document.getElementById('set-cad').value = settings.cadSystem||'Gerber';
 }
 function saveSettings() {
   settings.coName  = document.getElementById('set-co-name').value.trim() || DEF_SETTINGS.coName;
@@ -6373,6 +6525,7 @@ function saveSettings() {
   settings.invTerms= document.getElementById('set-terms').value.trim();
   settings.vatNo   = document.getElementById('set-vat-no').value.trim();
   settings.currency= document.getElementById('set-currency').value;
+  if(document.getElementById('set-cad')) settings.cadSystem = document.getElementById('set-cad').value;
   lsSet('appSettings', JSON.stringify(settings));
   const ni = parseInt(document.getElementById('set-next-inv').value);
   if (ni && ni>0) { nextInvNum = ni; lsSet('nextInvNum', nextInvNum); }
