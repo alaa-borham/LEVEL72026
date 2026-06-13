@@ -369,9 +369,11 @@ body.ltr .dash-card::after{content:'›'}
 .part-menu button{display:block;width:100%;text-align:start;background:#f7faf5;border:1px solid #eef2ea;border-radius:8px;padding:8px 11px;margin:3px 0;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;color:#333;transition:all .12s}
 .part-menu button:hover{background:#e8f5e9;border-color:#aed581}
 .part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
-.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px 8px}
-.ms-fields-grid .fg label{font-size:.66rem !important;margin-bottom:1px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-fields-grid .fg input{padding:5px 6px !important;font-size:.82rem}
+.ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px 9px}
+.ms-fields-grid .fg label{font-size:.66rem !important;margin-bottom:2px;line-height:1.15;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#33691e;font-weight:600}
+.ms-fields-grid .fg input{padding:6px !important;font-size:.84rem;border:1.5px solid #8bc34a !important;border-radius:9px !important;background:#fff;box-shadow:0 0 0 2px rgba(124,179,66,.1),0 0 7px rgba(124,179,66,.4);transition:border-color .15s,box-shadow .15s;text-align:center}
+.ms-fields-grid .fg input:hover{box-shadow:0 0 0 2px rgba(124,179,66,.16),0 0 9px rgba(124,179,66,.55)}
+.ms-fields-grid .fg input:focus{outline:none;border-color:#2e7d32 !important;box-shadow:0 0 0 2px rgba(46,125,50,.2),0 0 13px rgba(46,125,50,.7)}
 .ord-model .order-canvas{cursor:default}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
 @page{size:A4 portrait;margin:0 10mm}
