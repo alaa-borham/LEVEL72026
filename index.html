@@ -1551,6 +1551,22 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: LEAD TIME (مدة التنفيذ) -->
+<div class="moverlay" id="lead-modal" style="z-index:360">
+  <div class="mbox" style="max-width:440px">
+    <div class="mhdr"><h3>⏱️ مدة التنفيذ (حساب موعد التسليم)</h3><button class="mcls" onclick="closeModal('lead-modal')">✕</button></div>
+    <div style="padding:16px">
+      <div style="background:#f1f8e9;border-radius:9px;padding:9px 12px;font-size:.8rem;color:#33691e;margin-bottom:12px">
+        عند إنشاء أمر إنتاج جديد يُحسب موعد التسليم تلقائياً = تاريخ اليوم + المدة (ويبقى قابلاً للتعديل يدوياً).
+      </div>
+      <div class="fg"><label>المدة الافتراضية (أيام)</label><input type="number" min="0" id="lead-default" style="text-align:center"></div>
+      <div style="font-weight:700;color:#2e7d32;font-size:.85rem;margin:12px 0 4px">مدة مخصّصة لكل قالب (اتركها فارغة لاستخدام الافتراضي):</div>
+      <div id="lead-tpls"></div>
+      <button class="btn btn-success" style="width:100%;margin-top:14px;padding:11px" onclick="saveLeadSettings()">✔ حفظ</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: QR SCAN (مسح أوامر الإنتاج) -->
 <div class="moverlay" id="qrscan-modal">
   <div class="mbox" style="max-width:420px">
@@ -1641,6 +1657,7 @@ const fbDB   = firebase.firestore();
       <button class="btn btn-success" onclick="openProdPanel()">＋ أمر إنتاج جديد</button>
       <button class="btn btn-info" onclick="showQC()">🔍 مراقبة الجودة</button>
       <button class="btn" style="background:#5c6bc0;color:white" onclick="showQRScan()">📷 مسح QR</button>
+      <button class="btn btn-outline" onclick="openLeadSettings()">⏱️ مدة التنفيذ</button>
       <select id="po-filter" onchange="renderProduction()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
         <option value="جاري">⏳ تحت التنفيذ</option>
         <option value="جاهز">✅ الجاهزة</option>
@@ -1673,11 +1690,11 @@ const fbDB   = firebase.firestore();
     <div class="spbody">
       <input type="hidden" id="po-edit-id">
       <div class="fg"><label>العميل <span class="req">*</span></label><select id="po-client" onchange="fillProdMeas()"></select></div>
-      <div class="fg"><label>ربط بقياس محفوظ (يُطبع مع الأمر)</label><select id="po-meas"></select></div>
+      <div class="fg"><label>ربط بقياس محفوظ (يُطبع مع الأمر)</label><select id="po-meas" onchange="recalcDue()"></select></div>
       <div class="fg"><label>وصف العمل <span class="req">*</span></label><input type="text" id="po-desc" placeholder="مثال: 3 ثياب صيفي ياقة ملكي"></div>
       <div style="display:grid;grid-template-columns:90px 1fr;gap:10px">
         <div class="fg"><label>الكمية</label><input type="number" id="po-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
-        <div class="fg"><label>تاريخ التسليم</label><span class="dmy"><input type="text" id="po-due" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="fg"><label>تاريخ التسليم <span style="font-weight:400;color:#26a69a;font-size:.7rem">(يُحسب تلقائياً — قابل للتعديل)</span></label><span class="dmy"><input type="text" id="po-due" placeholder="يوم/شهر/سنة" inputmode="numeric"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
       </div>
       <div style="background:#fff8e1;border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div style="font-size:.8rem;font-weight:700;color:#b28704;margin-bottom:8px">👷 توزيع المهام على المراحل (تلقائي من آخر توزيع)</div>
@@ -2141,7 +2158,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2244,6 +2261,8 @@ function loadAccountData() {
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
   cardHidden      = JSON.parse(lsGet('cardHidden','{}'));
+  leadDays        = JSON.parse(lsGet('leadDays','{}'));
+  if (leadDays._default==null) leadDays._default = 3;
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -5416,6 +5435,39 @@ function getNextProdNum(){
   const nums = prodOrders.map(o=>parseInt(o.num)).filter(n=>!isNaN(n));
   return nums.length ? Math.max(...nums)+1 : 1;
 }
+let leadDays = {};
+let _prodEditing = false;
+function _todayISO(){ return new Date().toISOString().split('T')[0]; }
+function _addDays(iso, n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+(parseInt(n)||0)); return d.toISOString().split('T')[0]; }
+function leadFor(tpl){ const d = tpl && leadDays[tpl]; return (d!=null && d!=='') ? +d : (+leadDays._default||3); }
+function _linkedTemplate(){ const mid=document.getElementById('po-meas').value; const m=measurements.find(x=>String(x.id)===String(mid)); return m?m.template:null; }
+function recalcDue(){
+  if (_prodEditing) return;
+  document.getElementById('po-due').value = isoToDMY(_addDays(_todayISO(), leadFor(_linkedTemplate())));
+}
+// نافذة إعدادات مدة التنفيذ
+function openLeadSettings(){
+  if (currentMember) { alert('هذا الإعداد لصاحب المنشأة'); return; }
+  document.getElementById('lead-default').value = leadDays._default!=null ? leadDays._default : 3;
+  document.getElementById('lead-tpls').innerHTML = Object.keys(MEAS_TEMPLATES).map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+      <span style="flex:1;font-size:.85rem">${escHtml(L(t))}</span>
+      <input type="number" min="0" id="lead-t-${escHtml(t)}" value="${leadDays[t]!=null?leadDays[t]:''}" placeholder="افتراضي" style="width:90px;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;text-align:center">
+      <span style="font-size:.78rem;color:#999">يوم</span>
+    </div>`).join('');
+  document.getElementById('lead-modal').classList.add('open');
+}
+function saveLeadSettings(){
+  leadDays = { _default: parseInt(document.getElementById('lead-default').value)||0 };
+  Object.keys(MEAS_TEMPLATES).forEach(t=>{
+    const v = document.getElementById('lead-t-'+t).value.trim();
+    if (v!=='') leadDays[t] = parseInt(v)||0;
+  });
+  lsSet('leadDays', JSON.stringify(leadDays));
+  closeModal('lead-modal');
+  alert('✔ حُفظت مدد التنفيذ — ستُحسب مواعيد التسليم تلقائياً للأوامر الجديدة');
+}
+
 function showProduction() {
   if (!canAccess('production')) { permDenied('production'); return; }
   renderProduction();
@@ -5460,12 +5512,13 @@ function openProdPanel(editId) {
   if (!customers.length) { alert('أضف عميلاً أولاً من شاشة العملاء'); return; }
   const o = editId ? prodOrders.find(x=>x.id===editId) : null;
   document.getElementById('po-panel-title').textContent = o ? '✏️ تعديل أمر إنتاج #'+o.num : '🏭 أمر إنتاج جديد';
+  _prodEditing = !!o;
   document.getElementById('po-edit-id').value = o ? o.id : '';
   document.getElementById('po-client').innerHTML = _custOptions(o ? o.clientId : null);
   fillProdMeas(o ? o.measId : null);
   document.getElementById('po-desc').value = o ? o.desc : '';
   document.getElementById('po-qty').value  = o ? (o.qty||1) : 1;
-  document.getElementById('po-due').value  = o && o.due ? isoToDMY(o.due) : '';
+  document.getElementById('po-due').value  = o && o.due ? isoToDMY(o.due) : isoToDMY(_addDays(_todayISO(), leadFor(o ? null : _linkedTemplate())));
   document.getElementById('po-notes').value = o ? (o.notes||'') : '';
   // توزيع المهام: من الأمر عند التعديل — أو تلقائياً من آخر توزيع محفوظ
   const asg = o ? (o.assignees||{}) : prodAssignees;
