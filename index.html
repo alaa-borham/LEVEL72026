@@ -423,6 +423,7 @@ const fbDB   = firebase.firestore();
   <a id="sb-members" onclick="showMembers();closeSb()">🧑‍💼 المستخدمون</a>
   <a id="sb-branches" onclick="showBranches();closeSb()">🏬 الفروع</a>
   <a data-perm="archive" onclick="showScreen('archive-screen');closeSb()">🗂️ الأرشيف</a>
+  <a id="sb-terms" onclick="showTerms();closeSb()">🏷️ المسميات</a>
   <a data-perm="settings" onclick="showScreen('settings-screen');closeSb()">⚙️ الإعدادات</a>
 </div>
 <button id="sb-toggle" onclick="toggleSb()">☰</button>
@@ -621,6 +622,7 @@ const fbDB   = firebase.firestore();
 
         <h4 style="color:#2e7d32;margin:18px 0 12px">📦 تصدير البيانات</h4>
         <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="exportToExcel()">📊 تصدير كل البيانات إلى Excel (نسخة احتياطية)</button>
+        <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="showTerms()">🏷️ إدارة المسميات (تغيير الأسماء عربي/إنجليزي)</button>
 
         <div id="members-btn">
           <h4 style="color:#2e7d32;margin:18px 0 12px">👤 مستخدمو المنشأة</h4>
@@ -1365,6 +1367,15 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: TERMINOLOGY (إدارة المسميات) -->
+<div class="moverlay" id="terms-modal">
+  <div class="mbox" style="max-width:720px">
+    <div class="mhdr"><h3>🏷️ إدارة المسميات</h3><button class="mcls" onclick="closeModal('terms-modal')">✕</button></div>
+    <div style="padding:8px 16px;background:#f1f8e9;font-size:.78rem;color:#33691e">غيّر اسم أي مصطلح كما تريد. اترك الحقل فارغاً ليبقى الأصلي. الإنجليزي يظهر تلقائياً عند تبديل اللغة (وإن تركته يُستخدم الافتراضي).</div>
+    <div class="mlist" id="terms-body" style="padding:6px 16px 16px"></div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: MESSAGING (مركز الرسائل واتساب) -->
 <div class="moverlay" id="messaging-modal">
   <div class="mbox" style="max-width:480px">
@@ -2069,7 +2080,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2169,6 +2180,7 @@ function loadAccountData() {
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
+  customLabels    = JSON.parse(lsGet('customLabels','{}'));
   nextInvNum      = parseInt(lsGet('nextInvNum','1'));
   nextRcptNum     = parseInt(lsGet('nextRcptNum','1'));
   nextDsbNum      = parseInt(lsGet('nextDsbNum','1'));
@@ -2396,7 +2408,7 @@ function _afterFirebaseLogin(user) {
     document.getElementById('acc-name').textContent = '👤 '+profile.biz
       + (member ? ' — '+member.name + (member.branchName ? ' (🏬 '+member.branchName+')' : '') : '');
     // إدارة المستخدمين والفروع متاحة لصاحب المنشأة فقط
-    ['members-btn','card-members','card-branches','sb-members','sb-branches'].forEach(i=>{
+    ['members-btn','card-members','card-branches','sb-members','sb-branches','sb-terms'].forEach(i=>{
       const el = document.getElementById(i);
       if (el) el.style.display = member ? 'none' : '';
     });
@@ -4110,6 +4122,61 @@ function renderCustomers() {
 
 // ═══════════════ MEASUREMENT ENGINE — محرك القياسات (قاموس + قوالب + قواعد تحقق)
 // قاموس القياسات: مفتاح ثابت → التسمية العربية (كل القيم بالسنتيمتر)
+// ═══════════════ TERMINOLOGY — إدارة المسميات (تغيير اسم أي مصطلح + إنجليزي تلقائي)
+let customLabels = {};
+const TERM_EN_DEF = {
+  'ثوب سعودي':'Saudi Thobe','ثوب أطفال':'Kids Thobe','قميص':'Shirt','بنطلون':'Trouser','بدلة':'Suit','عباية':'Abaya','يونيفورم':'Uniform',
+  'استلام':'Receiving','قص':'Cutting','تجهيز':'Preparation','خياطة':'Sewing','تشطيب':'Finishing','كي':'Ironing','فحص':'Inspection','تغليف':'Packing','جاهز':'Ready',
+  'قياس':'Measurement','بروفة':'Fitting',
+  'قيد التنفيذ':'In Progress','تم التسليم':'Delivered','قادم':'Upcoming','تم':'Done','ملغي':'Cancelled',
+  'تعديل':'Alteration','تطريز':'Embroidery',
+};
+function L(t){
+  const c = customLabels[t];
+  if (typeof lang!=='undefined' && lang!=='ar') return (c&&c.en) || TERM_EN_DEF[t] || (c&&c.ar) || t;
+  return (c&&c.ar) || t;
+}
+function getTermGroups(){
+  return [
+    { title:'🧵 القوالب', terms:Object.keys(MEAS_TEMPLATES) },
+    { title:'🏭 مراحل الإنتاج', terms:PROD_STAGES },
+    { title:'📅 أنواع المواعيد', terms:['قياس','بروفة','استلام'] },
+    { title:'✂️ أنواع الأعمال', terms:['تعديل','تطريز'] },
+    { title:'🏷️ الحالات', terms:['قيد التنفيذ','جاهز','تم التسليم','قادم','تم','ملغي'] },
+  ];
+}
+function showTerms(){
+  if (currentMember) { alert('هذا الإعداد لصاحب المنشأة'); return; }
+  renderTerms();
+  document.getElementById('terms-modal').classList.add('open');
+}
+function renderTerms(){
+  document.getElementById('terms-body').innerHTML = getTermGroups().map(g=>`
+    <div style="font-weight:800;color:#2e7d32;font-size:.9rem;margin:14px 0 6px">${g.title}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="text-align:start;font-size:.74rem;color:#999;padding:3px 6px">الأصلي</th>
+        <th style="text-align:start;font-size:.74rem;color:#999;padding:3px 6px">الاسم المعروض (عربي)</th>
+        <th style="text-align:start;font-size:.74rem;color:#999;padding:3px 6px">English</th>
+      </tr></thead>
+      <tbody>${g.terms.map(t=>{
+        const c = customLabels[t]||{};
+        const te = escHtml(t).replace(/'/g,"\\'");
+        return `<tr>
+          <td style="padding:3px 6px;font-size:.8rem;color:#777;white-space:nowrap">${escHtml(t)}</td>
+          <td style="padding:3px 6px"><input type="text" value="${escHtml(c.ar||'')}" placeholder="${escHtml(t)}" oninput="setTerm('${te}','ar',this.value)" style="width:100%;padding:5px 7px;border:1.5px solid #cde;border-radius:6px;font-family:inherit;font-size:.83rem"></td>
+          <td style="padding:3px 6px"><input type="text" dir="ltr" value="${escHtml(c.en||'')}" placeholder="${escHtml(TERM_EN_DEF[t]||'')}" oninput="setTerm('${te}','en',this.value)" style="width:100%;padding:5px 7px;border:1.5px solid #cde;border-radius:6px;font-family:inherit;font-size:.83rem"></td>
+        </tr>`;}).join('')}</tbody>
+    </table>`).join('');
+}
+function setTerm(term, field, val){
+  customLabels[term] = customLabels[term] || {};
+  val = val.trim();
+  if (val) customLabels[term][field] = val;
+  else { delete customLabels[term][field]; if (!Object.keys(customLabels[term]).length) delete customLabels[term]; }
+  lsSet('customLabels', JSON.stringify(customLabels));
+}
+
 const MEAS_DICT = {
   // ── قائمة الثوب السعودي المعتمدة (بالتسلسل 0-41)
   frontLength:'الطول الكلي الأمامي', backLength:'الطول الكلي الخلفي',
@@ -4201,7 +4268,7 @@ function showMeasurements(filterClientId) {
     '<option value="">— كل العملاء —</option>' + _custOptions();
   document.getElementById('ms-filter-client').value = filterClientId ? String(filterClientId) : '';
   document.getElementById('ms-filter-template').innerHTML =
-    '<option value="">— كل القوالب —</option>' + Object.keys(MEAS_TEMPLATES).map(t=>`<option>${t}</option>`).join('');
+    '<option value="">— كل القوالب —</option>' + Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
   renderMeasurements();
   document.getElementById('measurements-modal').classList.add('open');
 }
@@ -4229,7 +4296,7 @@ function renderMeasurements() {
     <tr>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">${isoToDMY(m.date)}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:600">${escHtml(_custName(m.clientId))}</td>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(m.template)}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(L(m.template))}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-size:.78rem;color:#555">${summary||'-'}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
         <button class="btn btn-primary btn-sm" onclick="openMeasurePanel(${m.id})" title="تعديل">✏️</button>
@@ -4248,7 +4315,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   document.getElementById('ms-edit-id').value = m ? m.id : '';
   document.getElementById('ms-client').innerHTML = _custOptions(src ? src.clientId : presetClientId);
   document.getElementById('ms-template').innerHTML =
-    Object.keys(MEAS_TEMPLATES).map(t=>`<option ${src && src.template===t?'selected':''}>${t}</option>`).join('');
+    Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}" ${src && src.template===t?'selected':''}>${escHtml(L(t))}</option>`).join('');
   document.getElementById('ms-date').value = m ? isoToDMY(m.date) : todayDMY();
   document.getElementById('ms-notes').value = src ? (src.notes||'') : '';
   const mod = (src && src.model) || {};
@@ -4401,7 +4468,7 @@ document.addEventListener('click', e=>{ if (!e.target.closest('#part-menu') && !
 
 function openMeasSettings() {
   document.getElementById('mset-template').innerHTML =
-    Object.keys(MEAS_TEMPLATES).map(t=>`<option>${t}</option>`).join('');
+    Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
   msetTab('fields');
   renderMeasSettings();
   document.getElementById('meas-settings-modal').classList.add('open');
@@ -4931,13 +4998,13 @@ function renderTailorJobs() {
     return `
     <tr style="${late?'background:#ffebee':''}">
       <td style="text-align:center;font-weight:700;direction:ltr">#${j.num}</td>
-      <td style="text-align:center"><span class="ap-badge" style="${tBadge}">${escHtml(j.type)}</span></td>
+      <td style="text-align:center"><span class="ap-badge" style="${tBadge}">${escHtml(L(j.type))}</span></td>
       <td style="text-align:center;font-weight:600">${escHtml(_custName(j.clientId))}</td>
       <td style="text-align:center;font-size:.82rem">${escHtml(j.desc)}</td>
       <td style="text-align:center;font-size:.82rem">${escHtml(j.assignee||'-')}</td>
       <td style="text-align:center;white-space:nowrap${late?';color:#c62828;font-weight:700':''}">${j.due?isoToDMY(j.due):'-'}${late?' ⚠️':''}</td>
       <td style="text-align:center">${j.price?formatNum(j.price):'-'}</td>
-      <td style="text-align:center"><span class="ap-badge" style="${stColor[j.status]||''}">${escHtml(j.status)}</span></td>
+      <td style="text-align:center"><span class="ap-badge" style="${stColor[j.status]||''}">${escHtml(L(j.status))}</span></td>
       <td style="text-align:center;white-space:nowrap">
         ${j.status==='قيد التنفيذ'?`<button class="btn btn-success btn-sm" onclick="setTJStatus(${j.id},'جاهز')" title="تم الإنجاز">✔</button>`:''}
         ${j.status==='جاهز'?`<button class="btn btn-info btn-sm" onclick="deliverTailorJob(${j.id})" title="تسليم للعميل">📦</button>`:''}
@@ -5166,7 +5233,7 @@ function renderProduction() {
     const late = !o.done && o.due && o.due < today;
     const bar = PROD_STAGES.map((st,i)=>
       `<span class="${i < o.stageIdx ? 'don' : (i === o.stageIdx && !o.done ? 'cur' : (o.done?'don':''))}" title="${st}"></span>`).join('');
-    const curStage = o.delivered ? '📦 تم التسليم' : (o.done ? '✅ جاهز للتسليم' : PROD_STAGES[o.stageIdx] + ' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')');
+    const curStage = o.delivered ? '📦 '+L('تم التسليم') : (o.done ? '✅ '+L('جاهز') : L(PROD_STAGES[o.stageIdx]) + ' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')');
     const who = !o.done && (o.assignees||{})[PROD_STAGES[o.stageIdx]] || '';
     return `
     <tr style="${late?'background:#ffebee':''}">
@@ -5179,7 +5246,7 @@ function renderProduction() {
         <div style="font-size:.74rem;margin-top:3px;font-weight:600">${curStage}${who?' — '+escHtml(who):''}</div>
       </td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
-        ${!o.done?`<button class="btn btn-success btn-sm" onclick="advanceProdStage(${o.id})" title="إتمام مرحلة ${PROD_STAGES[o.stageIdx]}">✔ ${PROD_STAGES[o.stageIdx]}</button>`:''}
+        ${!o.done?`<button class="btn btn-success btn-sm" onclick="advanceProdStage(${o.id})" title="إتمام مرحلة ${L(PROD_STAGES[o.stageIdx])}">✔ ${escHtml(L(PROD_STAGES[o.stageIdx]))}</button>`:''}
         ${o.done&&!o.delivered?`<button class="btn btn-info btn-sm" onclick="deliverProdOrder(${o.id})" title="تسليم للعميل">📦</button>
         <button class="btn btn-sm" style="background:#25d366;color:white" onclick="sendWA('${o.clientId}','ready')" title="إشعار العميل: جاهز">📲</button>`:''}
         <button class="btn btn-info btn-sm" onclick="printProdOrder(${o.id})" title="طباعة أمر الإنتاج">🖨️</button>
@@ -5214,7 +5281,7 @@ function fillProdMeas(selectedId) {
   const list = measurements.filter(m=>String(m.clientId)===String(cid))
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   document.getElementById('po-meas').innerHTML = '<option value="">— بدون —</option>' +
-    list.map(m=>`<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${isoToDMY(m.date)} — ${escHtml(m.template)}</option>`).join('');
+    list.map(m=>`<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${isoToDMY(m.date)} — ${escHtml(L(m.template))}</option>`).join('');
 }
 function saveProdOrder() {
   const clientId = document.getElementById('po-client').value;
@@ -5279,7 +5346,7 @@ function printProdOrder(id) {
   // القياسات المرتبطة تطبع داخل الأمر حتى لا يحتاج القصّاص ورقة ثانية
   const m = o.measId ? measurements.find(x=>String(x.id)===String(o.measId)) : null;
   document.getElementById('pp-meas').innerHTML = m ? (
-    '<div style="font-size:.82rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(m.template)+'):</div>' +
+    '<div style="font-size:.82rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(L(m.template))+'):</div>' +
     '<div class="mp-grid" style="margin:0">' +
     (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>m.values && m.values[k])
       .map(k=>`<div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('') +
@@ -5360,8 +5427,8 @@ function _showScannedOrder(num) {
     <div style="background:#f1f8e9;border:1.5px solid #aed581;border-radius:12px;padding:14px;text-align:center">
       <div style="font-weight:800;font-size:1.05rem;direction:ltr">أمر #${o.num}</div>
       <div style="margin:4px 0">${escHtml(_custName(o.clientId))} — ${escHtml(o.desc)}</div>
-      <div style="margin:6px 0">المرحلة الحالية: <b style="color:#1b5e20">${escHtml(stage)}</b></div>
-      ${!o.done?`<button class="btn btn-success" onclick="advanceProdStage(${o.id});_showScannedOrder(${o.num})" style="margin-top:6px">✔ إتمام مرحلة «${escHtml(PROD_STAGES[o.stageIdx])}»</button>`
+      <div style="margin:6px 0">المرحلة الحالية: <b style="color:#1b5e20">${escHtml(L(stage))}</b></div>
+      ${!o.done?`<button class="btn btn-success" onclick="advanceProdStage(${o.id});_showScannedOrder(${o.num})" style="margin-top:6px">✔ إتمام مرحلة «${escHtml(L(PROD_STAGES[o.stageIdx]))}»</button>`
         :`<div style="color:#2e7d32;font-weight:700;margin-top:6px">✅ الأمر مكتمل وجاهز</div>`}
     </div>`;
 }
@@ -5428,8 +5495,8 @@ function renderAppointments() {
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;direction:ltr">${a.time||'-'}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:600">${escHtml(_custName(a.clientId))}
         ${a.notes?`<div style="font-size:.72rem;color:#888;font-weight:400">${escHtml(a.notes)}</div>`:''}</td>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center"><span class="ap-badge" style="${typeColor[a.type]||''}">${escHtml(a.type)}</span></td>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center"><span class="ap-badge" style="${stColor[a.status]||''}">${escHtml(a.status)}</span></td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center"><span class="ap-badge" style="${typeColor[a.type]||''}">${escHtml(L(a.type))}</span></td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center"><span class="ap-badge" style="${stColor[a.status]||''}">${escHtml(L(a.status))}</span></td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
         ${a.status==='قادم' ? `
           <button class="btn btn-success btn-sm" onclick="setAppStatus(${a.id},'تم')" title="تم الحضور">✔</button>
