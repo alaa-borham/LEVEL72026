@@ -397,9 +397,9 @@ body.ltr .dash-card::after{content:'›'}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:6px}
 .ord-model .order-canvas{flex:1 1 auto;min-height:0;aspect-ratio:420/640;width:auto;max-width:100%;margin:auto;position:relative}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.ord-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px 8px;background:#f0f9f8;border:1px solid #c8e6e2;border-radius:10px;padding:9px 11px;margin-top:10px}
-.ord-details label{font-size:.73rem !important;font-weight:800;color:#00796b;margin-bottom:2px}
-.ord-details input,.ord-details select{padding:7px 8px !important;font-size:.9rem;font-weight:700;color:#114b44;border:2px solid #26a69a !important;border-radius:9px !important;background:#fff;box-shadow:0 0 0 2px rgba(38,166,154,.14),0 0 10px rgba(38,166,154,.48);transition:border-color .15s,box-shadow .15s}
+.ord-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px 7px;background:#f0f9f8;border:1px solid #c8e6e2;border-radius:10px;padding:7px 9px;margin-top:8px}
+.ord-details label{font-size:.68rem !important;font-weight:800;color:#00796b;margin-bottom:1px}
+.ord-details input,.ord-details select{padding:5px 7px !important;font-size:.84rem;font-weight:700;color:#114b44;border:1.5px solid #26a69a !important;border-radius:8px !important;background:#fff;box-shadow:0 0 0 1px rgba(38,166,154,.12),0 0 7px rgba(38,166,154,.38);transition:border-color .15s,box-shadow .15s}
 .ord-details input:hover,.ord-details select:hover{box-shadow:0 0 0 2px rgba(38,166,154,.2),0 0 13px rgba(38,166,154,.62)}
 .ord-details input:focus,.ord-details select:focus{outline:none;border-color:#00897b !important;box-shadow:0 0 0 3px rgba(0,137,123,.22),0 0 17px rgba(0,150,136,.72)}
 @media(max-width:720px){
@@ -1212,6 +1212,7 @@ const fbDB   = firebase.firestore();
     <div class="mhdr"><h3>📐 سجل القياسات</h3><button class="mcls" onclick="closeModal('measurements-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openMeasurePanel()">＋ طلب تفصيل جديد</button>
+      <button class="btn" style="background:#f57c00;color:#fff" onclick="showHeldOrders()">⏸ الطلبات المعلّقة</button>
       <button class="btn btn-info" onclick="openMeasSettings()">⚙️ إعدادات الحقول</button>
       <select id="ms-filter-client" onchange="renderMeasurements()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;min-width:170px">
         <option value="">— كل العملاء —</option>
@@ -1362,6 +1363,40 @@ const fbDB   = firebase.firestore();
 
 <!-- قائمة اختيار جزء الموديل (تظهر عند الضغط على الرسم) -->
 <div class="part-menu" id="part-menu"><h5 id="pm-title"></h5><div id="pm-options"></div></div>
+
+<!-- ═══════════════ MODAL: CHECKOUT (إتمام البيع) -->
+<div class="moverlay" id="checkout-modal" style="z-index:360">
+  <div class="mbox" style="max-width:520px">
+    <div class="mhdr"><h3 id="co-title">إتمام البيع</h3><button class="mcls" onclick="skipCheckout()">✕</button></div>
+    <div style="padding:16px">
+      <div style="font-weight:800;color:#1b5e20;font-size:.85rem;margin-bottom:6px">💵 أسعار القطع</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+        <thead><tr><th style="text-align:start;font-size:.74rem;color:#888;padding:3px">القطعة</th><th style="font-size:.74rem;color:#888;padding:3px">السعر</th></tr></thead>
+        <tbody id="co-rows"></tbody>
+      </table>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <label style="font-size:.82rem;font-weight:600">الضريبة %</label>
+        <input type="number" id="co-tax" min="0" step="0.5" oninput="coCalc()" style="width:80px;padding:6px;border:1.5px solid #ddd;border-radius:7px;text-align:center">
+      </div>
+      <div style="background:#f7faf5;border-radius:9px;padding:10px 12px;font-size:.88rem;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">المجموع: <b id="co-sub">0</b></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">الضريبة: <b id="co-taxv">0</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:1.08rem;color:#1b5e20;font-weight:800">الإجمالي: <span id="co-grand">0</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="fg" style="margin:0"><label>المدفوع الآن</label><input type="number" id="co-paid" min="0" step="1" oninput="coCalc()" style="text-align:center"></div>
+        <div class="fg" style="margin:0"><label>طريقة الدفع</label>
+          <select id="co-method"><option>كاش</option><option>مدى</option><option>تحويل</option><option>آجل</option></select></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.88rem;color:#c75a00;font-weight:700;margin-bottom:10px">المتبقّي: <span id="co-remain">0</span></div>
+      <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:.85rem;margin-bottom:12px"><input type="checkbox" id="co-prod" checked style="width:auto"> إنشاء أمر إنتاج لهذا الطلب</label>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success" style="flex:1;padding:12px" onclick="confirmCheckout()">✔ تأكيد البيع</button>
+        <button class="btn" style="background:#9e9e9e;color:#fff;padding:12px 18px" onclick="skipCheckout()">حفظ الطلب فقط</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════ MODAL: PRIOR ORDERS (طلبات العميل السابقة) -->
 <div class="moverlay" id="prior-modal" style="z-index:360">
@@ -4920,7 +4955,7 @@ function renderMeasFields(values) {
   const keys = getTemplateKeys(tpl).filter(k => hidden[k] !== false);
   document.getElementById('ms-fields').innerHTML = keys.map(k=>`
     <div class="fg" style="margin:0">
-      <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:600;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
+      <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
         value="${values && values[k] != null ? values[k] : ''}" oninput="validateMeasLive()">
     </div>`).join('');
@@ -5344,7 +5379,10 @@ function _resetPieceForm(){
 function addPieceToOrder(){
   if (document.getElementById('ms-edit-id').value){ alert('تعديل طلب محفوظ لا يدعم إضافة قطع'); return; }
   const d=_buildMeasData(); if(!d) return;
-  _orderBasket.push(d); _resetPieceForm(); renderOrderBasket();
+  // عدد القطع: تُضاف نفس المواصفات بالعدد المحدد
+  const n = Math.max(1, parseInt(document.getElementById('mm-qty').value)||1);
+  for (let i=0;i<n;i++){ const c=JSON.parse(JSON.stringify(d)); if(c.model) c.model.qty=1; _orderBasket.push(c); }
+  _resetPieceForm(); renderOrderBasket();
 }
 function saveMeasurement() {
   const editId = document.getElementById('ms-edit-id').value;
@@ -5365,14 +5403,75 @@ function saveMeasurement() {
   save('measurements');
   _orderBasket=[];
   autoNotify(clientId,'received','إرسال رسالة واتساب للعميل بتأكيد استلام طلبه؟');
-  if (canAccess('production') && confirm('✔ حُفظ الطلب #'+orderNo+' ('+pieces.length+' قطعة).\nإنشاء أمر إنتاج لهذا الطلب؟')) {
-    const desc = 'طلب #'+orderNo+' — '+pieces.length+' قطعة ('+pieces.map(p=>L(p.template)).join('، ')+')';
-    showScreen('dashboard');
-    openProdPanel(null, { clientId, measId:ids[0], desc, qty:pieces.length });
-    return;
-  }
-  closeMeasure();
+  _pendingCheckout = { clientId, orderNo, measIds:ids,
+    pieces: pieces.map((p,i)=>({ measId:ids[i], label:(p.name||L(p.template)), template:p.template })) };
+  openCheckout();
 }
+
+// ═══════════════ CHECKOUT — إتمام البيع: السعر + الدفع + التأكيد
+let _pendingCheckout = null;
+function openCheckout(){
+  const pc=_pendingCheckout; if(!pc) return;
+  const c=_custById(pc.clientId);
+  document.getElementById('co-title').textContent='إتمام طلب #'+pc.orderNo+' — '+(c?c.name:'');
+  document.getElementById('co-tax').value = settings.taxRate||0;
+  document.getElementById('co-rows').innerHTML = pc.pieces.map((p,i)=>`
+    <tr><td style="padding:5px;text-align:start">${escHtml(p.label)}</td>
+    <td style="padding:5px"><input type="number" id="co-price-${i}" min="0" step="1" oninput="coCalc()" style="width:100px;padding:6px;border:1.5px solid #ddd;border-radius:7px;text-align:center"></td></tr>`).join('');
+  document.getElementById('co-paid').value=''; document.getElementById('co-method').value='كاش';
+  document.getElementById('co-prod').checked=true;
+  coCalc();
+  showScreen('dashboard');
+  document.getElementById('checkout-modal').classList.add('open');
+}
+function coCalc(){
+  const pc=_pendingCheckout; if(!pc) return;
+  let sub=0; pc.pieces.forEach((p,i)=>{ sub+=parseFloat(document.getElementById('co-price-'+i).value)||0; });
+  const taxR=parseFloat(document.getElementById('co-tax').value)||0;
+  const tax=sub*taxR/100, grand=sub+tax;
+  const paid=parseFloat(document.getElementById('co-paid').value)||0;
+  document.getElementById('co-sub').textContent=formatNum(sub);
+  document.getElementById('co-taxv').textContent=formatNum(tax);
+  document.getElementById('co-grand').textContent=formatNum(grand);
+  document.getElementById('co-remain').textContent=formatNum(Math.max(0,grand-paid));
+}
+function confirmCheckout(){
+  const pc=_pendingCheckout; if(!pc) return;
+  const c=_custById(pc.clientId);
+  const items=pc.pieces.map((p,i)=>{ const price=parseFloat(document.getElementById('co-price-'+i).value)||0; return {desc:p.label,qty:1,price,disc:0,total:price,productId:null}; });
+  const sub=items.reduce((s,i)=>s+i.total,0);
+  const taxR=parseFloat(document.getElementById('co-tax').value)||0;
+  const tax=sub*taxR/100, grand=sub+tax;
+  const method=document.getElementById('co-method').value;
+  const paid=parseFloat(document.getElementById('co-paid').value)||0;
+  if(grand<=0 && !confirm('لم تُدخل أسعاراً — حفظ الطلب بدون فاتورة؟')) return;
+  let invNum=null;
+  if(grand>0){
+    editingInvId=null; returnForInvId=null;
+    const inv={ id:Date.now(), invNum:nextInvNum, clientId:pc.clientId, clientInvNum:null,
+      date:_todayISO(), type:'فاتورة مبيعات', payment:method, clientNum:c?c.num:'', clientName:c?c.name:'',
+      clientPhone:c?c.phone:'', returnForId:null, taxRate:taxR, items, subtotal:sub, totalDisc:0, tax, grand,
+      issuedAt:new Date().toISOString(), orderNo:pc.orderNo, branchId:null, branchName:'' };
+    _storeInvoice(inv); invNum=inv.invNum;
+    logAction('بيع طلب','طلب #'+pc.orderNo+' — '+formatNum(grand)+' '+curName());
+    if(paid>0){ payments.push({id:Date.now()+1,clientId:pc.clientId,date:_todayISO(),type:'دفعة',amount:paid,method,notes:'دفعة عند البيع — طلب #'+pc.orderNo}); save('payments'); }
+  }
+  // أمر إنتاج
+  if(document.getElementById('co-prod').checked && canAccess('production')){
+    const desc='طلب #'+pc.orderNo+' — '+pc.pieces.length+' قطعة ('+pc.pieces.map(p=>L(p.template)).join('، ')+')';
+    prodOrders.push({ id:Date.now()+2, num:getNextProdNum(), clientId:pc.clientId, measId:pc.measIds[0],
+      desc, qty:pc.pieces.length, due:_addDays(_todayISO(), leadFor(pc.pieces[0].template)),
+      stageIdx:0, done:false, log:[], assignees:{...prodAssignees}, createdAt:new Date().toISOString(), invNum });
+    save('prodOrders');
+    logAction('أمر إنتاج','طلب #'+pc.orderNo);
+  }
+  closeModal('checkout-modal');
+  _pendingCheckout=null;
+  renderDashStats(); renderDashboard();
+  alert('✔ تم إتمام الطلب'+(invNum?' وإصدار الفاتورة #'+invNum:'')+(paid>0?' وتسجيل دفعة '+formatNum(paid):''));
+  showMeasurements();
+}
+function skipCheckout(){ closeModal('checkout-modal'); _pendingCheckout=null; closeMeasure(); }
 function _closeAllOverlays() {
   document.querySelectorAll('.moverlay.open, .side-panel.open').forEach(el=>el.classList.remove('open'));
 }
