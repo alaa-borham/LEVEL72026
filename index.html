@@ -386,6 +386,8 @@ body.ltr .dash-card::after{content:'›'}
 .ord-page{min-height:100vh;display:flex;flex-direction:column;padding:10px 16px}
 .ord-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #e6ece0;margin-bottom:10px;flex-shrink:0}
 .ord-head select,.ord-head input{padding:7px 10px;border:1.5px solid #cdd;border-radius:7px;font-family:inherit;font-size:.92rem;font-weight:700;background:#fff}
+.ord-idbox{display:flex;gap:7px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,#e3f0ff,#eef4ff);border:1.5px solid #b3d1f5;border-radius:11px;padding:6px 9px}
+.ord-idbox select,.ord-idbox input{border-color:#9cc1ee !important}
 .unit-tog{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:8px;overflow:hidden}
 .unit-tog button{border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;color:#666}
 .unit-tog button.active{background:#2e7d32;color:#fff}
@@ -403,7 +405,7 @@ body.ltr .dash-card::after{content:'›'}
 @media(max-width:720px){
   .ord-body{grid-template-columns:1fr}
   .ord-model{position:static;order:-1;height:auto}
-  .ord-model .order-canvas{flex:none;width:auto;max-height:62vh;margin:0 auto}
+  .ord-model .order-canvas{flex:none;height:60vh;width:auto;max-width:100%;margin:0 auto}
 }
 /* حاوية الصورة التفاعلية ونقاطها */
 .order-canvas{position:relative;width:100%;background:#fff;border-radius:12px;overflow:hidden}
@@ -429,7 +431,8 @@ body.ltr .dash-card::after{content:'›'}
 .part-menu button:hover{background:#e8f5e9;border-color:#aed581}
 .part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
 .ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px 9px}
-.ms-fields-grid .fg label{font-size:.73rem !important;margin-bottom:2px;line-height:1.18;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#2e7d32;font-weight:800}
+.ms-fields-grid .fg{display:flex;flex-direction:column}
+.ms-fields-grid .fg label{font-size:.7rem !important;margin-bottom:3px;line-height:1.2;min-height:2.5em;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#2e7d32;font-weight:800;overflow:hidden}
 .ms-fields-grid .fg input{padding:7px 6px !important;font-size:.94rem;font-weight:800;color:#13301f;border:2px solid #7cb342 !important;border-radius:9px !important;background:#fff;box-shadow:0 0 0 2px rgba(124,179,66,.16),0 0 10px rgba(124,179,66,.55);transition:border-color .15s,box-shadow .15s;text-align:center}
 .ms-fields-grid .fg input:hover{box-shadow:0 0 0 2px rgba(124,179,66,.22),0 0 13px rgba(124,179,66,.7)}
 .ms-fields-grid .fg input:focus{outline:none;border-color:#1b5e20 !important;box-shadow:0 0 0 3px rgba(46,125,50,.24),0 0 17px rgba(46,125,50,.85)}
@@ -466,6 +469,7 @@ const fbDB   = firebase.firestore();
   <a data-perm="tailoring" onclick="showTailorJobs('تطريز');closeSb()">🪡 التطريز</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تعديل');closeSb()">🧷 التعديل</a>
   <a data-perm="tailoring" onclick="showDeliveries();closeSb()">📦 التسليم</a>
+  <a data-perm="tailoring" onclick="showHeldOrders();closeSb()">⏸ الطلبات المعلّقة</a>
   <a onclick="showMessaging();closeSb()">💬 الرسائل (واتساب)</a>
   <div class="sb-sec">الإنتاج والمخزون</div>
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
@@ -608,7 +612,7 @@ const fbDB   = firebase.firestore();
       <p data-i18n="appSubtitle">نظام إدارة الخياطة والتفصيل</p>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="hero-cta" style="background:linear-gradient(135deg,#7e57c2,#4527a0);box-shadow:0 8px 24px rgba(126,87,194,.35)" onclick="openMeasurePanel()" data-perm="tailoring">📐 قياس جديد</button>
+      <button class="hero-cta" style="background:linear-gradient(135deg,#7e57c2,#4527a0);box-shadow:0 8px 24px rgba(126,87,194,.35)" onclick="openMeasurePanel()" data-perm="tailoring">📐 طلب تفصيل</button>
       <button class="hero-cta" onclick="newInvoice()" data-i18n="heroCta" data-perm="invoices">➕ فاتورة جديدة</button>
       <button class="hero-cta" style="background:linear-gradient(135deg,#26a69a,#1565c0);box-shadow:0 8px 24px rgba(38,166,154,.35)" onclick="openReceiptPicker()" data-perm="customers">🧾 سند قبض</button>
     </div>
@@ -1207,7 +1211,7 @@ const fbDB   = firebase.firestore();
   <div class="mbox" style="max-width:1050px">
     <div class="mhdr"><h3>📐 سجل القياسات</h3><button class="mcls" onclick="closeModal('measurements-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="openMeasurePanel()">＋ قياس جديد</button>
+      <button class="btn btn-success" onclick="openMeasurePanel()">＋ طلب تفصيل جديد</button>
       <button class="btn btn-info" onclick="openMeasSettings()">⚙️ إعدادات الحقول</button>
       <select id="ms-filter-client" onchange="renderMeasurements()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;min-width:170px">
         <option value="">— كل العملاء —</option>
@@ -1229,7 +1233,7 @@ const fbDB   = firebase.firestore();
         </tr></thead>
         <tbody id="meas-tbody"></tbody>
       </table>
-      <div id="ms-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد قياسات بعد — اضغط "قياس جديد"</div>
+      <div id="ms-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد طلبات بعد — اضغط "طلب تفصيل جديد"</div>
     </div>
   </div>
 </div>
@@ -1298,13 +1302,16 @@ const fbDB   = firebase.firestore();
 <div id="measure-panel" class="screen">
   <div class="ord-page">
     <div class="ord-head">
-      <h2 id="ms-panel-title" style="font-size:1.02rem;margin:0">📐 أوردر تفصيل</h2>
+      <h2 id="ms-panel-title" style="font-size:1.02rem;margin:0">📐 طلب تفصيل</h2>
       <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
         <input type="hidden" id="ms-edit-id">
-        <div class="fg" style="margin:0"><select id="ms-client" style="min-width:140px" onchange="suggestFromHistory()"></select></div>
-        <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
-        <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:120px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        <div class="ord-idbox">
+          <div class="fg" style="margin:0;display:flex;gap:5px;align-items:center"><select id="ms-client" style="min-width:130px" onchange="suggestFromHistory()"></select><button class="btn btn-sm" style="background:#fff;color:#1b3a6b;font-weight:800" onclick="quickAddCustomer()" title="إضافة عميل جديد">＋</button></div>
+          <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
+          <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:118px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+        </div>
         <div class="unit-tog"><button id="unit-cm" class="active" onclick="setOrderUnit('cm')">سم</button><button id="unit-in" onclick="setOrderUnit('inch')">إنش</button></div>
+        <button class="btn" style="background:#f57c00;color:#fff" onclick="holdOrder()" title="حفظ مؤقت والعودة لاحقاً">⏸ تعليق</button>
         <button class="btn btn-success" onclick="saveMeasurement()">✔ حفظ</button>
         <button class="btn btn-outline" onclick="closeMeasure()">← رجوع</button>
       </div>
@@ -1314,8 +1321,6 @@ const fbDB   = firebase.firestore();
       <!-- ═══ القياسات + التفاصيل -->
       <div class="ord-meas">
         <div id="ms-suggest" style="display:none;margin-bottom:10px"></div>
-        <div id="ms-fields" class="ms-fields-grid"></div>
-        <div id="ms-warnings"></div>
         <div class="ord-details">
           <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية/معدنية"></div>
           <div class="fg" style="margin:0"><label>التطريز</label><input type="text" id="mm-embroidery"></div>
@@ -1328,6 +1333,9 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:4px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="mm-proofa" style="width:auto"> بروفة</label></div>
           <div class="fg" style="margin:0;grid-column:1/-1"><label>ملاحظات إضافية</label><input type="text" id="ms-notes"></div>
         </div>
+        <div style="font-weight:800;color:#2e7d32;font-size:.84rem;margin:12px 0 6px">📐 القياسات</div>
+        <div id="ms-fields" class="ms-fields-grid"></div>
+        <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
       <div class="ord-model">
@@ -1340,6 +1348,14 @@ const fbDB   = firebase.firestore();
 
 <!-- قائمة اختيار جزء الموديل (تظهر عند الضغط على الرسم) -->
 <div class="part-menu" id="part-menu"><h5 id="pm-title"></h5><div id="pm-options"></div></div>
+
+<!-- ═══════════════ MODAL: HELD ORDERS (الطلبات المعلّقة) -->
+<div class="moverlay" id="held-modal">
+  <div class="mbox" style="max-width:560px">
+    <div class="mhdr"><h3>⏸ الطلبات المعلّقة</h3><button class="mcls" onclick="closeModal('held-modal')">✕</button></div>
+    <div class="mlist" id="held-list" style="padding:14px 16px"></div>
+  </div>
+</div>
 
 <!-- ═══════════════ MODAL: APPOINTMENTS (المواعيد) -->
 <div class="moverlay" id="appointments-modal">
@@ -2337,7 +2353,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2432,6 +2448,7 @@ function loadAccountData() {
   tailorJobs      = JSON.parse(lsGet('tailorJobs','[]'));
   deliveries      = JSON.parse(lsGet('deliveries','[]'));
   patterns        = JSON.parse(lsGet('patterns','[]'));
+  heldOrders      = JSON.parse(lsGet('heldOrders','[]'));
   quotations      = JSON.parse(lsGet('quotations','[]'));
   auditLog        = JSON.parse(lsGet('auditLog','[]'));
   prodAssignees   = JSON.parse(lsGet('prodAssignees','{}'));
@@ -4486,7 +4503,18 @@ function saveCustomerFull() {
       save('invoices');
     }
   } else {
-    customers.push({ id: Date.now(), ...data });
+    const nid = Date.now();
+    customers.push({ id: nid, ...data });
+    save('customers');
+    closeCustomerPanel();
+    if (_custReturnToOrder) {           // أُضيف من شاشة طلب التفصيل
+      _custReturnToOrder = false;
+      document.getElementById('ms-client').innerHTML = _custOptions(nid);
+      suggestFromHistory();
+      return;
+    }
+    renderCustomers();
+    return;
   }
   save('customers');
   closeCustomerPanel();
@@ -4718,11 +4746,53 @@ function renderMeasurements() {
     </tr>`;}).join('');
 }
 
+let _custReturnToOrder = false;
+function quickAddCustomer(){ _custReturnToOrder = true; openCustomerPanel(); }
+
+// ═══ الطلبات المعلّقة (Hold/Drafts): حفظ مؤقت والعودة لاحقاً
+let heldOrders = [];
+function _captureOrder(){
+  const tpl = document.getElementById('ms-template').value;
+  const vals = {};
+  document.querySelectorAll('#ms-fields input').forEach(inp=>{ const k=inp.id.replace('msf-',''); if(inp.value!=='') vals[k]=inp.value; });
+  return { ts:Date.now(), clientId:document.getElementById('ms-client').value, clientName:_custName(document.getElementById('ms-client').value),
+    template:tpl, date:document.getElementById('ms-date').value, unit:_orderUnit, values:vals, parts:{..._orderParts},
+    buttons:document.getElementById('mm-buttons').value, embroidery:document.getElementById('mm-embroidery').value,
+    taktak:document.getElementById('mm-taktak').value, metal:document.getElementById('mm-metal').value,
+    fabricId:document.getElementById('mm-fabric').value, extFabric:document.getElementById('mm-extfabric').value,
+    extFabricW:document.getElementById('mm-extfabricw').value, qty:document.getElementById('mm-qty').value,
+    proofa:document.getElementById('mm-proofa').checked, notes:document.getElementById('ms-notes').value };
+}
+function holdOrder(){
+  if (!document.getElementById('ms-client').value) { alert('اختر العميل أولاً'); return; }
+  heldOrders.push(_captureOrder());
+  lsSet('heldOrders', JSON.stringify(heldOrders));
+  alert('⏸ عُلّق الطلب — يمكنك العودة إليه من «الطلبات المعلّقة». يمكنك الآن خدمة عميل آخر');
+  closeMeasure();
+}
+function showHeldOrders(){
+  if(!heldOrders.length){ alert('لا توجد طلبات معلّقة'); return; }
+  const box=document.getElementById('held-list');
+  box.innerHTML = heldOrders.map((h,i)=>`<div class="da-li"><span>${escHtml(h.clientName||'-')} — ${escHtml(L(h.template)||'')} — ${escHtml(h.date||'')}</span>
+    <span style="display:flex;gap:6px"><button class="btn btn-success btn-sm" onclick="resumeHeld(${i})">↩ متابعة</button><button class="btn btn-danger btn-sm" onclick="dropHeld(${i})">🗑</button></span></div>`).join('');
+  document.getElementById('held-modal').classList.add('open');
+}
+function dropHeld(i){ heldOrders.splice(i,1); lsSet('heldOrders',JSON.stringify(heldOrders)); if(heldOrders.length) showHeldOrders(); else closeModal('held-modal'); }
+function resumeHeld(i){
+  const h=heldOrders[i]; if(!h) return;
+  heldOrders.splice(i,1); lsSet('heldOrders',JSON.stringify(heldOrders));
+  closeModal('held-modal');
+  openMeasurePanel(null,null,{ clientId:h.clientId, template:h.template, unit:h.unit, values:h.values,
+    notes:h.notes, model:{ partsSel:Object.keys(h.parts||{}).map(id=>({id,value:h.parts[id]})),
+      buttons:h.buttons, embroidery:h.embroidery, taktak:h.taktak, metal:h.metal, fabricId:h.fabricId,
+      extFabric:h.extFabric, extFabricW:h.extFabricW, qty:h.qty, proofa:h.proofa } });
+  if(h.date) document.getElementById('ms-date').value=h.date;
+}
 function openMeasurePanel(editId, presetClientId, presetRecord) {
   if (!customers.length) { alert('أضف عميلاً أولاً من شاشة العملاء'); return; }
   const m = editId ? measurements.find(x=>x.id===editId) : null;
   const src = m || presetRecord || null;
-  document.getElementById('ms-panel-title').textContent = m ? '✏️ تعديل قياس' : '📐 قياس جديد';
+  document.getElementById('ms-panel-title').textContent = m ? '✏️ تعديل طلب تفصيل' : '📐 طلب تفصيل جديد';
   document.getElementById('ms-edit-id').value = m ? m.id : '';
   document.getElementById('ms-client').innerHTML = _custOptions(src ? src.clientId : presetClientId);
   document.getElementById('ms-template').innerHTML =
