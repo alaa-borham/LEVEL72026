@@ -5373,16 +5373,60 @@ function _buildMeasData(){
 }
 let _orderBasket = [];
 function getNextOrderNo(){ const n=measurements.map(m=>parseInt(m.orderNo)).filter(x=>!isNaN(x)); return n.length?Math.max(...n)+1:1; }
+function _pieceSummary(d){
+  const mod=d.model||{};
+  const parts=(mod.partsSel||[]).map(p=>p.value).filter(Boolean);
+  let fab=''; if(mod.fabricId){const f=_fabricById(mod.fabricId); fab=f?_fabricLabel(f):'';} else if(mod.fabricExt){fab='قماش خارجي'+(mod.extFabric?' ('+mod.extFabric+')':'');}
+  const bits=[...parts, fab, mod.buttons, mod.embroidery, mod.taktak, mod.metal].filter(Boolean);
+  const nv=Object.keys(d.values||{}).length;
+  return (bits.length?bits.join('، '):'بلا تفاصيل')+' • '+nv+' قياس'+(mod.proofa?' • بروفة':'');
+}
 function renderOrderBasket(){
   const el=document.getElementById('order-basket'); if(!el) return;
   if(!_orderBasket.length){ el.style.display='none'; el.innerHTML=''; return; }
   el.style.display='block';
-  el.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 11px;margin-bottom:9px">
+  const rows=_orderBasket.map((d,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;background:#fff;border:1px solid #a5d6a7;border-radius:8px;padding:5px 9px;margin:4px 0">
+    <span style="font-size:.78rem;min-width:0"><b style="color:#1b5e20">${i+1}. ${escHtml(d.name||L(d.template))}</b> <span style="color:#777">— ${escHtml(L(d.template))}</span><div style="font-size:.7rem;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_pieceSummary(d))}</div></span>
+    <span style="display:flex;gap:4px;flex:none"><button class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="editPiece(${i})" title="تعديل هذه القطعة">✏️</button><button class="btn btn-sm" style="background:#ffebee;color:#c62828" onclick="removePiece(${i})" title="حذف">×</button></span></div>`).join('');
+  el.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:9px 11px;margin-bottom:9px">
     <b style="color:#1b5e20;font-size:.84rem">🧺 قطع هذا الطلب (${_orderBasket.length})</b>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${_orderBasket.map((d,i)=>`<span class="ap-badge" style="background:#fff;border:1px solid #a5d6a7;color:#1b5e20">${escHtml(d.name||L(d.template))} <span style="cursor:pointer;color:#c62828;font-weight:800" onclick="removePiece(${i})">×</span></span>`).join('')}</div>
-    <div style="font-size:.72rem;color:#558b2f;margin-top:5px">أضف بقية القطع ثم اضغط «✔ حفظ الطلب» لإغلاق الأمر بكل قطعه</div></div>`;
+    ${rows}
+    <div style="font-size:.72rem;color:#558b2f;margin-top:5px">أضف بقية القطع ثم «✔ حفظ الطلب» لإغلاق الأمر — أو ✏️ لتعديل قطعة</div></div>`;
 }
 function removePiece(i){ _orderBasket.splice(i,1); renderOrderBasket(); }
+// تحميل قطعة من السلّة للنموذج لتعديلها (تُزال من السلّة وتُعاد بـ «＋ قطعة أخرى»)
+function _fillOrderForm(d){
+  document.getElementById('ms-template').value = d.template;
+  _orderUnit = d.unit || 'cm'; _refreshUnitUI();
+  _orderParts = {};
+  const mod = d.model||{};
+  (mod.partsSel||[]).forEach(p=>{ _orderParts[p.id]=p.value; });
+  renderMeasFields(d.values);
+  document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
+    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('') +
+    `<option value="__ext" ${mod.fabricExt?'selected':''}>🧵 قماش خارجي من العميل</option>`;
+  document.getElementById('mm-buttons').value=mod.buttons||'';
+  document.getElementById('mm-embroidery').value=mod.embroidery||'';
+  document.getElementById('mm-taktak').value=mod.taktak||'';
+  document.getElementById('mm-metal').value=mod.metal||'';
+  document.getElementById('mm-extfabric').value=mod.extFabric||'';
+  document.getElementById('mm-extfabricw').value=mod.extFabricW||'';
+  document.getElementById('mm-extfabriclen').value=mod.extFabricLen||'';
+  document.getElementById('mm-extfabriccolor').value=mod.extFabricColor||'';
+  document.getElementById('mm-qty').value=1;
+  document.getElementById('mm-proofa').checked=!!mod.proofa;
+  document.getElementById('ms-name').value=d.name||'';
+  document.getElementById('ms-notes').value=d.notes||'';
+  toggleExtFabric(); toggleProofa();
+  if(mod.proofa) renderProofaPieces(mod.proofaPieces||[]);
+  renderOrderVisual();
+}
+function editPiece(i){
+  const d=_orderBasket[i]; if(!d) return;
+  _fillOrderForm(d);
+  _orderBasket.splice(i,1); renderOrderBasket();
+  alert('✏️ تم تحميل القطعة للتعديل — عدّلها ثم اضغط «＋ قطعة أخرى» لإعادتها');
+}
 function _resetPieceForm(){
   document.getElementById('ms-name').value='';
   _orderParts={};
