@@ -4819,6 +4819,7 @@ function renderMeasurements() {
       <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;font-size:.78rem;color:#555">${g.items.map(x=>escHtml(x.name||L(x.template))).join('، ')}</td>
       <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;white-space:nowrap">
         <button class="btn btn-info btn-sm" onclick="printOrder(${g.orderNo})" title="طباعة الطلب كاملاً">🖨️ الطلب</button>
+        <button class="btn btn-sm" style="background:#00897b;color:#fff" onclick="printClaimTicket(${g.orderNo})" title="إيصال استلام للعميل">🎫 إيصال</button>
         <button class="btn btn-sm" style="background:#7e57c2;color:#fff" onclick="document.querySelectorAll('.pcs-${g.orderNo}').forEach(r=>r.style.display=r.style.display==='none'?'':'none')">القطع ▾</button>
       </td></tr>`;
     const pcs=g.items.map(m=>pieceRow(m,true).replace('<tr','<tr class="pcs-'+g.orderNo+'" style="display:none;background:#faf7ff"')).join('');
@@ -5483,7 +5484,9 @@ function confirmCheckout(){
   closeModal('checkout-modal');
   _pendingCheckout=null;
   renderDashStats(); renderDashboard();
+  const _on=pc.orderNo;
   alert('✔ تم إتمام الطلب'+(invNum?' وإصدار الفاتورة #'+invNum:'')+(paid>0?' وتسجيل دفعة '+formatNum(paid):''));
+  if(confirm('🎫 طباعة إيصال الاستلام للعميل؟')) printClaimTicket(_on);
   showMeasurements();
 }
 function skipCheckout(){ closeModal('checkout-modal'); _pendingCheckout=null; closeMeasure(); }
@@ -5545,6 +5548,40 @@ function printMeasurement(id) {
 }
 
 // طباعة طلب كامل متعدّد القطع في مستند واحد
+function printClaimTicket(orderNo){
+  const pieces=measurements.filter(m=>String(m.orderNo)===String(orderNo)).sort((a,b)=>a.id-b.id);
+  if(!pieces.length) return;
+  const c=_custById(pieces[0].clientId);
+  const inv=invoices.find(i=>String(i.orderNo)===String(orderNo));
+  const po=prodOrders.find(o=>String(o.orderNo)===String(orderNo));
+  const due=po&&po.due?isoToDMY(po.due):'—';
+  const paid=inv?payments.filter(p=>String(p.clientId)===String(inv.clientId)&&(p.notes||'').includes('طلب #'+orderNo)).reduce((s,p)=>s+p.amount,0):0;
+  const grand=inv?inv.grand:0;
+  const remain=Math.max(0,grand-paid);
+  const w=window.open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>إيصال #${orderNo}</title>
+   <style>@page{size:80mm auto;margin:4mm}body{font-family:'Cairo',Arial,sans-serif;color:#111;width:74mm;margin:0 auto;font-size:12px}
+   .ctr{text-align:center}h1{font-size:15px;margin:2px 0;color:#1b5e20}.big{font-size:22px;font-weight:900;letter-spacing:1px}
+   hr{border:none;border-top:1px dashed #999;margin:7px 0}.row{display:flex;justify-content:space-between;margin:2px 0}
+   .pc{font-size:11px;padding:2px 0;border-bottom:1px dotted #ddd}.tot{font-weight:800}#qr{margin:6px auto}</style></head><body>
+   <div class="ctr"><h1>${escHtml(settings.coName||'')}</h1>${settings.coSub?`<div style="font-size:10px;color:#666">${escHtml(settings.coSub)}</div>`:''}
+     <div style="margin-top:5px;font-weight:700">إيصال استلام طلب</div>
+     <div class="big">#${orderNo}</div>
+     <canvas id="qr"></canvas></div>
+   <hr><div class="row"><span>العميل</span><b>${escHtml(c?c.name:'')}</b></div>
+   ${c&&c.phone?`<div class="row"><span>الجوال</span><b style="direction:ltr">${escHtml(c.phone)}</b></div>`:''}
+   <div class="row"><span>التاريخ</span><b style="direction:ltr">${isoToDMY(pieces[0].date)}</b></div>
+   <div class="row"><span>موعد الاستلام</span><b style="direction:ltr;color:#c75a00">${due}</b></div>
+   <hr><div style="font-weight:700;margin-bottom:3px">القطع (${pieces.length}):</div>
+   ${pieces.map((m,i)=>`<div class="pc">${i+1}. ${escHtml(m.name||L(m.template))} — ${escHtml(L(m.template))}</div>`).join('')}
+   ${inv?`<hr><div class="row tot"><span>الإجمالي</span><span>${formatNum(grand)} ${curName()}</span></div>
+     <div class="row"><span>المدفوع</span><span>${formatNum(paid)}</span></div>
+     <div class="row tot" style="color:#c62828"><span>المتبقّي</span><span>${formatNum(remain)}</span></div>`:''}
+   <hr><div class="ctr" style="font-size:10px;color:#666">يُرجى إحضار هذا الإيصال عند الاستلام<br>شكراً لتعاملكم معنا 🌟</div>
+   <script src="qrcode.min.js"><\/script>
+   <script>window.onload=function(){try{QRCode.toCanvas(document.getElementById('qr'),'ORDER-${orderNo}',{width:120,margin:1});}catch(e){}setTimeout(()=>print(),300);};<\/script></body></html>`);
+  w.document.close();
+}
 function printOrder(orderNo){
   const pieces=measurements.filter(m=>String(m.orderNo)===String(orderNo)).sort((a,b)=>a.id-b.id);
   if(!pieces.length) return;
