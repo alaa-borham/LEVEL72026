@@ -1309,6 +1309,7 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0;display:flex;gap:5px;align-items:center"><select id="ms-client" style="min-width:130px" onchange="suggestFromHistory()"></select><button class="btn btn-sm" style="background:#fff;color:#1b3a6b;font-weight:800" onclick="quickAddCustomer()" title="إضافة عميل جديد">＋</button></div>
           <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
           <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:118px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
+          <div class="fg" style="margin:0"><input type="text" id="ms-name" placeholder="اسم الطلب (اختياري)" style="width:150px"></div>
         </div>
         <div class="unit-tog"><button id="unit-cm" class="active" onclick="setOrderUnit('cm')">سم</button><button id="unit-in" onclick="setOrderUnit('inch')">إنش</button></div>
         <button class="btn" style="background:#f57c00;color:#fff" onclick="holdOrder()" title="حفظ مؤقت والعودة لاحقاً">⏸ تعليق</button>
@@ -1322,13 +1323,20 @@ const fbDB   = firebase.firestore();
       <div class="ord-meas">
         <div id="ms-suggest" style="display:none;margin-bottom:10px"></div>
         <div class="ord-details">
-          <div class="fg" style="margin:0"><label>الأزرار</label><input type="text" id="mm-buttons" placeholder="عادية/معدنية"></div>
-          <div class="fg" style="margin:0"><label>التطريز</label><input type="text" id="mm-embroidery"></div>
-          <div class="fg" style="margin:0"><label>التكتك</label><input type="text" id="mm-taktak"></div>
-          <div class="fg" style="margin:0"><label>معدنيات/شعار</label><input type="text" id="mm-metal"></div>
-          <div class="fg" style="margin:0"><label>القماش (مخزون)</label><select id="mm-fabric"></select></div>
-          <div class="fg" style="margin:0"><label>قماش العميل</label><input type="text" id="mm-extfabric"></div>
-          <div class="fg" style="margin:0"><label>عرضه سم</label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
+          <div class="fg" style="margin:0"><label>الأزرار</label><div style="display:flex;gap:4px"><input type="text" id="mm-buttons" placeholder="عادية/معدنية" style="flex:1;min-width:0"><button type="button" class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="pickAccessory('mm-buttons','الأزرار')">🔍</button></div></div>
+          <div class="fg" style="margin:0"><label>التطريز</label><div style="display:flex;gap:4px"><input type="text" id="mm-embroidery" style="flex:1;min-width:0"><button type="button" class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="pickAccessory('mm-embroidery','التطريز')">🔍</button></div></div>
+          <div class="fg" style="margin:0"><label>التكتك</label><div style="display:flex;gap:4px"><input type="text" id="mm-taktak" style="flex:1;min-width:0"><button type="button" class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="pickAccessory('mm-taktak','التكتك')">🔍</button></div></div>
+          <div class="fg" style="margin:0"><label>معدنيات/شعار</label><div style="display:flex;gap:4px"><input type="text" id="mm-metal" style="flex:1;min-width:0"><button type="button" class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="pickAccessory('mm-metal','المعدنيات')">🔍</button></div></div>
+          <div class="fg" style="margin:0;grid-column:span 2"><label>القماش</label><select id="mm-fabric" onchange="toggleExtFabric()"></select></div>
+          <div id="ext-fabric-block" style="display:none;grid-column:1/-1;background:#fff8f0;border:1.5px dashed #ffb27a;border-radius:9px;padding:9px 11px">
+            <div style="font-size:.74rem;font-weight:800;color:#c75a00;margin-bottom:6px">🧵 قماش خارجي من العميل</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:6px 8px">
+              <div class="fg" style="margin:0"><label>اسم القماش <span class="req">*</span></label><input type="text" id="mm-extfabric"></div>
+              <div class="fg" style="margin:0"><label>العرض (سم) <span class="req">*</span></label><input type="number" id="mm-extfabricw" min="0" step="1" style="direction:ltr;text-align:center"></div>
+              <div class="fg" style="margin:0"><label>الطول (متر) <span class="req">*</span></label><input type="number" id="mm-extfabriclen" min="0" step="0.25" style="direction:ltr;text-align:center"></div>
+              <div class="fg" style="margin:0"><label>اللون (اختياري)</label><input type="text" id="mm-extfabriccolor"></div>
+            </div>
+          </div>
           <div class="fg" style="margin:0"><label>عدد القطع</label><input type="number" id="mm-qty" min="1" step="1" value="1" style="direction:ltr;text-align:center"></div>
           <div class="fg" style="margin:0;display:flex;align-items:flex-end;padding-bottom:4px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="mm-proofa" style="width:auto"> بروفة</label></div>
           <div class="fg" style="margin:0;grid-column:1/-1"><label>ملاحظات إضافية</label><input type="text" id="ms-notes"></div>
@@ -1348,6 +1356,14 @@ const fbDB   = firebase.firestore();
 
 <!-- قائمة اختيار جزء الموديل (تظهر عند الضغط على الرسم) -->
 <div class="part-menu" id="part-menu"><h5 id="pm-title"></h5><div id="pm-options"></div></div>
+
+<!-- ═══════════════ MODAL: ACCESSORY PICKER -->
+<div class="moverlay" id="acc-modal" style="z-index:360">
+  <div class="mbox" style="max-width:460px">
+    <div class="mhdr"><h3 id="acc-title">اختر</h3><button class="mcls" onclick="closeModal('acc-modal')">✕</button></div>
+    <div class="mlist" id="acc-list" style="padding:12px 14px;display:flex;flex-wrap:wrap"></div>
+  </div>
+</div>
 
 <!-- ═══════════════ MODAL: HELD ORDERS (الطلبات المعلّقة) -->
 <div class="moverlay" id="held-modal">
@@ -4733,7 +4749,7 @@ function renderMeasurements() {
     return `
     <tr>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">${isoToDMY(m.date)}</td>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:600">${escHtml(_custName(m.clientId))}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:600">${escHtml(_custName(m.clientId))}${m.name?`<div style="font-size:.72rem;color:#7e57c2;font-weight:700">${escHtml(m.name)}</div>`:''}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(L(m.template))}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-size:.78rem;color:#555">${summary||'-'}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
@@ -4747,6 +4763,55 @@ function renderMeasurements() {
 }
 
 let _custReturnToOrder = false;
+// منتقي الإكسسوارات من منتجات المستودع
+let _accTarget=null;
+function pickAccessory(fieldId, title){
+  _accTarget=fieldId;
+  document.getElementById('acc-title').textContent='اختر '+title;
+  const list=products.filter(p=>!p.isService);
+  document.getElementById('acc-list').innerHTML = list.length
+    ? list.map(p=>`<button class="btn btn-sm" style="background:#f7faf5;border:1.5px solid #cde;color:#333;text-align:start;margin:3px" onclick="applyAccessory('${escHtml(p.name).replace(/'/g,"\\'")}')">${escHtml(p.name)}${p.code?` <span style="color:#999">(${escHtml(p.code)})</span>`:''}</button>`).join('')
+    : '<div style="color:#bbb;padding:14px;text-align:center">لا توجد منتجات في المستودع — يمكنك الكتابة يدوياً</div>';
+  document.getElementById('acc-modal').classList.add('open');
+}
+function applyAccessory(name){ if(_accTarget) document.getElementById(_accTarget).value=name; closeModal('acc-modal'); }
+
+// بيانات تجريبية: 10 عملاء بكامل البيانات + طلبات وأوامر إنتاج
+function genTestData(){
+  if(currentMember){ alert('للمالك فقط'); return; }
+  if(!confirm('سيُنشئ النظام 10 عملاء تجريبيين مع طلبات وأوامر إنتاج لاختبار النظام. متابعة؟')) return;
+  const names=['عبدالله القحطاني','محمد الزهراني','سعد العتيبي','خالد الشهري','فهد الدوسري','تركي الغامدي','ناصر الحربي','بندر المالكي','ماجد السبيعي','سلطان الرشيدي'];
+  const cities=['الرياض','جدة','الدمام','مكة','المدينة','أبها','تبوك','بريدة','الطائف','حائل'];
+  const tpls=['ثوب سعودي','ثوب أطفال','قميص'];
+  const td=new Date(); let baseId=Date.now();
+  names.forEach((nm,i)=>{
+    const cid=baseId+i;
+    customers.push({ id:cid, num:getNextCustomerNum(), name:nm, type:'فرد',
+      phone:'05'+(10000000+Math.floor(Math.random()*8999999)), email:'client'+(i+1)+'@test.com',
+      address:cities[i]+' - حي النموذج', nationality:'سعودي', gender:'ذكر',
+      age:String(22+i*3), height:String(168+i), weight:String(70+i*2),
+      mapLink:'', notes:'عميل تجريبي' });
+    // قياس
+    const mid=baseId+100+i; const tpl=tpls[i%3];
+    const keys=getTemplateKeys(tpl).slice(0,8); const vals={};
+    keys.forEach((k,j)=>vals[k]=String(40+j*6+i));
+    measurements.push({ id:mid, clientId:cid, date:td.toISOString().split('T')[0], name:'طلب '+nm.split(' ')[0],
+      template:tpl, unit:'cm', values:vals,
+      model:{ partsSel:[{id:'collar',label:'الياقة',value:['ملكي','صيني','مربع'][i%3]}], fabricId:null, fabricExt:false,
+        buttons:i%2?'معدنية':'عادية', embroidery:'', taktak:'', metal:'', qty:1, proofa:false }, notes:'' });
+    // أمر إنتاج للنصف الأول
+    if(i<6){
+      const stage=i%9;
+      prodOrders.push({ id:baseId+200+i, num:getNextProdNum(), clientId:cid, measId:mid,
+        desc:L(tpl)+' — '+nm.split(' ')[0], qty:1, due:_addDays(td.toISOString().split('T')[0], 3+i),
+        stageIdx:stage, done:false, log:[], assignees:{...prodAssignees}, createdAt:new Date().toISOString() });
+    }
+  });
+  save('customers'); save('measurements'); save('prodOrders');
+  logAction('بيانات تجريبية','إنشاء 10 عملاء + طلبات وأوامر');
+  alert('✔ أُنشئت بيانات تجريبية: 10 عملاء، 10 طلبات، 6 أوامر إنتاج.\nتصفّح النظام لاختباره، ويمكنك حذفها لاحقاً من «مسح جميع البيانات».');
+  renderDashStats(); renderDashboard();
+}
 function quickAddCustomer(){ _custReturnToOrder = true; openCustomerPanel(); }
 
 // ═══ الطلبات المعلّقة (Hold/Drafts): حفظ مؤقت والعودة لاحقاً
@@ -4798,6 +4863,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   document.getElementById('ms-template').innerHTML =
     Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}" ${src && src.template===t?'selected':''}>${escHtml(L(t))}</option>`).join('');
   document.getElementById('ms-date').value = m ? isoToDMY(m.date) : todayDMY();
+  document.getElementById('ms-name').value = src ? (src.name||'') : '';
   document.getElementById('ms-notes').value = src ? (src.notes||'') : '';
   const mod = (src && src.model) || {};
   // اختيارات الأجزاء: من partsSel الجديدة، أو من الحقول القديمة للتوافق
@@ -4811,7 +4877,11 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
     if (mod.sidePockets) _orderParts.sidepockets = mod.sidePockets;
   }
   document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
-    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('');
+    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('') +
+    `<option value="__ext" ${mod.fabricExt?'selected':''}>🧵 قماش خارجي من العميل</option>`;
+  document.getElementById('mm-extfabriclen').value = mod.extFabricLen||'';
+  document.getElementById('mm-extfabriccolor').value = mod.extFabricColor||'';
+  toggleExtFabric();
   document.getElementById('mm-buttons').value    = mod.buttons||'';
   document.getElementById('mm-embroidery').value = mod.embroidery||'';
   document.getElementById('mm-taktak').value     = mod.taktak||'';
@@ -4903,6 +4973,10 @@ function _refreshUnitUI() {
   if (inb) inb.classList.toggle('active', _orderUnit==='inch');
 }
 function getHotspots(tpl){ return tmplHotspots[tpl] || DEFAULT_HOTSPOTS[tpl] || []; }
+function toggleExtFabric(){
+  const ext = document.getElementById('mm-fabric').value === '__ext';
+  document.getElementById('ext-fabric-block').style.display = ext ? 'block' : 'none';
+}
 function getTemplateKeys(tpl){ return tmplMeasKeys[tpl] || MEAS_TEMPLATES[tpl] || []; }
 const ALL_MEAS_KEYS = Object.keys(MEAS_DICT);
 
@@ -5188,7 +5262,32 @@ function _orderPartsSnapshot() {
     return { id, label: h ? h.label : id, value: _orderParts[id] };
   }).filter(p=>p.value);
 }
+function _collectModel(){
+  const fv = document.getElementById('mm-fabric').value;
+  const isExt = fv === '__ext';
+  return {
+    partsSel:   _orderPartsSnapshot(),
+    fabricId:   (fv && !isExt) ? fv : null,
+    fabricExt:  isExt,
+    buttons:    document.getElementById('mm-buttons').value.trim(),
+    embroidery: document.getElementById('mm-embroidery').value.trim(),
+    taktak:     document.getElementById('mm-taktak').value.trim(),
+    metal:      document.getElementById('mm-metal').value.trim(),
+    extFabric:  isExt ? document.getElementById('mm-extfabric').value.trim() : '',
+    extFabricW: isExt ? (parseFloat(document.getElementById('mm-extfabricw').value)||0) : 0,
+    extFabricLen: isExt ? (parseFloat(document.getElementById('mm-extfabriclen').value)||0) : 0,
+    extFabricColor: isExt ? document.getElementById('mm-extfabriccolor').value.trim() : '',
+    qty:        parseInt(document.getElementById('mm-qty').value)||1,
+    proofa:     document.getElementById('mm-proofa').checked,
+  };
+}
 function saveMeasurement() {
+  if (document.getElementById('mm-fabric').value==='__ext') {
+    const nm=document.getElementById('mm-extfabric').value.trim();
+    const w=parseFloat(document.getElementById('mm-extfabricw').value)||0;
+    const ln=parseFloat(document.getElementById('mm-extfabriclen').value)||0;
+    if(!nm||!w||!ln){ alert('القماش الخارجي يتطلب: اسم القماش والعرض والطول'); return; }
+  }
   const clientId = document.getElementById('ms-client').value;
   if (!clientId) { alert('اختر العميل'); return; }
   const values = _readMeasValues();
@@ -5198,21 +5297,11 @@ function saveMeasurement() {
   if (warns.length && !confirm('⚠️ توجد تحذيرات في القياسات:\n\n• '+warns.join('\n• ')+'\n\nحفظ على أي حال؟')) return;
   const data = {
     clientId, date,
+    name: document.getElementById('ms-name').value.trim(),
     template: document.getElementById('ms-template').value,
     unit: _orderUnit,
     values,
-    model: {
-      partsSel:   _orderPartsSnapshot(),
-      fabricId:   document.getElementById('mm-fabric').value || null,
-      buttons:    document.getElementById('mm-buttons').value.trim(),
-      embroidery: document.getElementById('mm-embroidery').value.trim(),
-      taktak:     document.getElementById('mm-taktak').value.trim(),
-      metal:      document.getElementById('mm-metal').value.trim(),
-      extFabric:  document.getElementById('mm-extfabric').value.trim(),
-      extFabricW: parseFloat(document.getElementById('mm-extfabricw').value)||0,
-      qty:        parseInt(document.getElementById('mm-qty').value)||1,
-      proofa:     document.getElementById('mm-proofa').checked,
-    },
+    model: _collectModel(),
     notes: document.getElementById('ms-notes').value.trim(),
   };
   const editId = document.getElementById('ms-edit-id').value;
@@ -5985,13 +6074,14 @@ function suggestFromHistory(){
   const cnt={}; prior.forEach(m=>cnt[m.template]=(cnt[m.template]||0)+1);
   const favTpl = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
   box.style.display='block';
+  const chips = prior.map(p=>`<button class="btn btn-sm" style="background:#fff;border:1.5px solid #b39ddb;color:#4527a0;font-weight:700;text-align:start" onclick="applyPrior(${p.id})">
+    📋 ${escHtml(p.name||L(p.template))} <span style="color:#999;font-weight:400">— ${isoToDMY(p.date)}</span></button>`).join('');
   box.innerHTML = `<div style="background:linear-gradient(135deg,#ede7f6,#e3f2fd);border:1.5px solid #b39ddb;border-radius:11px;padding:10px 13px">
-    <div style="font-weight:800;color:#4527a0;font-size:.84rem;margin-bottom:4px">🤖 اقتراح ذكي</div>
-    <div style="font-size:.82rem;color:#444">لهذا العميل <b>${prior.length}</b> قياس سابق — آخرها <b>${isoToDMY(last.date)}</b> (${escHtml(L(last.template))})${favTpl&&cnt[favTpl]>1?` • الأكثر طلباً: <b>${escHtml(L(favTpl))}</b>`:''}</div>
-    <div style="display:flex;gap:7px;margin-top:7px;flex-wrap:wrap">
-      <button class="btn btn-primary btn-sm" onclick="applyPrior(${last.id})">📋 استخدام القياس السابق</button>
-      <button class="btn btn-info btn-sm" onclick="showAIInsights()">📈 رؤى وتوقّعات</button>
-    </div></div>`;
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+      <span style="font-weight:800;color:#4527a0;font-size:.84rem">🤖 طلبات هذا العميل السابقة (${prior.length}) — اختر للاستخدام</span>
+      <button class="btn btn-info btn-sm" onclick="showAIInsights()">📈 رؤى</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:96px;overflow:auto">${chips}</div></div>`;
 }
 // تطبيق قياس سابق على الأوردر الجديد الحالي (دون تغيير العميل/التاريخ)
 function applyPrior(measId){
@@ -6003,8 +6093,11 @@ function applyPrior(measId){
   renderMeasFields(m.values);
   const mod = m.model||{};
   document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
-    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('');
-  ['buttons','embroidery','taktak','metal','extfabric'].forEach(k=>{ const el=document.getElementById('mm-'+(k==='extfabric'?'extfabric':k)); });
+    fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('') +
+    `<option value="__ext" ${mod.fabricExt?'selected':''}>🧵 قماش خارجي من العميل</option>`;
+  document.getElementById('mm-extfabriclen').value=mod.extFabricLen||'';
+  document.getElementById('mm-extfabriccolor').value=mod.extFabricColor||'';
+  toggleExtFabric();
   document.getElementById('mm-buttons').value=mod.buttons||'';
   document.getElementById('mm-embroidery').value=mod.embroidery||'';
   document.getElementById('mm-taktak').value=mod.taktak||'';
@@ -6013,8 +6106,8 @@ function applyPrior(measId){
   document.getElementById('mm-extfabricw').value=mod.extFabricW||'';
   document.getElementById('mm-qty').value=mod.qty||1;
   document.getElementById('mm-proofa').checked=!!mod.proofa;
+  if(document.getElementById('ms-name')) document.getElementById('ms-name').value = m.name||'';
   renderOrderVisual();
-  alert('✔ تم تعبئة القياس والموديل من آخر طلب — عدّل ما تشاء ثم احفظ كأوردر جديد');
 }
 // لوحة الرؤى: توقّع الطلب وأكثر المطلوب
 function showAIInsights(){
