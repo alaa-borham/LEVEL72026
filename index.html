@@ -4790,25 +4790,40 @@ function renderMeasurements() {
         || (m.notes||'').toLowerCase().includes(q);
     })
     .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.id-a.id);
-  document.getElementById('ms-empty').style.display = list.length ? 'none' : 'block';
-  document.getElementById('meas-tbody').innerHTML = list.map(m=>{
-    const keys = MEAS_TEMPLATES[m.template]||Object.keys(m.values||{});
-    const summary = keys.filter(k=>m.values && m.values[k])
-      .slice(0,4).map(k=>MEAS_DICT[k]+': <b>'+formatNum(m.values[k])+'</b>').join(' • ');
-    return `
-    <tr>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">${isoToDMY(m.date)}</td>
+  // تجميع برقم الطلب: القطع التي تشترك في orderNo تظهر صفاً واحداً قابلاً للتوسعة
+  const groups=[]; const byOrder={};
+  list.forEach(m=>{
+    if (m.orderNo){ if(!byOrder[m.orderNo]){ byOrder[m.orderNo]={key:'o'+m.orderNo,orderNo:m.orderNo,items:[]}; groups.push(byOrder[m.orderNo]); } byOrder[m.orderNo].items.push(m); }
+    else groups.push({key:'s'+m.id,items:[m]});
+  });
+  document.getElementById('ms-empty').style.display = groups.length ? 'none' : 'block';
+  const pieceRow=(m,sub)=>`<tr${sub?' style="background:#faf7ff"':''}>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">${sub?'↳ ':''}${isoToDMY(m.date)}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-weight:600">${escHtml(_custName(m.clientId))}${m.name?`<div style="font-size:.72rem;color:#7e57c2;font-weight:700">${escHtml(m.name)}</div>`:''}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center">${escHtml(L(m.template))}</td>
-      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-size:.78rem;color:#555">${summary||'-'}</td>
+      <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;font-size:.78rem;color:#555">${(MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>m.values&&m.values[k]).slice(0,4).map(k=>MEAS_DICT[k]+': <b>'+formatNum(m.values[k])+'</b>').join(' • ')||'-'}</td>
       <td style="padding:7px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap">
         <button class="btn btn-primary btn-sm" onclick="openMeasurePanel(${m.id})" title="تعديل">✏️</button>
-        <button class="btn btn-info btn-sm" onclick="printMeasurement(${m.id})" title="طباعة بطاقة القياس">🖨️</button>
-        <button class="btn btn-warning btn-sm" onclick="copyMeasurement(${m.id})" title="قياس جديد بنفس القيم">📋</button>
-        <button class="btn btn-sm" style="background:#5c6bc0;color:white" onclick="exportMeasurementXML(${m.id})" title="تصدير XML لأنظمة القص">🧬 XML</button>
+        <button class="btn btn-info btn-sm" onclick="printMeasurement(${m.id})" title="طباعة">🖨️</button>
+        <button class="btn btn-warning btn-sm" onclick="copyMeasurement(${m.id})" title="نسخ">📋</button>
+        <button class="btn btn-sm" style="background:#5c6bc0;color:white" onclick="exportMeasurementXML(${m.id})" title="XML">🧬</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeasurement(${m.id})" title="حذف">🗑</button>
-      </td>
-    </tr>`;}).join('');
+      </td></tr>`;
+  document.getElementById('meas-tbody').innerHTML = groups.map(g=>{
+    if (g.items.length===1 && !g.orderNo) return pieceRow(g.items[0]);
+    const first=g.items[0];
+    const head=`<tr style="background:#eef5ff">
+      <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;white-space:nowrap;font-weight:700">${isoToDMY(first.date)}</td>
+      <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;font-weight:700">${escHtml(_custName(first.clientId))}</td>
+      <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;font-weight:700;color:#1565c0">طلب #${g.orderNo} — ${g.items.length} قطع</td>
+      <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;font-size:.78rem;color:#555">${g.items.map(x=>escHtml(x.name||L(x.template))).join('، ')}</td>
+      <td style="padding:7px;border-bottom:1px solid #dce;text-align:center;white-space:nowrap">
+        <button class="btn btn-info btn-sm" onclick="printOrder(${g.orderNo})" title="طباعة الطلب كاملاً">🖨️ الطلب</button>
+        <button class="btn btn-sm" style="background:#7e57c2;color:#fff" onclick="document.querySelectorAll('.pcs-${g.orderNo}').forEach(r=>r.style.display=r.style.display==='none'?'':'none')">القطع ▾</button>
+      </td></tr>`;
+    const pcs=g.items.map(m=>pieceRow(m,true).replace('<tr','<tr class="pcs-'+g.orderNo+'" style="display:none;background:#faf7ff"')).join('');
+    return head+pcs;
+  }).join('');
 }
 
 let _custReturnToOrder = false;
@@ -5527,6 +5542,40 @@ function printMeasurement(id) {
   if (logo) { img.src = logo; img.style.display='block'; svg.style.display='none'; }
   else { img.style.display='none'; svg.style.display='none'; }
   showScreen('meas-print-screen');
+}
+
+// طباعة طلب كامل متعدّد القطع في مستند واحد
+function printOrder(orderNo){
+  const pieces=measurements.filter(m=>String(m.orderNo)===String(orderNo)).sort((a,b)=>a.id-b.id);
+  if(!pieces.length) return;
+  const c=_custById(pieces[0].clientId);
+  const card=(m,idx)=>{
+    const keys=(getTemplateKeys?getTemplateKeys(m.template):MEAS_TEMPLATES[m.template])||Object.keys(m.values||{});
+    const grid=keys.filter(k=>m.values&&m.values[k]).map(k=>`<div class="mc"><div class="k">${escHtml(MEAS_DICT[k]||k)}${MEAS_EN[k]?'<br><span style="font-size:8px;color:#999">'+escHtml(MEAS_EN[k])+'</span>':''}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
+    const mod=m.model||{}; const fab=mod.fabricId?_fabricById(mod.fabricId):null;
+    const parts=(mod.partsSel||[]).map(p=>p.label+': '+p.value).concat([fab?'القماش: '+_fabricLabel(fab):'',mod.extFabric?'قماش العميل: '+mod.extFabric:'',mod.buttons?'الأزرار: '+mod.buttons:'',mod.embroidery?'التطريز: '+mod.embroidery:'',mod.taktak?'التكتك: '+mod.taktak:'',mod.metal?'معدنيات: '+mod.metal:'',mod.proofa?'بروفة: نعم':'']).filter(Boolean).map(escHtml).join(' • ');
+    return `<div class="pc"><div class="pch">قطعة ${idx+1}: ${escHtml(m.name||L(m.template))} <span style="color:#777;font-weight:400">(${escHtml(L(m.template))} — ${m.unit==='inch'?'إنش':'سم'})</span></div>
+      <div class="grid">${grid}</div>${parts?`<div class="mdl">✂️ ${parts}</div>`:''}${m.notes?`<div class="nt">📝 ${escHtml(m.notes)}</div>`:''}</div>`;
+  };
+  const w=window.open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>طلب #${orderNo}</title>
+   <style>body{font-family:'Cairo',Arial,sans-serif;padding:20px;color:#222}
+   .hd{display:flex;justify-content:space-between;border-bottom:2px solid #2e7d32;padding-bottom:8px;margin-bottom:10px}
+   h1{color:#1b5e20;font-size:1.2rem;margin:0}
+   .pc{border:1.5px solid #cdd;border-radius:10px;padding:10px 12px;margin-bottom:10px;page-break-inside:avoid}
+   .pch{font-weight:800;color:#1b3a26;margin-bottom:7px;border-bottom:1px solid #eee;padding-bottom:4px}
+   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+   .mc{border:1px solid #c5e1a5;border-radius:7px;padding:5px;text-align:center}
+   .mc .k{font-size:9px;color:#555}.mc .v{font-size:15px;font-weight:800;color:#1b5e20;direction:ltr}
+   .mdl{background:#f3e5f5;border-radius:7px;padding:6px 9px;margin-top:7px;font-size:12px}
+   .nt{background:#f9fbe7;border-radius:7px;padding:5px 9px;margin-top:5px;font-size:12px}</style></head><body>
+   <div class="hd"><div><h1>${escHtml(settings.coName||'')}</h1><div style="font-size:12px;color:#666">${escHtml(settings.coSub||'')}</div></div>
+   <div style="text-align:end"><div style="font-weight:800;color:#1b5e20">طلب تفصيل #${orderNo}</div>
+   <div style="font-size:12px">${escHtml(c?c.name:'')} ${c&&c.phone?'— '+escHtml(c.phone):''}</div><div style="font-size:12px;direction:ltr">${isoToDMY(pieces[0].date)}</div></div></div>
+   <div style="font-size:13px;margin-bottom:8px">عدد القطع: <b>${pieces.length}</b></div>
+   ${pieces.map(card).join('')}
+   <script>onload=()=>print()<\/script></body></html>`);
+  w.document.close();
 }
 
 // ═══════════════ FABRIC MANAGEMENT — إدارة الأقمشة (أنواع + خصائص + مخزون بالمتر)
@@ -7118,7 +7167,7 @@ function renderStatement(clientId) {
     </div>`;
   }).join('');
   const balEl = document.getElementById('stmt-balance');
-  balEl.textContent = formatNum(Math.abs(bal))+(ar?' ر.س ':' SAR ')+(bal>0?(ar?'(مدين)':'(debit)'):bal<0?(ar?'(دائن)':'(credit)'):(ar?'(مسوّى)':'(settled)'));
+  balEl.textContent = formatNum(Math.abs(bal))+(ar?' ر.س ':' SAR ')+(bal>0?(ar?'— متبقٍّ على العميل':'(due from client)'):bal<0?(ar?'— رصيد للعميل (دائن)':'(credit)'):(ar?'— مسدّد بالكامل ✓':'(settled)'));
   balEl.className = bal>0?'balance-negative':'balance-positive';
 }
 
