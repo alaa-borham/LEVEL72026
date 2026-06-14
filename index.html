@@ -1312,8 +1312,9 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0"><input type="text" id="ms-name" placeholder="اسم الطلب (اختياري)" style="width:150px"></div>
         </div>
         <div class="unit-tog"><button id="unit-cm" class="active" onclick="setOrderUnit('cm')">سم</button><button id="unit-in" onclick="setOrderUnit('inch')">إنش</button></div>
+        <button class="btn" style="background:#00897b;color:#fff" onclick="addPieceToOrder()" title="إضافة قطعة أخرى لنفس الطلب">＋ قطعة أخرى</button>
         <button class="btn" style="background:#f57c00;color:#fff" onclick="holdOrder()" title="حفظ مؤقت والعودة لاحقاً">⏸ تعليق</button>
-        <button class="btn btn-success" onclick="saveMeasurement()">✔ حفظ</button>
+        <button class="btn btn-success" onclick="saveMeasurement()">✔ حفظ الطلب</button>
         <button class="btn btn-outline" onclick="closeMeasure()">← رجوع</button>
       </div>
     </div>
@@ -1321,6 +1322,7 @@ const fbDB   = firebase.firestore();
     <div class="ord-body">
       <!-- ═══ القياسات + التفاصيل -->
       <div class="ord-meas">
+        <div id="order-basket" style="display:none"></div>
         <div id="ms-suggest" style="display:none;margin-bottom:10px"></div>
         <div class="ord-details">
           <div class="fg" style="margin:0"><label>الأزرار</label><div style="display:flex;gap:4px"><input type="text" id="mm-buttons" placeholder="عادية/معدنية" style="flex:1;min-width:0"><button type="button" class="btn btn-sm" style="background:#eef;color:#4527a0" onclick="pickAccessory('mm-buttons','الأزرار')">🔍</button></div></div>
@@ -4907,6 +4909,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   renderMeasFields(src ? src.values : null);
   _refreshUnitUI();
   renderOrderVisual();
+  _orderBasket = []; renderOrderBasket();
   _closeAllOverlays();
   showScreen('measure-panel');
   suggestFromHistory();
@@ -5295,51 +5298,79 @@ function _collectModel(){
     proofaPieces: document.getElementById('mm-proofa').checked ? _proofaPieces() : [],
   };
 }
-function saveMeasurement() {
+// بناء بيانات قطعة واحدة مع التحقّق (يُرجع null عند الفشل)
+function _buildMeasData(){
   if (document.getElementById('mm-fabric').value==='__ext') {
     const nm=document.getElementById('mm-extfabric').value.trim();
     const w=parseFloat(document.getElementById('mm-extfabricw').value)||0;
     const ln=parseFloat(document.getElementById('mm-extfabriclen').value)||0;
-    if(!nm||!w||!ln){ alert('القماش الخارجي يتطلب: اسم القماش والعرض والطول'); return; }
+    if(!nm||!w||!ln){ alert('القماش الخارجي يتطلب: اسم القماش والعرض والطول'); return null; }
   }
   const clientId = document.getElementById('ms-client').value;
-  if (!clientId) { alert('اختر العميل'); return; }
+  if (!clientId) { alert('اختر العميل'); return null; }
   const values = _readMeasValues();
-  if (!Object.keys(values).length) { alert('أدخل قياساً واحداً على الأقل'); return; }
-  const date = readDMY('ms-date');
+  if (!Object.keys(values).length) { alert('أدخل قياساً واحداً على الأقل'); return null; }
   const warns = measWarnings(values);
-  if (warns.length && !confirm('⚠️ توجد تحذيرات في القياسات:\n\n• '+warns.join('\n• ')+'\n\nحفظ على أي حال؟')) return;
-  const data = {
-    clientId, date,
+  if (warns.length && !confirm('⚠️ توجد تحذيرات في القياسات:\n\n• '+warns.join('\n• ')+'\n\nحفظ على أي حال؟')) return null;
+  return {
+    clientId, date: readDMY('ms-date'),
     name: document.getElementById('ms-name').value.trim(),
     template: document.getElementById('ms-template').value,
-    unit: _orderUnit,
-    values,
-    model: _collectModel(),
+    unit: _orderUnit, values, model: _collectModel(),
     notes: document.getElementById('ms-notes').value.trim(),
   };
+}
+let _orderBasket = [];
+function getNextOrderNo(){ const n=measurements.map(m=>parseInt(m.orderNo)).filter(x=>!isNaN(x)); return n.length?Math.max(...n)+1:1; }
+function renderOrderBasket(){
+  const el=document.getElementById('order-basket'); if(!el) return;
+  if(!_orderBasket.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  el.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 11px;margin-bottom:9px">
+    <b style="color:#1b5e20;font-size:.84rem">🧺 قطع هذا الطلب (${_orderBasket.length})</b>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${_orderBasket.map((d,i)=>`<span class="ap-badge" style="background:#fff;border:1px solid #a5d6a7;color:#1b5e20">${escHtml(d.name||L(d.template))} <span style="cursor:pointer;color:#c62828;font-weight:800" onclick="removePiece(${i})">×</span></span>`).join('')}</div>
+    <div style="font-size:.72rem;color:#558b2f;margin-top:5px">أضف بقية القطع ثم اضغط «✔ حفظ الطلب» لإغلاق الأمر بكل قطعه</div></div>`;
+}
+function removePiece(i){ _orderBasket.splice(i,1); renderOrderBasket(); }
+function _resetPieceForm(){
+  document.getElementById('ms-name').value='';
+  _orderParts={};
+  ['mm-buttons','mm-embroidery','mm-taktak','mm-metal','mm-extfabric','mm-extfabricw','mm-extfabriclen','mm-extfabriccolor','ms-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('mm-qty').value=1;
+  document.getElementById('mm-proofa').checked=false; toggleProofa();
+  document.getElementById('mm-fabric').value=''; toggleExtFabric();
+  renderMeasFields(null); renderOrderVisual();
+}
+function addPieceToOrder(){
+  if (document.getElementById('ms-edit-id').value){ alert('تعديل طلب محفوظ لا يدعم إضافة قطع'); return; }
+  const d=_buildMeasData(); if(!d) return;
+  _orderBasket.push(d); _resetPieceForm(); renderOrderBasket();
+}
+function saveMeasurement() {
   const editId = document.getElementById('ms-edit-id').value;
   if (editId) {
+    const d=_buildMeasData(); if(!d) return;
     const m = measurements.find(x=>String(x.id)===editId);
-    if (m) Object.assign(m, data);
-  } else {
-    const nid = Date.now();
-    measurements.push({ id: nid, ...data });
-    save('measurements');
-    autoNotify(clientId,'received','إرسال رسالة واتساب للعميل بتأكيد استلام طلبه؟');
-    if (canAccess('production') && confirm('✔ حُفظ الطلب.\nهل تريد إنشاء أمر إنتاج من هذا الطلب الآن؟')) {
-      const m = measurements.find(x=>x.id===nid);
-      const mod = m.model||{};
-      const parts = (mod.partsSel||[]).map(p=>p.value).filter(Boolean).slice(0,3).join('، ');
-      const desc = L(m.template) + (parts?' — '+parts:'') + (mod.qty>1?' ×'+mod.qty:'');
-      showScreen('dashboard');
-      openProdPanel(null, { clientId:m.clientId, measId:m.id, desc, qty:(mod.qty||1) });
-      return;
-    }
-    closeMeasure();
+    if (m) Object.assign(m, d);
+    save('measurements'); closeMeasure(); return;
+  }
+  // طلب جديد: القطع في السلّة + القطعة الحالية إن كانت معبّأة
+  let pieces=[..._orderBasket];
+  if (Object.keys(_readMeasValues()).length){ const d=_buildMeasData(); if(!d) return; pieces.push(d); }
+  if(!pieces.length){ alert('أضف قطعة واحدة على الأقل (أدخل قياساً ثم احفظ، أو «＋ قطعة أخرى»)'); return; }
+  const clientId=pieces[0].clientId;
+  const orderNo=getNextOrderNo();
+  const ids=[];
+  pieces.forEach(d=>{ const id=Date.now()+Math.floor(Math.random()*1000); measurements.push({id,orderNo,...d}); ids.push(id); });
+  save('measurements');
+  _orderBasket=[];
+  autoNotify(clientId,'received','إرسال رسالة واتساب للعميل بتأكيد استلام طلبه؟');
+  if (canAccess('production') && confirm('✔ حُفظ الطلب #'+orderNo+' ('+pieces.length+' قطعة).\nإنشاء أمر إنتاج لهذا الطلب؟')) {
+    const desc = 'طلب #'+orderNo+' — '+pieces.length+' قطعة ('+pieces.map(p=>L(p.template)).join('، ')+')';
+    showScreen('dashboard');
+    openProdPanel(null, { clientId, measId:ids[0], desc, qty:pieces.length });
     return;
   }
-  save('measurements');
   closeMeasure();
 }
 function _closeAllOverlays() {
