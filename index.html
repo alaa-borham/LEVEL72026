@@ -1270,10 +1270,17 @@ const fbDB   = firebase.firestore();
       <div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start">
         <div class="stud-canvas" id="stud-canvas"></div>
         <div>
-          <div class="fg" style="margin:0 0 8px"><label>الجزء</label><select id="stud-part" onchange="studioPartChange()"></select></div>
-          <div class="fg" style="margin:0 0 8px"><label>الخيار</label><select id="stud-opt" onchange="studioOptChange()"></select></div>
-          <label class="btn btn-primary btn-sm" style="cursor:pointer;width:100%;text-align:center;margin-bottom:8px">⬆️ رفع صورة هذا الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
-          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 ارفع الصورة <b>كاملة الإطار</b> بنفس مقاس صورة الأساس (يُفضّل PNG بخلفية شفافة، والجزء مرسوم في مكانه) — تُركّب فوق الموديل في موضعها مباشرة.</div>
+          <div class="fg" style="margin:0 0 5px"><label>الجزء</label>
+            <div style="display:flex;gap:4px"><select id="stud-part" onchange="studioPartChange()" style="flex:1;min-width:0"></select>
+            <button class="btn btn-sm" style="background:#2e7d32;color:#fff" onclick="studioAddPart()" title="إضافة جزء">＋</button>
+            <button class="btn btn-sm" style="background:#ffebee;color:#c62828" onclick="studioDelPart()" title="حذف الجزء">🗑</button></div></div>
+          <div class="fg" style="margin:0 0 5px"><label>الخيار</label>
+            <div style="display:flex;gap:4px"><select id="stud-opt" onchange="studioOptChange()" style="flex:1;min-width:0"></select>
+            <button class="btn btn-sm" style="background:#ffebee;color:#c62828" onclick="studioDelOpt()" title="حذف الخيار">🗑</button></div></div>
+          <div style="display:flex;gap:4px;margin-bottom:8px"><input type="text" id="stud-newopt" placeholder="خيار جديد للجزء" style="flex:1;min-width:0;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')studioAddOpt()"><button class="btn btn-success btn-sm" onclick="studioAddOpt()">＋ خيار</button></div>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;width:100%;text-align:center;margin-bottom:6px">⬆️ رفع صورة هذا الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
+          <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="studioSaveOpt()">💾 حفظ الخيار</button>
+          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 ارفع الصورة <b>كاملة الإطار</b> (PNG بخلفية شفافة، الجزء في مكانه) — تُركّب فوق الموديل مباشرة.</div>
           <button class="btn btn-danger btn-sm" style="width:100%" onclick="studioRemoveOpt()">حذف صورة هذا الخيار</button>
           <div style="border-top:1px solid #eee;margin-top:10px;padding-top:8px">
             <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:5px">معاينة سريعة:</div>
@@ -5145,6 +5152,48 @@ function studioOptChange(){
   renderStudio();
 }
 function _curLayer(){ const l=tmplLayers[_studioTpl]; return l&&l.layers&&l.layers[_studioPart]&&l.layers[_studioPart][_studioOpt]; }
+function studioAddPart(){
+  const name=prompt('اسم الجزء الجديد (مثل: التطريز، الكفّة...):'); if(!name||!name.trim()) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  spots.push({ id:'h'+Date.now(), label:name.trim(), options:[], x:50, y:50 });
+  _saveHotspots();
+  studioPick();
+  document.getElementById('stud-part').value=spots[spots.length-1].id; studioPartChange();
+  alert('✔ أُضيف الجزء — أضف خياراته ثم ارفع صورها. يمكنك ضبط موضع نقطته بالسحب من «إعدادات القالب».');
+}
+function studioDelPart(){
+  if(!_studioPart) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h) return;
+  if(!confirm('حذف الجزء «'+h.label+'» وكل خياراته وصورها؟')) return;
+  tmplHotspots[_studioTpl]=spots.filter(x=>String(x.id)!==String(_studioPart));
+  if(tmplLayers[_studioTpl]&&tmplLayers[_studioTpl].layers) delete tmplLayers[_studioTpl].layers[_studioPart];
+  _saveHotspots(); _saveLayers(); studioPick();
+}
+function studioAddOpt(){
+  const v=document.getElementById('stud-newopt').value.trim(); if(!v) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h){ alert('أضف جزءاً أولاً'); return; }
+  h.options=h.options||[];
+  if(h.options.includes(v)){ alert('الخيار موجود'); return; }
+  h.options.push(v); _saveHotspots();
+  document.getElementById('stud-newopt').value='';
+  studioPartChange();
+  document.getElementById('stud-opt').value=v; studioOptChange();
+}
+function studioDelOpt(){
+  if(!_studioOpt) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h) return;
+  if(!confirm('حذف الخيار «'+_studioOpt+'» وصورته؟')) return;
+  h.options=(h.options||[]).filter(o=>o!==_studioOpt);
+  if(tmplLayers[_studioTpl]&&tmplLayers[_studioTpl].layers[_studioPart]) delete tmplLayers[_studioTpl].layers[_studioPart][_studioOpt];
+  _saveHotspots(); _saveLayers(); studioPartChange();
+}
+function studioSaveOpt(){
+  _saveLayers(); _saveHotspots();
+  alert('💾 تم حفظ الخيار وصورته');
+}
 function studioBase(input){
   const f=input.files[0]; if(!f) return;
   _readImage(f, 700, 0.72, dataURL=>{ _layObj(_studioTpl).base=dataURL; _saveLayers(); renderStudio(); });
