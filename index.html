@@ -408,6 +408,11 @@ body.ltr .dash-card::after{content:'›'}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:6px}
 .ord-model .order-canvas{flex:1 1 auto;min-height:0;aspect-ratio:420/640;width:auto;max-width:100%;margin:auto;position:relative}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.ord-model .order-canvas img.ov-layer{position:absolute;inset:auto;height:auto !important;transform:translate(-50%,-50%);pointer-events:none;object-fit:contain;z-index:2}
+.stud-canvas{position:relative;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;aspect-ratio:420/640;max-height:60vh;width:auto;margin:0 auto}
+.stud-canvas>img.base,.stud-canvas>svg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.stud-canvas .ov{position:absolute;transform:translate(-50%,-50%);object-fit:contain}
+.stud-canvas .ov.act{outline:2px dashed #e65100;cursor:move}
 .ord-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px 7px;background:#f0f9f8;border:1px solid #c8e6e2;border-radius:10px;padding:7px 9px;margin-top:8px}
 .ord-details label{font-size:.68rem !important;font-weight:800;color:#00796b;margin-bottom:1px}
 .ord-details input,.ord-details select{padding:5px 7px !important;font-size:.84rem;font-weight:700;color:#114b44;border:1.5px solid #26a69a !important;border-radius:8px !important;background:#fff;box-shadow:0 0 0 1px rgba(38,166,154,.12),0 0 7px rgba(38,166,154,.38);transition:border-color .15s,box-shadow .15s}
@@ -1225,6 +1230,7 @@ const fbDB   = firebase.firestore();
       <button class="btn btn-success" onclick="openMeasurePanel()">＋ طلب تفصيل جديد</button>
       <button class="btn" style="background:#f57c00;color:#fff" onclick="showHeldOrders()">⏸ الطلبات المعلّقة</button>
       <button class="btn btn-info" onclick="openMeasSettings()">⚙️ إعدادات الحقول</button>
+      <button class="btn" style="background:#7e57c2;color:#fff" onclick="showModelStudio()">🎨 الموديل التفاعلي</button>
       <select id="ms-filter-client" onchange="renderMeasurements()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;min-width:170px">
         <option value="">— كل العملاء —</option>
       </select>
@@ -1246,6 +1252,36 @@ const fbDB   = firebase.firestore();
         <tbody id="meas-tbody"></tbody>
       </table>
       <div id="ms-empty" style="display:none;text-align:center;padding:36px;color:#bbb">لا توجد طلبات بعد — اضغط "طلب تفصيل جديد"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: MODEL STUDIO (الموديل التفاعلي) -->
+<div class="moverlay" id="studio-modal">
+  <div class="mbox" style="max-width:1000px;width:96vw">
+    <div class="mhdr"><h3>🎨 استوديو الموديل التفاعلي</h3><button class="mcls" onclick="closeModal('studio-modal')">✕</button></div>
+    <div style="padding:10px 14px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label style="font-weight:700;font-size:.85rem">القالب:</label>
+      <select id="stud-tpl" onchange="studioPick()" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></select>
+      <label class="btn btn-success btn-sm" style="cursor:pointer">🖼️ صورة الأساس<input type="file" accept="image/*,.svg" onchange="studioBase(this)" style="display:none"></label>
+      <span style="font-size:.76rem;color:#999">ارفع صورة موديل أساس، ثم لكل خيار ارفع صورته وحرّكها/كبّرها فوق الموديل</span>
+    </div>
+    <div class="mlist" style="padding:12px 14px">
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start">
+        <div class="stud-canvas" id="stud-canvas"></div>
+        <div>
+          <div class="fg" style="margin:0 0 8px"><label>الجزء</label><select id="stud-part" onchange="studioPartChange()"></select></div>
+          <div class="fg" style="margin:0 0 8px"><label>الخيار</label><select id="stud-opt" onchange="studioOptChange()"></select></div>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;width:100%;text-align:center;margin-bottom:8px">⬆️ رفع صورة هذا الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
+          <div class="fg" style="margin:0 0 8px"><label>الحجم <span id="stud-w-val">30</span>٪</label><input type="range" id="stud-w" min="5" max="100" value="30" oninput="studioResize(this.value)" style="width:100%"></div>
+          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 اسحب الصورة فوق الموديل لضبط موضعها، والمسطرة لحجمها. تُحفظ تلقائياً.</div>
+          <button class="btn btn-danger btn-sm" style="width:100%" onclick="studioRemoveOpt()">حذف صورة هذا الخيار</button>
+          <div style="border-top:1px solid #eee;margin-top:10px;padding-top:8px">
+            <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:5px">معاينة سريعة:</div>
+            <div id="stud-preview" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2439,7 +2475,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2498,6 +2534,7 @@ let measVisible = {};   // إعدادات إظهار/إخفاء حقول الق�
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
 let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
+let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
@@ -2543,6 +2580,7 @@ function loadAccountData() {
   if (!qcDefects.length) qcDefects = ['اختلاف قياس','عيب خياطة','عيب قماش','عيب كي','لون غير مطابق','زر/كبك ناقص'];
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
+  tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
@@ -5076,17 +5114,110 @@ function getTemplateKeys(tpl){ return tmplMeasKeys[tpl] || MEAS_TEMPLATES[tpl] |
 const ALL_MEAS_KEYS = Object.keys(MEAS_DICT);
 
 // رسم الصورة (أو الثوب الافتراضي) مع نقاطها فوقها
+// ═══════════════ MODEL STUDIO — الموديل التفاعلي (تركيب الطبقات)
+let _studioTpl='', _studioPart='', _studioOpt='';
+function _layObj(tpl){ tmplLayers[tpl]=tmplLayers[tpl]||{base:'',layers:{}}; tmplLayers[tpl].layers=tmplLayers[tpl].layers||{}; return tmplLayers[tpl]; }
+function _saveLayers(){ const j=JSON.stringify(tmplLayers); if(j.length>1200000) alert('⚠️ مجموع الصور كبير وقد لا يُرفع للسحابة — صغّر الصور'); lsSet('tmplLayers', j); }
+function showModelStudio(){
+  _closeAllOverlays();
+  if(!canAccess('tailoring')){ permDenied('tailoring'); return; }
+  document.getElementById('stud-tpl').innerHTML = Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
+  _studioTpl=document.getElementById('stud-tpl').value;
+  studioPick();
+  document.getElementById('studio-modal').classList.add('open');
+}
+function studioPick(){
+  _studioTpl=document.getElementById('stud-tpl').value;
+  const hs=getHotspots(_studioTpl);
+  document.getElementById('stud-part').innerHTML=hs.map(h=>`<option value="${escHtml(h.id)}">${escHtml(h.label)}</option>`).join('')||'<option value="">لا أجزاء</option>';
+  _studioPart=document.getElementById('stud-part').value;
+  studioPartChange();
+}
+function studioPartChange(){
+  _studioPart=document.getElementById('stud-part').value;
+  const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
+  const opts=(h&&h.options)||[];
+  document.getElementById('stud-opt').innerHTML=opts.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('')||'<option value="">لا خيارات</option>';
+  _studioOpt=document.getElementById('stud-opt').value;
+  studioOptChange();
+}
+function studioOptChange(){
+  _studioOpt=document.getElementById('stud-opt').value;
+  const cfg=_curLayer();
+  document.getElementById('stud-w').value = cfg?cfg.w:30;
+  document.getElementById('stud-w-val').textContent = cfg?cfg.w:30;
+  renderStudio();
+}
+function _curLayer(){ const l=tmplLayers[_studioTpl]; return l&&l.layers&&l.layers[_studioPart]&&l.layers[_studioPart][_studioOpt]; }
+function studioBase(input){
+  const f=input.files[0]; if(!f) return;
+  _readImage(f, 700, 0.72, dataURL=>{ _layObj(_studioTpl).base=dataURL; _saveLayers(); renderStudio(); });
+}
+function studioOptImg(input){
+  const f=input.files[0]; if(!f) return;
+  _readImage(f, 400, 0.8, dataURL=>{
+    const o=_layObj(_studioTpl); o.layers[_studioPart]=o.layers[_studioPart]||{};
+    const ex=o.layers[_studioPart][_studioOpt]||{x:50,y:30,w:30};
+    o.layers[_studioPart][_studioOpt]={img:dataURL,x:ex.x,y:ex.y,w:ex.w};
+    _saveLayers(); studioOptChange();
+  });
+}
+function studioResize(v){
+  document.getElementById('stud-w-val').textContent=v;
+  const cfg=_curLayer(); if(cfg){ cfg.w=+v; _saveLayers(); renderStudio(); }
+}
+function studioRemoveOpt(){
+  const l=tmplLayers[_studioTpl];
+  if(l&&l.layers[_studioPart]){ delete l.layers[_studioPart][_studioOpt]; _saveLayers(); renderStudio(); }
+}
+function renderStudio(){
+  const cv=document.getElementById('stud-canvas'); if(!cv) return;
+  const l=tmplLayers[_studioTpl];
+  const base=(l&&l.base)|| (tmplImages[_studioTpl]&&tmplImages[_studioTpl].model);
+  const bg=base?`<img class="base" src="${base}">`:THOBE_BG_SVG;
+  let ov='';
+  if(l&&l.layers){
+    Object.keys(l.layers).forEach(pid=>Object.keys(l.layers[pid]).forEach(opt=>{
+      const c=l.layers[pid][opt]; if(!c.img) return;
+      const active=(pid===_studioPart&&opt===_studioOpt);
+      ov+=`<img class="ov ${active?'act':''}" data-pid="${escHtml(pid)}" data-opt="${escHtml(opt)}" src="${c.img}" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:auto${active?'':';opacity:.45'}" ${active?'onpointerdown="studioDrag(event)"':''}>`;
+    }));
+  }
+  cv.innerHTML=bg+ov;
+  // معاينة سريعة: أزرار خيارات الجزء الحالي
+  const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
+  document.getElementById('stud-preview').innerHTML=((h&&h.options)||[]).map(o=>`<button class="btn btn-sm" style="background:${o===_studioOpt?'#2e7d32':'#eef'};color:${o===_studioOpt?'#fff':'#333'}" onclick="document.getElementById('stud-opt').value='${o.replace(/'/g,"")}';studioOptChange()">${escHtml(o)}</button>`).join('');
+}
+function studioDrag(ev){
+  ev.preventDefault();
+  const cfg=_curLayer(); if(!cfg) return;
+  const cv=document.getElementById('stud-canvas'); const img=ev.currentTarget;
+  const move=e=>{ const r=cv.getBoundingClientRect(); cfg.x=Math.max(0,Math.min(100,Math.round((e.clientX-r.left)/r.width*100))); cfg.y=Math.max(0,Math.min(100,Math.round((e.clientY-r.top)/r.height*100))); img.style.left=cfg.x+'%'; img.style.top=cfg.y+'%'; };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); _saveLayers(); };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+
 function renderOrderVisual() {
   const tpl = document.getElementById('ms-template').value;
   const canvas = document.getElementById('order-canvas');
-  const modelImg = tmplImages[tpl] && tmplImages[tpl].model;
-  const bg = modelImg ? `<img src="${modelImg}">` : THOBE_BG_SVG;
+  const lay = tmplLayers[tpl];
+  const baseImg = (lay && lay.base) || (tmplImages[tpl] && tmplImages[tpl].model);
+  const bg = baseImg ? `<img src="${baseImg}">` : THOBE_BG_SVG;
+  // طبقات الخيارات المختارة فوق صورة الأساس (ديناميكي)
+  let overlays = '';
+  if (lay && lay.layers) {
+    Object.keys(_orderParts).forEach(pid=>{
+      const opt = _orderParts[pid];
+      const cfg = lay.layers[pid] && lay.layers[pid][opt];
+      if (cfg && cfg.img) overlays += `<img class="ov-layer" src="${cfg.img}" style="left:${cfg.x}%;top:${cfg.y}%;width:${cfg.w}%">`;
+    });
+  }
   const dots = getHotspots(tpl).map(h=>{
     const val = _orderParts[h.id] || '';
     return `<div class="hspot ${val?'has':''}" style="left:${h.x}%;top:${h.y}%" onclick="openPartMenu('${h.id}',event)">
       ${escHtml(h.label)}${val?` <span class="hv">${escHtml(val)}</span>`:''}</div>`;
   }).join('');
-  canvas.innerHTML = bg + dots;
+  canvas.innerHTML = bg + overlays + dots;
 }
 function openPartMenu(hid, evt) {
   evt.stopPropagation();
