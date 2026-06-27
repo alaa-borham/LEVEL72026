@@ -3149,6 +3149,7 @@ function setLang(l) {
 function showScreen(id) {
   const need = PERM_SCREENS[id];
   if (need && !canAccess(need)) { permDenied(need); return; }
+  document.querySelectorAll('.moverlay.open,.side-panel.open').forEach(el=>el.classList.remove('open'));
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.body.classList.toggle('app-on', id !== 'auth-screen' && id !== 'admin-screen');
@@ -4318,6 +4319,7 @@ function applyMemberPerms() {
 
 // ═══════════════ مستخدمو المنشأة (موظفون يدخلون بحساباتهم على بيانات منشأتهم فقط)
 function showMembers() {
+  _closeAllOverlays();
   if (currentMember) return; // إدارة المستخدمين لصاحب المنشأة فقط
   fillBranchSelect();
   renderMembers();
@@ -4325,6 +4327,7 @@ function showMembers() {
 }
 // ─── الفروع
 function showBranches() {
+  _closeAllOverlays();
   if (currentMember) return; // لصاحب المنشأة فقط
   // تحديث قائمة الموظفين أولاً لعرض عدد موظفي كل فرع بدقة
   fbDB.collection('members').where('tenantId','==',currentAccId).get()
@@ -4498,6 +4501,7 @@ function resetMemberPass(uid) {
 }
 
 function showCustomers() {
+  _closeAllOverlays();
   if (!canAccess('customers')) { permDenied('customers'); return; }
   renderCustomers();
   document.getElementById('customers-modal').classList.add('open');
@@ -4649,6 +4653,7 @@ function getTermGroups(){
   ];
 }
 function showTerms(){
+  _closeAllOverlays();
   if (currentMember) { alert('هذا الإعداد لصاحب المنشأة'); return; }
   renderTerms();
   document.getElementById('terms-modal').classList.add('open');
@@ -4766,6 +4771,7 @@ function _custOptions(selectedId){
 }
 
 function showMeasurements(filterClientId) {
+  _closeAllOverlays();
   if (!canAccess('tailoring')) { permDenied('tailoring'); return; }
   document.getElementById('ms-filter-client').innerHTML =
     '<option value="">— كل العملاء —</option>' + _custOptions();
@@ -4901,6 +4907,7 @@ function holdOrder(){
   closeMeasure();
 }
 function showHeldOrders(){
+  _closeAllOverlays();
   if(!heldOrders.length){ alert('لا توجد طلبات معلّقة'); return; }
   const box=document.getElementById('held-list');
   box.innerHTML = heldOrders.map((h,i)=>`<div class="da-li"><span>${escHtml(h.clientName||'-')} — ${escHtml(L(h.template)||'')} — ${escHtml(h.date||'')}</span>
@@ -5668,6 +5675,7 @@ function getNextFabricCode(){
   return 'F-' + String(nums.length ? Math.max(...nums)+1 : 1).padStart(3,'0');
 }
 function showFabrics() {
+  _closeAllOverlays();
   if (!canAccess('fabrics')) { permDenied('fabrics'); return; }
   document.getElementById('fb-filter-type').innerHTML =
     '<option value="">— كل الأنواع —</option>' + FABRIC_TYPES.map(t=>`<option>${t}</option>`).join('');
@@ -5816,6 +5824,7 @@ function autoNotify(clientId, key, promptMsg){
   if (c && _waNormalize(c.phone) && confirm(promptMsg)) sendWA(clientId, key);
 }
 function showMessaging(presetClientId) {
+  _closeAllOverlays();
   if (!customers.length) { alert('أضف عميلاً أولاً'); return; }
   renderAutoMsg();
   document.getElementById('msg-client').innerHTML = _custOptions(presetClientId);
@@ -5837,6 +5846,7 @@ function msgSend() {
 
 // ═══════════════ TAILORING HUB — بوابة التفصيل
 function showTailorHub() {
+  _closeAllOverlays();
   document.getElementById('tailor-modal').classList.add('open');
 }
 
@@ -5950,6 +5960,7 @@ function deliverTailorJob(id) {
 
 // ═══════════════ DELIVERIES — التسليم
 function showDeliveries() {
+  _closeAllOverlays();
   if (!canAccess('tailoring')) { permDenied('tailoring'); return; }
   renderDeliveries();
   document.getElementById('deliveries-modal').classList.add('open');
@@ -6003,6 +6014,7 @@ function deliverProdOrder(id) {
 
 // ═══════════════ ACCOUNTS — الحسابات: بوابة المصروفات والمشتريات والسندات
 function showAccounts() {
+  _closeAllOverlays();
   const totalExp = expenses.reduce((t,e)=>t+e.amount,0);
   const totalPurch = invoices.filter(i=>i.type==='فاتورة مشتريات').reduce((t,i)=>t+i.grand,0);
   document.getElementById('acc-summary').innerHTML =
@@ -6101,6 +6113,7 @@ const REPORT_TYPES = [
   ['receivables','💳 أعمار الديون (المستحقات)'],
 ];
 function showReports(){
+  _closeAllOverlays();
   if (!canAccess('analytics')) { permDenied('analytics'); return; }
   const now=new Date();
   document.getElementById('rep-from').value=isoToDMY(new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0]);
@@ -6205,6 +6218,7 @@ function logAction(action, detail){
   lsSet('auditLog', JSON.stringify(auditLog));
 }
 function showAudit(){
+  _closeAllOverlays();
   if (currentMember) { alert('سجل العمليات لصاحب المنشأة'); return; }
   renderAudit();
   document.getElementById('audit-modal').classList.add('open');
@@ -6227,6 +6241,7 @@ function renderAudit(){
 const Q_STATUS = { 'معلق':'background:#fff8e1;color:#b28704', 'معتمد':'background:#e8f5e9;color:#2e7d32', 'مرفوض':'background:#ffebee;color:#c62828', 'تحوّل لفاتورة':'background:#e3f2fd;color:#1565c0' };
 function getNextQuoteNum(){ const n=quotations.map(q=>parseInt(q.num)).filter(x=>!isNaN(x)); return n.length?Math.max(...n)+1:1; }
 function showQuotations(){
+  _closeAllOverlays();
   if (!canAccess('invoices')) { permDenied('invoices'); return; }
   renderQuotations();
   document.getElementById('quotes-modal').classList.add('open');
@@ -6414,6 +6429,7 @@ function applyPrior(measId){
 }
 // لوحة الرؤى: توقّع الطلب وأكثر المطلوب
 function showAIInsights(){
+  _closeAllOverlays();
   const now=new Date();
   // اتجاه الطلبات آخر 3 أشهر مقابل توقّع الشهر القادم (متوسط متحرك)
   const monthCount=k=>measurements.filter(m=>(m.date||'').slice(0,7)===k).length
@@ -6445,6 +6461,7 @@ function showAIInsights(){
 const PATTERN_COMPONENTS = ['أمام','خلف','كم','ياقة','كبك','جيب','جبزور','قلاب'];
 const CAD_SYSTEMS = ['Gerber','Lectra','Optitex','Grafis','Gemini','Bullmer','عام / Generic'];
 function showPatterns(){
+  _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
   document.getElementById('pt-filter').innerHTML = '<option value="">— كل الأنواع —</option>' + Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
   renderPatterns();
@@ -6573,6 +6590,7 @@ function saveLeadSettings(){
 }
 
 function showProduction() {
+  _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
   renderProduction();
   document.getElementById('production-modal').classList.add('open');
@@ -6759,6 +6777,7 @@ function printProdOrder(id) {
 // ═══════════════ QR SCAN — مسح أوامر الإنتاج وتحريك المراحل من الجوال
 let _qrScanner = null;
 function showQRScan() {
+  _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
   document.getElementById('qrscan-result').innerHTML = '';
   document.getElementById('qrscan-manual').value = '';
@@ -6814,6 +6833,7 @@ function _showScannedOrder(num) {
 
 // ═══════════════ APPOINTMENTS — المواعيد (قياس / بروفة / استلام)
 function showAppointments() {
+  _closeAllOverlays();
   if (!canAccess('appointments')) { permDenied('appointments'); return; }
   if (!customers.length) { alert('أضف عميلاً أولاً من شاشة العملاء'); return; }
   document.getElementById('ap-client').innerHTML = _custOptions();
@@ -6932,6 +6952,7 @@ function doTransfer(){
 
 // ═══════════════ المصروفات
 function showExpenses(){
+  _closeAllOverlays();
   if (!canAccess('expenses')) { permDenied('expenses'); return; }
   document.getElementById('ex-date').value = todayDMY();
   const bsel = document.getElementById('ex-branch');
@@ -6979,6 +7000,7 @@ function renderExpenses(){
 
 // ═══════════════ سجل السندات الموحد (قبض وصرف — عملاء وموردون)
 function showVouchersLog(){
+  _closeAllOverlays();
   if (!canAccess('customers') && !canAccess('purchases')) { permDenied('customers'); return; }
   renderVouchersLog();
   document.getElementById('vouchers-modal').classList.add('open');
@@ -7036,6 +7058,7 @@ function supplierBalance(sid){
   return bal;
 }
 function showSuppliers(){
+  _closeAllOverlays();
   if (!canAccess('purchases')) { permDenied('purchases'); return; }
   renderSuppliers();
   document.getElementById('suppliers-modal').classList.add('open');
