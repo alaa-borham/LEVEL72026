@@ -2076,6 +2076,13 @@ const fbDB   = firebase.firestore();
         <div>📅 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
       </div>
       <div id="pp-desc" style="background:#f1f8e9;border-radius:8px;padding:9px 13px;font-size:.92rem;font-weight:600;margin-bottom:10px"></div>
+      <div id="pp-model-wrap" style="display:none;gap:14px;align-items:flex-start;margin-bottom:10px;border:1px solid #e0e0e0;border-radius:10px;padding:10px;background:#fafafa">
+        <div id="pp-model" style="width:170px;aspect-ratio:420/640;position:relative;flex:0 0 auto;background:#fff;border-radius:8px;overflow:hidden"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;color:#1b5e20;font-size:.88rem;margin-bottom:5px">👕 مواصفات الموديل:</div>
+          <div id="pp-model-opts" style="font-size:.85rem;line-height:1.85"></div>
+        </div>
+      </div>
       <div id="pp-meas" style="margin-bottom:10px"></div>
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:10px">
         <thead><tr>
@@ -5384,6 +5391,29 @@ function renderOrderVisual() {
   canvas.innerHTML = bg + overlays + dots;
   _fitCanvasToModel(canvas, baseImg);
 }
+// صورة الموديل المركّبة (أساس + طبقات الخيارات المختارة) لقالب وقطعٍ محفوظة — للطباعة والأوامر
+function _modelBaseImg(tpl){ const lay=tmplLayers[tpl]; return (lay&&lay.base)||(tmplImages[tpl]&&tmplImages[tpl].model)||''; }
+function _composedModelHTML(tpl, partsSel){
+  const lay=tmplLayers[tpl];
+  const baseImg=_modelBaseImg(tpl);
+  const st='position:absolute;inset:0;width:100%;height:100%;object-fit:contain';
+  let html = baseImg ? `<img src="${baseImg}" style="${st}">` : THOBE_BG_SVG;
+  let any=false;
+  (partsSel||[]).forEach(p=>{
+    const cfg = lay && lay.layers && lay.layers[p.id] && lay.layers[p.id][p.value];
+    if (cfg && cfg.img){ html += `<img src="${cfg.img}" style="${st};z-index:2">`; any=true; }
+  });
+  return { html, baseImg, hasLayers:any };
+}
+// قائمة مواصفات القطعة (الخيارات + القماش والأزرار والتطريز…) لطباعتها بجانب الصورة
+function _modelSpecsHTML(m){
+  const mo=(m&&m.model)||{};
+  let rows=((mo.partsSel)||[]).map(p=>`<div>• <b>${escHtml(p.label)}:</b> ${escHtml(p.value)}</div>`);
+  const fab = mo.fabricExt ? (mo.extFabric||'قماش العميل') : (mo.fabricId ? _fabricLabel(mo.fabricId) : '');
+  const extra=[['القماش',fab],['الأزرار',mo.buttons],['التطريز',mo.embroidery],['التكتك',mo.taktak],['معدلية/شعار',mo.metal]];
+  extra.forEach(([k,v])=>{ if(v) rows.push(`<div>• <b>${escHtml(k)}:</b> ${escHtml(v)}</div>`); });
+  return rows.length ? rows.join('') : '<span style="color:#999">لا اختيارات</span>';
+}
 // يضبط نسبة أبعاد اللوحة على نسبة صورة الموديل نفسها، كي تملأ الصورة اللوحة تماماً
 // فتبقى المسميات (النقاط) منطبقة على القطع في كل أحجام الشاشة بلا انزياح
 function _fitCanvasToModel(canvas, baseImg){
@@ -7140,6 +7170,16 @@ function printProdOrder(id) {
     (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>m.values && m.values[k])
       .map(k=>`<div class="mp-cell"><div class="k">${MEAS_DICT[k]||k}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('') +
     '</div>') : '';
+  // صورة الموديل المركّبة + مواصفات القطع (تساعد القصّاص على رؤية الشكل المطلوب)
+  const mw = document.getElementById('pp-model-wrap');
+  if (m) {
+    const comp = _composedModelHTML(m.template, (m.model&&m.model.partsSel)||[]);
+    const cv = document.getElementById('pp-model');
+    cv.innerHTML = comp.html;
+    _fitCanvasToModel(cv, comp.baseImg);
+    document.getElementById('pp-model-opts').innerHTML = _modelSpecsHTML(m);
+    mw.style.display = 'flex';
+  } else { mw.style.display = 'none'; }
   document.getElementById('pp-stages').innerHTML = PROD_STAGES.map((st,i)=>{
     const lg = (o.log||[]).find(l=>l.stage===st);
     return `<tr>
