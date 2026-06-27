@@ -730,6 +730,7 @@ const fbDB   = firebase.firestore();
         <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="showTerms()">🏷️ إدارة المسميات (تغيير الأسماء عربي/إنجليزي)</button>
         <div class="fg" style="margin-top:8px"><label>نظام القص للتصدير XML</label>
           <select id="set-cad"><option>Gerber</option><option>Lectra</option><option>Optitex</option><option>Grafis</option><option>Gemini</option><option>Bullmer</option><option>عام / Generic</option></select></div>
+        <button class="btn" style="width:100%;margin-top:8px;background:#5c6bc0;color:#fff" onclick="openNaseejSettings()">🧬 تصدير نسيج XML (إعدادات + جدول الربط + تصدير الكل)</button>
 
         <div id="members-btn">
           <h4 style="color:#2e7d32;margin:18px 0 12px">👤 مستخدمو المنشأة</h4>
@@ -1304,6 +1305,27 @@ const fbDB   = firebase.firestore();
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: NASEEJ XML EXPORT (تصدير نسيج) -->
+<div class="moverlay" id="naseej-modal">
+  <div class="mbox" style="max-width:840px;width:96vw">
+    <div class="mhdr"><h3>🧬 تصدير نسيج XML</h3><button class="mcls" onclick="closeModal('naseej-modal')">✕</button></div>
+    <div class="mlist" style="padding:14px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+        <div class="fg" style="margin:0"><label>رمز التاجر Reseller</label><input id="nz-reseller" style="direction:ltr" placeholder="10075"></div>
+        <div class="fg" style="margin:0"><label>رقم الصنف Item Number</label><input id="nz-item" style="direction:ltr" placeholder="100751001"></div>
+        <div class="fg" style="margin:0"><label>اسم جدول القياس</label><input id="nz-table" style="direction:ltr" placeholder="Thobe_Non_Saudi_new"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-success" style="flex:1" onclick="saveNaseejSettings()">💾 حفظ الإعدادات والجدول</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveNaseejSettings();exportNaseejAll()">📦 تصدير كل الطلبات (ملف واحد)</button>
+      </div>
+      <div style="font-weight:800;color:#2e7d32;margin-bottom:4px">🔗 جدول ربط الاختيارات بأسماء Variations في نسيج:</div>
+      <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار. الاختيارات بلا اسم تُستثنى من التصدير.</div>
+      <div id="nz-map" style="max-height:46vh;overflow:auto"></div>
     </div>
   </div>
 </div>
@@ -2504,7 +2526,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap'];
 let _cloudTimer = null;
 function scheduleCloudSave() {
   if (!currentAccId) return;
@@ -2564,6 +2586,7 @@ let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
 let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
+let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
@@ -2610,6 +2633,7 @@ function loadAccountData() {
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
+  naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
@@ -4900,7 +4924,8 @@ function renderMeasurements() {
         <button class="btn btn-primary btn-sm" onclick="openMeasurePanel(${m.id})" title="تعديل">✏️</button>
         <button class="btn btn-info btn-sm" onclick="printMeasurement(${m.id})" title="طباعة">🖨️</button>
         <button class="btn btn-warning btn-sm" onclick="copyMeasurement(${m.id})" title="نسخ">📋</button>
-        <button class="btn btn-sm" style="background:#5c6bc0;color:white" onclick="exportMeasurementXML(${m.id})" title="XML">🧬</button>
+        <button class="btn btn-sm" style="background:#5c6bc0;color:white" onclick="exportMeasurementXML(${m.id})" title="XML عام">🧬</button>
+        <button class="btn btn-sm" style="background:#3949ab;color:white" onclick="exportNaseejMeas(${m.id})" title="تصدير نسيج XML">🧵</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMeasurement(${m.id})" title="حذف">🗑</button>
       </td></tr>`;
   document.getElementById('meas-tbody').innerHTML = groups.map(g=>{
@@ -6943,6 +6968,132 @@ function exportMeasurementXML(measId){
   a.href=URL.createObjectURL(blob);
   a.download='order-'+(c?c.num||'':'')+'-'+m.template+'-'+(m.date||'')+'.xml';
   document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ═══════════════ NASEEJ XML — تصدير أوامر القص بصيغة نسيج (OrderMaster)
+// ترتيب قياسات الثوب كما في نسيج: [مفتاحنا, الاختصار, الاسم الإنجليزي]
+const NASEEJ_MEAS = [
+  ['frontLength','FL','Front Length'], ['backLength','BL','Back Length'],
+  ['thobeShoulder','SH','Shoulder'], ['downShoulderR','DSR','Down Sholder R'],
+  ['sleeveSada','SLS','Sleeve S'], ['sleeveKabak','SLK','Sleeve k'],
+  ['fullChest','CH','Chest'], ['waist','WA','Waist'], ['hips','HP','Hip'],
+  ['bottom','BO','Bottom'], ['bFoldWidth','WB','Width bottom'], ['armhole','AH','Arm Hole'],
+  ['elbowWidth','EB','Elbow'], ['sadaRound','SR','Sada Round'], ['sadaWidth','WS','sleeve width sadaa'],
+  ['kabakRound','KR','Kabak Round'], ['kabakWidth','KW','kabak width'], ['collarSada','CO','Collar'],
+  ['jabzourLen','JL','Jabzour Length'], ['jabzourWidth','JW','Jabzour Width'],
+  ['chestPocketLen','CBL','Chest pocket length'], ['chestPocketW','CBW','Chest pocket width'],
+  ['sidePocketDown','DSP','down side pocket'], ['sidePocketOpen','SPO','Side pocket opening'],
+  ['sidePocketLen','SPL','Side pocket length'], ['sidePocketW','SPW','Side pocket width'],
+];
+function _isThobe(tpl){ return tpl==='ثوب سعودي'||tpl==='ثوب أطفال'; }
+function _mdy(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? (p[1]+'/'+p[2]+'/'+p[0]) : iso; }
+function _toCm(val,unit){ const n=parseFloat(val); if(isNaN(n)) return 0; return unit==='inch' ? Math.round(n*2.54*1000)/1000 : n; }
+function _naseejVar(p){ return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || ''; }
+function _naseejOrderNode(m, idx){
+  const reseller=(settings.naseejReseller||'').trim();
+  const c=_custById(m.clientId);
+  const num=reseller+'-'+(c&&c.num?c.num:'0')+'-'+(idx+1)+'-'+(m.orderNo||m.id);
+  const mod=m.model||{};
+  const fab=mod.fabricId?_fabricById(mod.fabricId):null;
+  let s='    <Order Number="'+_xmlEsc(num)+'" Order-Date="'+_xmlEsc(_mdy(m.date))+'">\n';
+  s+='      <Item Number="'+_xmlEsc(settings.naseejItem||'')+'" Quantity="'+_xmlEsc(mod.qty||1)+'" />\n';
+  if(fab) s+='      <Fabric Number="'+_xmlEsc(fab.code||'')+'" Color="'+_xmlEsc(fab.color||'')+'" Width="'+_xmlEsc(fab.width||'')+'" />\n';
+  else if(mod.extFabric) s+='      <Fabric Number="'+_xmlEsc(mod.extFabric)+'" Color="" Width="'+_xmlEsc(mod.extFabricW||'')+'" />\n';
+  const vars=(mod.partsSel||[]).map(p=>_naseejVar(p)).filter(Boolean);
+  s+='      <Variations>\n';
+  vars.forEach(v=>{ s+='        <Variation Name="'+_xmlEsc(v)+'" />\n'; });
+  s+='      </Variations>\n';
+  const table=settings.naseejTable || (_isThobe(m.template)?'Thobe_Non_Saudi_new':m.template);
+  s+='      <Measurement Basic-Size="'+_xmlEsc(m.size||'')+'" Measurement-Table-Name="'+_xmlEsc(table)+'">\n';
+  if(_isThobe(m.template)){
+    NASEEJ_MEAS.forEach(([k,ab,nm])=>{
+      const v=(m.values&&m.values[k]!=null&&m.values[k]!=='')?_toCm(m.values[k],m.unit):0;
+      s+='        <Type Abbreviation="'+ab+'" Name="'+_xmlEsc(nm)+'" Value="'+v+'" />\n';
+    });
+  } else {
+    (getTemplateKeys(m.template)||[]).forEach(k=>{
+      if(m.values&&m.values[k]!=null&&m.values[k]!==''){
+        s+='        <Type Abbreviation="'+_xmlEsc(String(k).toUpperCase().slice(0,4))+'" Name="'+_xmlEsc(MEAS_EN[k]||k)+'" Value="'+_toCm(m.values[k],m.unit)+'" />\n';
+      }
+    });
+  }
+  s+='      </Measurement>\n    </Order>\n';
+  return s;
+}
+function _naseejDoc(pieces, masterNum){
+  const reseller=(settings.naseejReseller||'').trim();
+  let xml='﻿<?xml version="1.0" encoding="utf-8"?>\n';
+  xml+='<OrderMaster Number="'+_xmlEsc(masterNum)+'" Reseller="'+_xmlEsc(reseller)+'" Order-Date="'+_xmlEsc(_mdy(pieces[0]?pieces[0].date:''))+'" Reference="From LEVEL7 Tailor">\n';
+  xml+='  <errors />\n  <Remarks />\n  <Orders>\n';
+  pieces.forEach((m,i)=>{ xml+=_naseejOrderNode(m,i); });
+  xml+='  </Orders>\n</OrderMaster>\n';
+  return xml;
+}
+function _downloadXml(xml, name){
+  const blob=new Blob([xml],{type:'application/xml'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+}
+function _naseejReady(){
+  if(!(settings.naseejReseller||'').trim()){ alert('⚠️ أدخل «رمز التاجر Reseller» أولاً من: الإعدادات ← 🧬 تصدير نسيج XML'); openNaseejSettings(); return false; }
+  return true;
+}
+function exportNaseejOrder(orderNo){
+  if(!_naseejReady()) return;
+  const pieces=measurements.filter(m=>String(m.orderNo)===String(orderNo)).sort((a,b)=>a.id-b.id);
+  if(!pieces.length){ alert('لا قطع في هذا الطلب'); return; }
+  const reseller=(settings.naseejReseller||'').trim(); const c=_custById(pieces[0].clientId);
+  _downloadXml(_naseejDoc(pieces, reseller+'-'+(c&&c.num?c.num:'0')+'-'+orderNo), 'naseej-order-'+orderNo+'.xml');
+}
+function exportNaseejMeas(measId){
+  if(!_naseejReady()) return;
+  const m=measurements.find(x=>x.id===measId); if(!m) return;
+  if(m.orderNo){ exportNaseejOrder(m.orderNo); return; }
+  const reseller=(settings.naseejReseller||'').trim(); const c=_custById(m.clientId);
+  _downloadXml(_naseejDoc([m], reseller+'-'+(c&&c.num?c.num:'0')+'-'+m.id), 'naseej-meas-'+m.id+'.xml');
+}
+function exportNaseejAll(){
+  if(!_naseejReady()) return;
+  if(!measurements.length){ alert('لا توجد طلبات للتصدير'); return; }
+  const pieces=[...measurements].sort((a,b)=>a.id-b.id);
+  const reseller=(settings.naseejReseller||'').trim();
+  _downloadXml(_naseejDoc(pieces, reseller+'-ALL-'+_todayISO()), 'naseej-all-orders-'+_todayISO()+'.xml');
+  alert('✅ صُدِّر '+pieces.length+' قطعة في ملف واحد');
+}
+function openNaseejSettings(){
+  _closeAllOverlays();
+  document.getElementById('nz-reseller').value=settings.naseejReseller||'';
+  document.getElementById('nz-item').value=settings.naseejItem||'';
+  document.getElementById('nz-table').value=settings.naseejTable||'';
+  const seen={}, rows=[];
+  Object.keys(MEAS_TEMPLATES).forEach(tpl=>{
+    getHotspots(tpl).forEach(h=>{
+      (h.options||[]).forEach(o=>{
+        const key=h.id+'::'+o;
+        if(seen[key]) return; seen[key]=1;
+        rows.push({key, label:h.label, opt:o});
+      });
+    });
+  });
+  document.getElementById('nz-map').innerHTML = rows.length ? rows.map(r=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:5px">
+      <div style="flex:0 0 210px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${escHtml(r.label)}</b> · ${escHtml(r.opt)}</div>
+      <input data-nz="${escHtml(r.key)}" value="${escHtml(naseejVarMap[r.key]||'')}" placeholder="Variation Name (نسيج)" style="flex:1;min-width:0;direction:ltr;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
+    </div>`).join('') : '<div style="color:#bbb;text-align:center;padding:10px">لا اختيارات معرّفة بعد — أضِفها من «استوديو الموديل»</div>';
+  document.getElementById('naseej-modal').classList.add('open');
+}
+function saveNaseejSettings(){
+  settings.naseejReseller=document.getElementById('nz-reseller').value.trim();
+  settings.naseejItem=document.getElementById('nz-item').value.trim();
+  settings.naseejTable=document.getElementById('nz-table').value.trim();
+  lsSet('appSettings', JSON.stringify(settings));
+  document.querySelectorAll('#nz-map input[data-nz]').forEach(inp=>{
+    const k=inp.getAttribute('data-nz'); const v=inp.value.trim();
+    if(v) naseejVarMap[k]=v; else delete naseejVarMap[k];
+  });
+  lsSet('naseejVarMap', JSON.stringify(naseejVarMap));
+  if(typeof scheduleCloudSave==='function') scheduleCloudSave();
+  alert('💾 حُفظت إعدادات نسيج وجدول الربط');
 }
 
 let leadDays = {};
