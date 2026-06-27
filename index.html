@@ -382,6 +382,17 @@ body.ltr .dash-card::after{content:'›'}
 .meas-print .mp-cell .v{font-size:1.25rem;font-weight:800;color:#1b5e20;direction:ltr}
 /* ═══ شارة نوع الموعد */
 .ap-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.76rem;font-weight:700}
+.kanban{display:flex;gap:10px;overflow-x:auto;padding:6px 2px;align-items:flex-start}
+.kcol{flex:0 0 200px;background:#f3f6f1;border:1px solid #e0e8da;border-radius:12px;padding:8px;min-height:120px}
+.kcol.over{background:#e8f5e9;border-color:#a5d6a7}
+.kcol h4{font-size:.82rem;font-weight:800;color:#33691e;text-align:center;margin-bottom:7px;display:flex;justify-content:center;gap:5px;align-items:center}
+.kcol .kn{background:#fff;border-radius:10px;font-size:.7rem;color:#777;padding:1px 7px}
+.kcard{background:#fff;border:1px solid #dde6d5;border-inline-start:4px solid #7cb342;border-radius:9px;padding:7px 9px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kcard:active{cursor:grabbing}
+.kcard.late{border-inline-start-color:#ef5350;background:#fff5f5}
+.kcard .kt{font-weight:800;font-size:.8rem;color:#1b3a26}
+.kcard .ks{font-size:.72rem;color:#666;margin-top:2px}
+.kcard .kd{font-size:.68rem;margin-top:3px;direction:ltr}
 /* ═══ شاشة أوردر التفصيل البصرية */
 .ord-page{min-height:100vh;display:flex;flex-direction:column;padding:10px 16px}
 .ord-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #e6ece0;margin-bottom:10px;flex-shrink:0}
@@ -1826,6 +1837,14 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
+<!-- ═══════════════ MODAL: KANBAN (لوحة الإنتاج) -->
+<div class="moverlay" id="kanban-modal">
+  <div class="mbox" style="max-width:1400px;width:96vw">
+    <div class="mhdr"><h3>📋 لوحة الإنتاج (كانبان) — اسحب الأمر بين المراحل</h3><button class="mcls" onclick="closeModal('kanban-modal')">✕</button></div>
+    <div class="mlist" style="padding:12px"><div class="kanban" id="kanban-board"></div></div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL: QR SCAN (مسح أوامر الإنتاج) -->
 <div class="moverlay" id="qrscan-modal">
   <div class="mbox" style="max-width:420px">
@@ -1914,6 +1933,7 @@ const fbDB   = firebase.firestore();
     <div class="mhdr"><h3>🏭 الإنتاج — أوامر العمل</h3><button class="mcls" onclick="closeModal('production-modal')">✕</button></div>
     <div style="padding:11px 13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" onclick="openProdPanel()">＋ أمر إنتاج جديد</button>
+      <button class="btn" style="background:#7e57c2;color:#fff" onclick="showKanban()">📋 لوحة كانبان</button>
       <button class="btn btn-info" onclick="showQC()">🔍 مراقبة الجودة</button>
       <button class="btn" style="background:#5c6bc0;color:white" onclick="showQRScan()">📷 مسح QR</button>
       <button class="btn btn-outline" onclick="openLeadSettings()">⏱️ مدة التنفيذ</button>
@@ -6693,6 +6713,45 @@ function saveProdOrder() {
   renderDashStats();
 }
 // إتمام المرحلة الحالية والانتقال للتالية — يسجل المنفذ والوقت
+function showKanban(){
+  if (!canAccess('production')) { permDenied('production'); return; }
+  renderKanban();
+  document.getElementById('kanban-modal').classList.add('open');
+}
+function renderKanban(){
+  const today=new Date().toISOString().split('T')[0];
+  const active=prodOrders.filter(o=>!o.delivered);
+  const board=document.getElementById('kanban-board');
+  board.innerHTML = PROD_STAGES.map((st,si)=>{
+    const cards=active.filter(o=>!o.done && o.stageIdx===si)
+      .concat(si===PROD_STAGES.length-1 ? active.filter(o=>o.done) : []);
+    const cardsHtml=cards.map(o=>{
+      const late=!o.done && o.due && o.due<today;
+      const who=(o.assignees||{})[PROD_STAGES[o.stageIdx]]||'';
+      return `<div class="kcard ${late?'late':''}" draggable="true" ondragstart="event.dataTransfer.setData('id','${o.id}')">
+        <div class="kt">#${o.num} ${escHtml(_custName(o.clientId))}</div>
+        <div class="ks">${escHtml(o.desc||'')}${who?' • '+escHtml(who):''}</div>
+        ${o.due?`<div class="kd" style="${late?'color:#c62828;font-weight:700':'color:#888'}">📅 ${isoToDMY(o.due)}${late?' ⚠️':''}</div>`:''}
+      </div>`;}).join('');
+    return `<div class="kcol" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="kanbanDrop(event,${si})">
+      <h4>${escHtml(L(st))} <span class="kn">${cards.length}</span></h4>${cardsHtml||'<div style="text-align:center;color:#ccc;font-size:.72rem;padding:8px">—</div>'}</div>`;
+  }).join('');
+}
+function kanbanDrop(ev, stageIdx){
+  ev.preventDefault();
+  document.querySelectorAll('.kcol.over').forEach(c=>c.classList.remove('over'));
+  const id=parseInt(ev.dataTransfer.getData('id')); const o=prodOrders.find(x=>x.id===id); if(!o) return;
+  if(o.stageIdx===stageIdx && !o.done && stageIdx!==PROD_STAGES.length-1) return;
+  const last=PROD_STAGES.length-1;
+  o.stageIdx=stageIdx;
+  o.done = (stageIdx===last);
+  o.log=o.log||[];
+  o.log.push({ stage:PROD_STAGES[stageIdx], by:(o.assignees||{})[PROD_STAGES[stageIdx]]||(currentMember?currentMember.name:'صاحب المنشأة'), at:new Date().toISOString() });
+  save('prodOrders');
+  logAction('نقل مرحلة إنتاج','أمر #'+o.num+' → '+PROD_STAGES[stageIdx]);
+  renderKanban(); renderDashStats(); renderDashboard();
+  if(o.done) autoNotify(o.clientId,'ready','🎉 أصبح الأمر #'+o.num+' جاهزاً.\nإرسال رسالة واتساب للعميل؟');
+}
 function advanceProdStage(id) {
   const o = prodOrders.find(x=>x.id===id); if (!o || o.done) return;
   const st = PROD_STAGES[o.stageIdx];
