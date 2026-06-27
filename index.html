@@ -1334,8 +1334,11 @@ const fbDB   = firebase.firestore();
         <button class="btn btn-success" style="flex:1;min-width:160px" onclick="saveNaseejSettings()">💾 حفظ الإعدادات والجدول</button>
         <button class="btn btn-primary" style="flex:1;min-width:160px" onclick="saveNaseejSettings();exportNaseejAll()">📦 تصدير كل الطلبات (ملف واحد)</button>
       </div>
-      <div style="font-weight:800;color:#2e7d32;margin-bottom:4px">🔗 جدول ربط الاختيارات بأسماء Variations في نسيج</div>
-      <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار. الاختيارات بلا اسم تُستثنى من التصدير.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+        <div style="font-weight:800;color:#2e7d32;flex:1">🔗 جدول ربط الاختيارات بأسماء Variations في نسيج</div>
+        <button class="btn btn-info btn-sm" onclick="naseejPrefill()">🪄 تعبئة الأسماء المعروفة</button>
+      </div>
+      <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار، أو اضغط «تعبئة الأسماء المعروفة» للبدء السريع ثم عدّل ما يلزم واحفظ. الاختيار الفارغ يُصدَّر باسمه تلقائياً.</div>
       <div id="nz-map"></div>
     </div>
   </div>
@@ -7002,8 +7005,19 @@ const NASEEJ_MEAS = [
 function _isThobe(tpl){ return tpl==='ثوب سعودي'||tpl==='ثوب أطفال'; }
 function _mdy(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? (p[1]+'/'+p[2]+'/'+p[0]) : iso; }
 function _toCm(val,unit){ const n=parseFloat(val); if(isNaN(n)) return 0; return unit==='inch' ? Math.round(n*2.54*1000)/1000 : n; }
-// فارييشن تلقائي: الاسم المربوط يدوياً إن وُجد، وإلا قيمة الاختيار نفسها — فكل قطعة تُضاف للموديل تحصل على فارييشن تلقائياً
-function _naseejVar(p){ return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || p.value || ''; }
+// أسماء Variations نسيج المعروفة مسبقاً للأجزاء الافتراضية للثوب (نقطة بداية قابلة للتعديل)
+const NASEEJ_VAR_DEFAULTS = {
+  'collar::ملكي':'Gallab Classic','collar::صيني':'Gallab China','collar::مربع':'Gallab Square','collar::فرنسي':'Gallab French','collar::إيطالي':'Gallab Italian',
+  'placket::ملكي':'Jabzour Classic','placket::مفتوح':'Jabzour Open','placket::فرنسي':'Jabzour French','placket::مخفي':'Jabzour Hidden',
+  'pocket::جيب واحد':'Pocket Chest Single','pocket::جيب بقلم':'Pocket Chest Pen','pocket::جيبان':'Pocket Chest Double',
+  'cuff::سادة':'Sleeve Sada','cuff::كبك':'Sleeve Kabak','cuff::كبك مدبب':'Sleeve Kabak Pointed',
+  'sidepockets::جيب واحد':'Pocket side Single','sidepockets::جيبان':'Pocket side Double',
+};
+// فارييشن تلقائي: المربوط يدوياً ثم المعروف مسبقاً ثم قيمة الاختيار. «بدون»/الفارغ = لا فارييشن
+function _naseejVar(p){
+  if(!p.value || p.value==='بدون') return '';
+  return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || NASEEJ_VAR_DEFAULTS[p.id+'::'+p.value] || p.value || '';
+}
 function _naseejOrderNode(m, idx){
   const reseller=(settings.naseejReseller||'').trim();
   const num=reseller+'-'+_naseejCli(m)+'-'+(idx+1)+'-'+(m.orderNo||m.id);
@@ -7097,6 +7111,14 @@ function renderNaseejForm(){
       <div style="flex:0 0 210px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${escHtml(r.label)}</b> · ${escHtml(r.opt)}</div>
       <input data-nz="${escHtml(r.key)}" value="${escHtml(naseejVarMap[r.key]||'')}" placeholder="تلقائي: ${escHtml(r.opt)}" title="اتركه فارغاً ليُصدَّر باسم «${escHtml(r.opt)}» تلقائياً، أو اكتب اسم Variation الإنجليزي في نسيج" style="flex:1;min-width:0;direction:ltr;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
     </div>`).join('') : '<div style="color:#bbb;text-align:center;padding:10px">لا اختيارات معرّفة بعد — أضِفها من «استوديو الموديل»</div>';
+}
+function naseejPrefill(){
+  let n=0;
+  document.querySelectorAll('#nz-map input[data-nz]').forEach(inp=>{
+    const k=inp.getAttribute('data-nz');
+    if(!inp.value.trim() && NASEEJ_VAR_DEFAULTS[k]){ inp.value=NASEEJ_VAR_DEFAULTS[k]; n++; }
+  });
+  alert(n ? ('🪄 عُبّئ '+n+' اسماً معروفاً — راجِعها ثم اضغط «حفظ الإعدادات والجدول»') : 'لا توجد أسماء معروفة مطابقة للأجزاء الحالية (أضِف الأسماء يدوياً)');
 }
 function saveNaseejSettings(){
   settings.naseejReseller=document.getElementById('nz-reseller').value.trim();
