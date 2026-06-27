@@ -5155,7 +5155,7 @@ function studioOptImg(input){
     const o=_layObj(_studioTpl); o.layers[_studioPart]=o.layers[_studioPart]||{};
     o.layers[_studioPart][_studioOpt]={img:dataURL};
     _saveLayers(); studioOptChange();
-  });
+  }, true);
 }
 function studioResize(v){
   document.getElementById('stud-w-val').textContent=v;
@@ -5320,7 +5320,7 @@ function renderHotspotEditor(){
 }
 
 // ضغط الصورة وتحويلها لـ JPEG صغير الحجم قبل التخزين
-function _resizeImg(file, maxDim, quality, cb) {
+function _resizeImg(file, maxDim, quality, cb, png) {
   if (file.size > 8*1024*1024) { alert('الصورة كبيرة جداً (أكثر من 8 ميجا)'); return; }
   const r = new FileReader();
   r.onload = e => {
@@ -5331,7 +5331,8 @@ function _resizeImg(file, maxDim, quality, cb) {
       else if (h >= w && h > maxDim) { w = Math.round(w*maxDim/h); h = maxDim; }
       const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, 0, w, h);
-      cb(cv.toDataURL('image/jpeg', quality));
+      // PNG يحفظ الشفافية (للطبقات) — JPEG أصغر (للأساس/الصور العادية)
+      cb(png ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', quality));
     };
     img.onerror = ()=>alert('تعذّرت قراءة الصورة');
     img.src = e.target.result;
@@ -5357,7 +5358,7 @@ function msetTab(which) {
   if (which==='imgs') renderTmplImages();
   if (which==='spots') renderHotspotEditor();
 }
-function _readImage(file, maxDim, quality, cb) {
+function _readImage(file, maxDim, quality, cb, png) {
   // ملفات SVG: تُخزَّن كما هي (متجهة وخفيفة) دون تحويل لـ canvas
   if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
     if (file.size > 1.5*1024*1024) { alert('ملف SVG كبير جداً'); return; }
@@ -5367,7 +5368,7 @@ function _readImage(file, maxDim, quality, cb) {
     r.readAsDataURL(file);
     return;
   }
-  _resizeImg(file, maxDim, quality, cb);
+  _resizeImg(file, maxDim, quality, cb, png);
 }
 function uploadTmplModel() {
   const tpl = document.getElementById('mset-template').value;
