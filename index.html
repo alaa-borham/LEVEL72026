@@ -5894,6 +5894,7 @@ function getNextTJNum(){
   return nums.length ? Math.max(...nums)+1 : 1;
 }
 function showTailorJobs(type) {
+  _closeAllOverlays();
   if (!canAccess('tailoring')) { permDenied('tailoring'); return; }
   document.getElementById('tj-title').textContent = type==='تطريز' ? '🪡 أعمال التطريز' : (type==='تعديل' ? '🧷 أعمال التعديل' : '🧷 أعمال التعديل والتطريز');
   document.getElementById('tj-filter-type').value = type==='تطريز'||type==='تعديل' ? type : '';
