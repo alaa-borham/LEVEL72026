@@ -5222,11 +5222,34 @@ function renderStudio(){
   let ov='';
   const cur=_curLayer();
   if(cur&&cur.img) ov=`<img class="ov" src="${cur.img}">`;
-  cv.innerHTML=bg+ov;
+  // نقاط المسميات قابلة للسحب لضبط موضعها على الموديل
+  const dots=getHotspots(_studioTpl).map(h=>`<div class="hspot ${String(h.id)===String(_studioPart)?'editing':''}" style="left:${h.x}%;top:${h.y}%;cursor:move;touch-action:none;opacity:.92" onpointerdown="studioHsDrag(event,'${h.id}')" title="اسحب لتغيير الموضع">${escHtml(h.label)}</div>`).join('');
+  cv.innerHTML=bg+ov+dots;
   _fitCanvasToModel(cv, base);
   // معاينة سريعة: أزرار خيارات الجزء الحالي
   const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
   document.getElementById('stud-preview').innerHTML=((h&&h.options)||[]).map(o=>`<button class="btn btn-sm" style="background:${o===_studioOpt?'#2e7d32':'#eef'};color:${o===_studioOpt?'#fff':'#333'}" onclick="document.getElementById('stud-opt').value='${o.replace(/'/g,"")}';studioOptChange()">${escHtml(o)}</button>`).join('');
+}
+function studioHsDrag(ev,id){
+  ev.preventDefault(); ev.stopPropagation();
+  const dot=ev.currentTarget;
+  const cv=document.getElementById('stud-canvas');
+  _ensureTmplSpots(_studioTpl);
+  const h=tmplHotspots[_studioTpl].find(x=>String(x.id)===String(id)); if(!h) return;
+  let moved=false;
+  const move=e=>{
+    moved=true;
+    const r=cv.getBoundingClientRect();
+    h.x=Math.max(0,Math.min(100,Math.round((e.clientX-r.left)/r.width*100)));
+    h.y=Math.max(0,Math.min(100,Math.round((e.clientY-r.top)/r.height*100)));
+    dot.style.left=h.x+'%'; dot.style.top=h.y+'%';
+  };
+  const up=()=>{
+    window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up);
+    if(moved){ _saveHotspots(); renderStudio(); }
+    else { const sel=document.getElementById('stud-part'); if(sel){ sel.value=id; studioPartChange(); } }
+  };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
 function studioDrag(ev){
   ev.preventDefault();
