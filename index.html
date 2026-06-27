@@ -481,6 +481,7 @@ const fbDB   = firebase.firestore();
   <a data-perm="customers" onclick="showCustomers();closeSb()">👥 العملاء</a>
   <a data-perm="tailoring" onclick="showMeasurements();closeSb()">📐 القياسات</a>
   <a data-perm="tailoring" onclick="showModelStudio();closeSb()">🎨 استوديو الموديل</a>
+  <a data-perm="tailoring" onclick="showNaseej();closeSb()">🧬 تصدير نسيج XML</a>
   <a data-perm="appointments" onclick="showAppointments();closeSb()">📅 المواعيد</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تطريز');closeSb()">🪡 التطريز</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تعديل');closeSb()">🧷 التعديل</a>
@@ -730,7 +731,7 @@ const fbDB   = firebase.firestore();
         <button class="btn btn-info" style="width:100%;margin-bottom:8px" onclick="showTerms()">🏷️ إدارة المسميات (تغيير الأسماء عربي/إنجليزي)</button>
         <div class="fg" style="margin-top:8px"><label>نظام القص للتصدير XML</label>
           <select id="set-cad"><option>Gerber</option><option>Lectra</option><option>Optitex</option><option>Grafis</option><option>Gemini</option><option>Bullmer</option><option>عام / Generic</option></select></div>
-        <button class="btn" style="width:100%;margin-top:8px;background:#5c6bc0;color:#fff" onclick="openNaseejSettings()">🧬 تصدير نسيج XML (إعدادات + جدول الربط + تصدير الكل)</button>
+        <button class="btn" style="width:100%;margin-top:8px;background:#5c6bc0;color:#fff" onclick="showNaseej()">🧬 تصدير نسيج XML (إعدادات + جدول الربط + تصدير الكل)</button>
 
         <div id="members-btn">
           <h4 style="color:#2e7d32;margin:18px 0 12px">👤 مستخدمو المنشأة</h4>
@@ -1309,23 +1310,29 @@ const fbDB   = firebase.firestore();
   </div>
 </div>
 
-<!-- ═══════════════ MODAL: NASEEJ XML EXPORT (تصدير نسيج) -->
-<div class="moverlay" id="naseej-modal">
-  <div class="mbox" style="max-width:840px;width:96vw">
-    <div class="mhdr"><h3>🧬 تصدير نسيج XML</h3><button class="mcls" onclick="closeModal('naseej-modal')">✕</button></div>
-    <div class="mlist" style="padding:14px">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+<!-- ═══════════════ SCREEN: NASEEJ XML EXPORT (صفحة تصدير نسيج المستقلة) -->
+<div id="naseej-screen" class="screen">
+  <div class="page-wrap">
+    <div class="page-header">
+      <h2>🧬 تصدير نسيج XML</h2>
+      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e6ece0;border-radius:14px;padding:16px;max-width:900px;margin:auto">
+      <div style="font-weight:800;color:#2e7d32;margin-bottom:8px">⚙️ الإعدادات العامة</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px">
         <div class="fg" style="margin:0"><label>رمز التاجر Reseller</label><input id="nz-reseller" style="direction:ltr" placeholder="10075"></div>
+        <div class="fg" style="margin:0"><label>رقم العميل Client No.</label><input id="nz-client" style="direction:ltr" placeholder="100028320"></div>
         <div class="fg" style="margin:0"><label>رقم الصنف Item Number</label><input id="nz-item" style="direction:ltr" placeholder="100751001"></div>
-        <div class="fg" style="margin:0"><label>اسم جدول القياس</label><input id="nz-table" style="direction:ltr" placeholder="Thobe_Non_Saudi_new"></div>
+        <div class="fg" style="margin:0"><label>اسم جدول القياسات</label><input id="nz-table" style="direction:ltr" placeholder="Thobe_Non_Saudi_new"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn btn-success" style="flex:1" onclick="saveNaseejSettings()">💾 حفظ الإعدادات والجدول</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveNaseejSettings();exportNaseejAll()">📦 تصدير كل الطلبات (ملف واحد)</button>
+      <div style="font-size:.76rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:12px">💡 «رقم العميل» يُستخدم في ترقيم الأوامر (Number). إن تُرك فارغاً يُستخدم رقم العميل في كل طلب تلقائياً.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-success" style="flex:1;min-width:160px" onclick="saveNaseejSettings()">💾 حفظ الإعدادات والجدول</button>
+        <button class="btn btn-primary" style="flex:1;min-width:160px" onclick="saveNaseejSettings();exportNaseejAll()">📦 تصدير كل الطلبات (ملف واحد)</button>
       </div>
-      <div style="font-weight:800;color:#2e7d32;margin-bottom:4px">🔗 جدول ربط الاختيارات بأسماء Variations في نسيج:</div>
+      <div style="font-weight:800;color:#2e7d32;margin-bottom:4px">🔗 جدول ربط الاختيارات بأسماء Variations في نسيج</div>
       <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار. الاختيارات بلا اسم تُستثنى من التصدير.</div>
-      <div id="nz-map" style="max-height:46vh;overflow:auto"></div>
+      <div id="nz-map"></div>
     </div>
   </div>
 </div>
@@ -3269,6 +3276,7 @@ function showScreen(id) {
   if (id === 'products-screen')  renderProducts();
   if (id === 'archive-screen')   renderArchive();
   if (id === 'analytics-screen') renderAnalytics();
+  if (id === 'naseej-screen')    renderNaseejForm();
   if (id === 'dashboard')        { renderDashStats(); renderDashboard(); applyCardVisibility(); }
   if (id === 'settings-screen')  openSettingsForm();
 }
@@ -4408,7 +4416,7 @@ const PERM_SCREENS = {
   'invoice-list':'invoices', 'invoice-form-screen':'invoices', 'print-screen':'invoices',
   'receipt-screen':'customers',
   'products-screen':'products', 'analytics-screen':'analytics',
-  'archive-screen':'archive', 'settings-screen':'settings',
+  'archive-screen':'archive', 'settings-screen':'settings', 'naseej-screen':'tailoring',
 };
 function canAccess(area) {
   if (!currentMember) return true; // صاحب المنشأة: كل الصلاحيات
@@ -6991,8 +6999,7 @@ function _toCm(val,unit){ const n=parseFloat(val); if(isNaN(n)) return 0; return
 function _naseejVar(p){ return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || ''; }
 function _naseejOrderNode(m, idx){
   const reseller=(settings.naseejReseller||'').trim();
-  const c=_custById(m.clientId);
-  const num=reseller+'-'+(c&&c.num?c.num:'0')+'-'+(idx+1)+'-'+(m.orderNo||m.id);
+  const num=reseller+'-'+_naseejCli(m)+'-'+(idx+1)+'-'+(m.orderNo||m.id);
   const mod=m.model||{};
   const fab=mod.fabricId?_fabricById(mod.fabricId):null;
   let s='    <Order Number="'+_xmlEsc(num)+'" Order-Date="'+_xmlEsc(_mdy(m.date))+'">\n';
@@ -7034,23 +7041,24 @@ function _downloadXml(xml, name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=name; document.body.appendChild(a); a.click(); a.remove();
 }
+function _naseejCli(m){ const v=(settings.naseejClient||'').trim(); if(v) return v; const c=_custById(m.clientId); return c&&c.num?c.num:'0'; }
 function _naseejReady(){
-  if(!(settings.naseejReseller||'').trim()){ alert('⚠️ أدخل «رمز التاجر Reseller» أولاً من: الإعدادات ← 🧬 تصدير نسيج XML'); openNaseejSettings(); return false; }
+  if(!(settings.naseejReseller||'').trim()){ alert('⚠️ أدخل «رمز التاجر Reseller» أولاً من صفحة تصدير نسيج XML'); showNaseej(); return false; }
   return true;
 }
 function exportNaseejOrder(orderNo){
   if(!_naseejReady()) return;
   const pieces=measurements.filter(m=>String(m.orderNo)===String(orderNo)).sort((a,b)=>a.id-b.id);
   if(!pieces.length){ alert('لا قطع في هذا الطلب'); return; }
-  const reseller=(settings.naseejReseller||'').trim(); const c=_custById(pieces[0].clientId);
-  _downloadXml(_naseejDoc(pieces, reseller+'-'+(c&&c.num?c.num:'0')+'-'+orderNo), 'naseej-order-'+orderNo+'.xml');
+  const reseller=(settings.naseejReseller||'').trim();
+  _downloadXml(_naseejDoc(pieces, reseller+'-'+_naseejCli(pieces[0])+'-'+orderNo), 'naseej-order-'+orderNo+'.xml');
 }
 function exportNaseejMeas(measId){
   if(!_naseejReady()) return;
   const m=measurements.find(x=>x.id===measId); if(!m) return;
   if(m.orderNo){ exportNaseejOrder(m.orderNo); return; }
-  const reseller=(settings.naseejReseller||'').trim(); const c=_custById(m.clientId);
-  _downloadXml(_naseejDoc([m], reseller+'-'+(c&&c.num?c.num:'0')+'-'+m.id), 'naseej-meas-'+m.id+'.xml');
+  const reseller=(settings.naseejReseller||'').trim();
+  _downloadXml(_naseejDoc([m], reseller+'-'+_naseejCli(m)+'-'+m.id), 'naseej-meas-'+m.id+'.xml');
 }
 function exportNaseejAll(){
   if(!_naseejReady()) return;
@@ -7060,9 +7068,10 @@ function exportNaseejAll(){
   _downloadXml(_naseejDoc(pieces, reseller+'-ALL-'+_todayISO()), 'naseej-all-orders-'+_todayISO()+'.xml');
   alert('✅ صُدِّر '+pieces.length+' قطعة في ملف واحد');
 }
-function openNaseejSettings(){
-  _closeAllOverlays();
+function showNaseej(){ if(!canAccess('tailoring')){ permDenied('tailoring'); return; } showScreen('naseej-screen'); }
+function renderNaseejForm(){
   document.getElementById('nz-reseller').value=settings.naseejReseller||'';
+  document.getElementById('nz-client').value=settings.naseejClient||'';
   document.getElementById('nz-item').value=settings.naseejItem||'';
   document.getElementById('nz-table').value=settings.naseejTable||'';
   const seen={}, rows=[];
@@ -7080,10 +7089,10 @@ function openNaseejSettings(){
       <div style="flex:0 0 210px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${escHtml(r.label)}</b> · ${escHtml(r.opt)}</div>
       <input data-nz="${escHtml(r.key)}" value="${escHtml(naseejVarMap[r.key]||'')}" placeholder="Variation Name (نسيج)" style="flex:1;min-width:0;direction:ltr;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
     </div>`).join('') : '<div style="color:#bbb;text-align:center;padding:10px">لا اختيارات معرّفة بعد — أضِفها من «استوديو الموديل»</div>';
-  document.getElementById('naseej-modal').classList.add('open');
 }
 function saveNaseejSettings(){
   settings.naseejReseller=document.getElementById('nz-reseller').value.trim();
+  settings.naseejClient=document.getElementById('nz-client').value.trim();
   settings.naseejItem=document.getElementById('nz-item').value.trim();
   settings.naseejTable=document.getElementById('nz-table').value.trim();
   lsSet('appSettings', JSON.stringify(settings));
