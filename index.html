@@ -408,11 +408,10 @@ body.ltr .dash-card::after{content:'›'}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:6px}
 .ord-model .order-canvas{flex:1 1 auto;min-height:0;aspect-ratio:420/640;width:auto;max-width:100%;margin:auto;position:relative}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.ord-model .order-canvas img.ov-layer{position:absolute;inset:auto;height:auto !important;transform:translate(-50%,-50%);pointer-events:none;object-fit:contain;z-index:2}
+.ord-model .order-canvas img.ov-layer{position:absolute;inset:0;width:100% !important;height:100% !important;object-fit:contain;pointer-events:none;z-index:2}
 .stud-canvas{position:relative;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;aspect-ratio:420/640;max-height:60vh;width:auto;margin:0 auto}
 .stud-canvas>img.base,.stud-canvas>svg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.stud-canvas .ov{position:absolute;transform:translate(-50%,-50%);object-fit:contain}
-.stud-canvas .ov.act{outline:2px dashed #e65100;cursor:move}
+.stud-canvas .ov{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ord-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px 7px;background:#f0f9f8;border:1px solid #c8e6e2;border-radius:10px;padding:7px 9px;margin-top:8px}
 .ord-details label{font-size:.68rem !important;font-weight:800;color:#00796b;margin-bottom:1px}
 .ord-details input,.ord-details select{padding:5px 7px !important;font-size:.84rem;font-weight:700;color:#114b44;border:1.5px solid #26a69a !important;border-radius:8px !important;background:#fff;box-shadow:0 0 0 1px rgba(38,166,154,.12),0 0 7px rgba(38,166,154,.38);transition:border-color .15s,box-shadow .15s}
@@ -1274,8 +1273,7 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0 0 8px"><label>الجزء</label><select id="stud-part" onchange="studioPartChange()"></select></div>
           <div class="fg" style="margin:0 0 8px"><label>الخيار</label><select id="stud-opt" onchange="studioOptChange()"></select></div>
           <label class="btn btn-primary btn-sm" style="cursor:pointer;width:100%;text-align:center;margin-bottom:8px">⬆️ رفع صورة هذا الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
-          <div class="fg" style="margin:0 0 8px"><label>الحجم <span id="stud-w-val">30</span>٪</label><input type="range" id="stud-w" min="5" max="100" value="30" oninput="studioResize(this.value)" style="width:100%"></div>
-          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 اسحب الصورة فوق الموديل لضبط موضعها، والمسطرة لحجمها. تُحفظ تلقائياً.</div>
+          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 ارفع الصورة <b>كاملة الإطار</b> بنفس مقاس صورة الأساس (يُفضّل PNG بخلفية شفافة، والجزء مرسوم في مكانه) — تُركّب فوق الموديل في موضعها مباشرة.</div>
           <button class="btn btn-danger btn-sm" style="width:100%" onclick="studioRemoveOpt()">حذف صورة هذا الخيار</button>
           <div style="border-top:1px solid #eee;margin-top:10px;padding-top:8px">
             <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:5px">معاينة سريعة:</div>
@@ -5144,9 +5142,6 @@ function studioPartChange(){
 }
 function studioOptChange(){
   _studioOpt=document.getElementById('stud-opt').value;
-  const cfg=_curLayer();
-  document.getElementById('stud-w').value = cfg?cfg.w:30;
-  document.getElementById('stud-w-val').textContent = cfg?cfg.w:30;
   renderStudio();
 }
 function _curLayer(){ const l=tmplLayers[_studioTpl]; return l&&l.layers&&l.layers[_studioPart]&&l.layers[_studioPart][_studioOpt]; }
@@ -5156,10 +5151,9 @@ function studioBase(input){
 }
 function studioOptImg(input){
   const f=input.files[0]; if(!f) return;
-  _readImage(f, 400, 0.8, dataURL=>{
+  _readImage(f, 700, 0.78, dataURL=>{
     const o=_layObj(_studioTpl); o.layers[_studioPart]=o.layers[_studioPart]||{};
-    const ex=o.layers[_studioPart][_studioOpt]||{x:50,y:30,w:30};
-    o.layers[_studioPart][_studioOpt]={img:dataURL,x:ex.x,y:ex.y,w:ex.w};
+    o.layers[_studioPart][_studioOpt]={img:dataURL};
     _saveLayers(); studioOptChange();
   });
 }
@@ -5177,13 +5171,8 @@ function renderStudio(){
   const base=(l&&l.base)|| (tmplImages[_studioTpl]&&tmplImages[_studioTpl].model);
   const bg=base?`<img class="base" src="${base}">`:THOBE_BG_SVG;
   let ov='';
-  if(l&&l.layers){
-    Object.keys(l.layers).forEach(pid=>Object.keys(l.layers[pid]).forEach(opt=>{
-      const c=l.layers[pid][opt]; if(!c.img) return;
-      const active=(pid===_studioPart&&opt===_studioOpt);
-      ov+=`<img class="ov ${active?'act':''}" data-pid="${escHtml(pid)}" data-opt="${escHtml(opt)}" src="${c.img}" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:auto${active?'':';opacity:.45'}" ${active?'onpointerdown="studioDrag(event)"':''}>`;
-    }));
-  }
+  const cur=_curLayer();
+  if(cur&&cur.img) ov=`<img class="ov" src="${cur.img}">`;
   cv.innerHTML=bg+ov;
   // معاينة سريعة: أزرار خيارات الجزء الحالي
   const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
@@ -5210,7 +5199,7 @@ function renderOrderVisual() {
     Object.keys(_orderParts).forEach(pid=>{
       const opt = _orderParts[pid];
       const cfg = lay.layers[pid] && lay.layers[pid][opt];
-      if (cfg && cfg.img) overlays += `<img class="ov-layer" src="${cfg.img}" style="left:${cfg.x}%;top:${cfg.y}%;width:${cfg.w}%">`;
+      if (cfg && cfg.img) overlays += `<img class="ov-layer" src="${cfg.img}">`;
     });
   }
   const dots = getHotspots(tpl).map(h=>{
