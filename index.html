@@ -6063,6 +6063,7 @@ function showAccounts() {
 
 // ═══════════════ QUALITY CONTROL — مراقبة الجودة ومكتبة العيوب
 function showQC() {
+  _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
   renderQCLibrary();
   renderQCList();
@@ -6606,6 +6607,7 @@ function recalcDue(){
 }
 // نافذة إعدادات مدة التنفيذ
 function openLeadSettings(){
+  _closeAllOverlays();
   if (currentMember) { alert('هذا الإعداد لصاحب المنشأة'); return; }
   document.getElementById('lead-default').value = leadDays._default!=null ? leadDays._default : 3;
   document.getElementById('lead-tpls').innerHTML = Object.keys(MEAS_TEMPLATES).map(t=>`
@@ -6732,6 +6734,7 @@ function saveProdOrder() {
 }
 // إتمام المرحلة الحالية والانتقال للتالية — يسجل المنفذ والوقت
 function showKanban(){
+  _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
   renderKanban();
   document.getElementById('kanban-modal').classList.add('open');
