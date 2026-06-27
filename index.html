@@ -1267,24 +1267,39 @@ const fbDB   = firebase.firestore();
       <span style="font-size:.76rem;color:#999">ارفع صورة موديل أساس، ثم لكل خيار ارفع صورته وحرّكها/كبّرها فوق الموديل</span>
     </div>
     <div class="mlist" style="padding:12px 14px">
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start">
-        <div class="stud-canvas" id="stud-canvas"></div>
+      <div style="display:grid;grid-template-columns:1fr 330px;gap:14px;align-items:start">
+        <div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:.78rem;background:#f7faf5;border:1px solid #e3eedd;border-radius:8px;padding:6px 9px">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:700;color:#2e7d32"><input type="checkbox" id="stud-full" onchange="studioToggleFull()" style="width:auto"> 👕 معاينة كاملة</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="stud-spots" checked onchange="studioToggleSpots()" style="width:auto"> 🏷️ المسميات</label>
+            <label style="display:flex;align-items:center;gap:5px;color:#777">شفافية <input type="range" id="stud-spots-op" min="20" max="100" value="92" oninput="studioSpotsOpacity(this.value)" style="width:78px"></label>
+          </div>
+          <div class="stud-canvas" id="stud-canvas"></div>
+        </div>
         <div>
           <div class="fg" style="margin:0 0 5px"><label>الجزء</label>
-            <div style="display:flex;gap:4px"><select id="stud-part" onchange="studioPartChange()" style="flex:1;min-width:0"></select>
+            <div style="display:flex;gap:3px"><select id="stud-part" onchange="studioPartChange()" style="flex:1;min-width:0"></select>
             <button class="btn btn-sm" style="background:#2e7d32;color:#fff" onclick="studioAddPart()" title="إضافة جزء">＋</button>
+            <button class="btn btn-sm" style="background:#e8eaf6;color:#283593" onclick="studioRenamePart()" title="إعادة تسمية الجزء">✏️</button>
+            <button class="btn btn-sm" style="background:#fff3e0;color:#e65100" onclick="studioMovePart(-1)" title="نقل لأعلى">▲</button>
+            <button class="btn btn-sm" style="background:#fff3e0;color:#e65100" onclick="studioMovePart(1)" title="نقل لأسفل">▼</button>
             <button class="btn btn-sm" style="background:#ffebee;color:#c62828" onclick="studioDelPart()" title="حذف الجزء">🗑</button></div></div>
           <div class="fg" style="margin:0 0 5px"><label>الخيار</label>
-            <div style="display:flex;gap:4px"><select id="stud-opt" onchange="studioOptChange()" style="flex:1;min-width:0"></select>
+            <div style="display:flex;gap:3px"><select id="stud-opt" onchange="studioOptChange()" style="flex:1;min-width:0"></select>
+            <button class="btn btn-sm" style="background:#e8eaf6;color:#283593" onclick="studioRenameOpt()" title="إعادة تسمية الخيار">✏️</button>
+            <button class="btn btn-sm" style="background:#e0f2f1;color:#00695c" onclick="studioDupOpt()" title="نسخ الخيار بصورته">⎘</button>
             <button class="btn btn-sm" style="background:#ffebee;color:#c62828" onclick="studioDelOpt()" title="حذف الخيار">🗑</button></div></div>
           <div style="display:flex;gap:4px;margin-bottom:8px"><input type="text" id="stud-newopt" placeholder="خيار جديد للجزء" style="flex:1;min-width:0;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')studioAddOpt()"><button class="btn btn-success btn-sm" onclick="studioAddOpt()">＋ خيار</button></div>
-          <label class="btn btn-primary btn-sm" style="cursor:pointer;width:100%;text-align:center;margin-bottom:6px">⬆️ رفع صورة هذا الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
-          <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="studioSaveOpt()">💾 حفظ الخيار</button>
-          <div style="font-size:.74rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:8px">💡 ارفع الصورة <b>كاملة الإطار</b> (PNG بخلفية شفافة، الجزء في مكانه) — تُركّب فوق الموديل مباشرة.</div>
-          <button class="btn btn-danger btn-sm" style="width:100%" onclick="studioRemoveOpt()">حذف صورة هذا الخيار</button>
-          <div style="border-top:1px solid #eee;margin-top:10px;padding-top:8px">
-            <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:5px">معاينة سريعة:</div>
-            <div id="stud-preview" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <div id="stud-thumb" title="صورة الخيار الحالي" style="width:54px;height:54px;border-radius:8px;border:1.5px solid #ddd;background:#fafafa;flex:0 0 auto"></div>
+            <label class="btn btn-primary btn-sm" style="cursor:pointer;flex:1;text-align:center">⬆️ رفع صورة الخيار<input type="file" accept="image/*,.svg" onchange="studioOptImg(this)" style="display:none"></label>
+          </div>
+          <button class="btn btn-success" style="width:100%;margin-bottom:6px" onclick="studioSaveOpt()">💾 حفظ الخيار</button>
+          <button class="btn btn-danger btn-sm" style="width:100%;margin-bottom:8px" onclick="studioRemoveOpt()">حذف صورة هذا الخيار</button>
+          <div style="font-size:.72rem;color:#777;background:#f7faf5;border-radius:8px;padding:7px;margin-bottom:8px">💡 ارفع الصورة <b>كاملة الإطار</b> (PNG بخلفية شفافة، الجزء في مكانه) — تُركّب فوق الموديل مباشرة.</div>
+          <div style="border-top:1px solid #eee;padding-top:8px">
+            <div style="font-size:.78rem;font-weight:700;color:#2e7d32;margin-bottom:5px">🖼️ خيارات الجزء:</div>
+            <div id="stud-gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div>
           </div>
         </div>
       </div>
@@ -5122,6 +5137,22 @@ const ALL_MEAS_KEYS = Object.keys(MEAS_DICT);
 // رسم الصورة (أو الثوب الافتراضي) مع نقاطها فوقها
 // ═══════════════ MODEL STUDIO — الموديل التفاعلي (تركيب الطبقات)
 let _studioTpl='', _studioPart='', _studioOpt='';
+let _studioFullPreview=false, _studioShowSpots=true, _studioSpotsOp=0.92, _studioSel={};
+function _optHasImg(pid,opt){ const l=tmplLayers[_studioTpl]; return !!(l&&l.layers&&l.layers[pid]&&l.layers[pid][opt]&&l.layers[pid][opt].img); }
+function _firstOptImg(h){ return (h.options||[]).find(o=>_optHasImg(h.id,o)); }
+function studioToggleFull(){ _studioFullPreview=document.getElementById('stud-full').checked; renderStudio(); }
+function studioToggleSpots(){ _studioShowSpots=document.getElementById('stud-spots').checked; renderStudio(); }
+function studioSpotsOpacity(v){ _studioSpotsOp=(+v)/100; renderStudio(); }
+function studioPickOpt(o){ const s=document.getElementById('stud-opt'); if(s) s.value=o; _studioOpt=o; _studioSel[_studioPart]=o; renderStudio(); }
+// إعادة بناء القوائم مع الحفاظ على التحديد الحالي (لتحديث ✓ والعدّادات والمعرض)
+function _studioRefresh(){
+  const pv=_studioPart, ov=_studioOpt;
+  studioPick();
+  if(pv){ const ps=document.getElementById('stud-part'); ps.value=pv; _studioPart=pv; }
+  studioPartChange();
+  if(ov){ const os=document.getElementById('stud-opt'); os.value=ov; _studioOpt=ov; }
+  renderStudio();
+}
 function _layObj(tpl){ tmplLayers[tpl]=tmplLayers[tpl]||{base:'',layers:{}}; tmplLayers[tpl].layers=tmplLayers[tpl].layers||{}; return tmplLayers[tpl]; }
 function _saveLayers(){ const j=JSON.stringify(tmplLayers); if(j.length>1200000) alert('⚠️ مجموع الصور كبير وقد لا يُرفع للسحابة — صغّر الصور'); lsSet('tmplLayers', j); }
 function showModelStudio(){
@@ -5135,7 +5166,11 @@ function showModelStudio(){
 function studioPick(){
   _studioTpl=document.getElementById('stud-tpl').value;
   const hs=getHotspots(_studioTpl);
-  document.getElementById('stud-part').innerHTML=hs.map(h=>`<option value="${escHtml(h.id)}">${escHtml(h.label)}</option>`).join('')||'<option value="">لا أجزاء</option>';
+  document.getElementById('stud-part').innerHTML=hs.map(h=>{
+    const tot=(h.options||[]).length, cnt=(h.options||[]).filter(o=>_optHasImg(h.id,o)).length;
+    const tag = tot? (cnt===tot?' ✓':` (${cnt}/${tot})`) : ' (٠)';
+    return `<option value="${escHtml(h.id)}">${escHtml(h.label)}${tag}</option>`;
+  }).join('')||'<option value="">لا أجزاء</option>';
   _studioPart=document.getElementById('stud-part').value;
   studioPartChange();
 }
@@ -5143,7 +5178,7 @@ function studioPartChange(){
   _studioPart=document.getElementById('stud-part').value;
   const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
   const opts=(h&&h.options)||[];
-  document.getElementById('stud-opt').innerHTML=opts.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('')||'<option value="">لا خيارات</option>';
+  document.getElementById('stud-opt').innerHTML=opts.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}${_optHasImg(_studioPart,o)?' ✓':''}</option>`).join('')||'<option value="">لا خيارات</option>';
   _studioOpt=document.getElementById('stud-opt').value;
   studioOptChange();
 }
@@ -5200,35 +5235,102 @@ function studioBase(input){
 }
 function studioOptImg(input){
   const f=input.files[0]; if(!f) return;
+  if(!_studioOpt){ alert('اختر خياراً أولاً (أو أضف خياراً جديداً)'); return; }
   _readImage(f, 700, 0.78, dataURL=>{
     const o=_layObj(_studioTpl); o.layers[_studioPart]=o.layers[_studioPart]||{};
     o.layers[_studioPart][_studioOpt]={img:dataURL};
-    _saveLayers(); studioOptChange();
+    _saveLayers(); _studioRefresh();
   }, true);
-}
-function studioResize(v){
-  document.getElementById('stud-w-val').textContent=v;
-  const cfg=_curLayer(); if(cfg){ cfg.w=+v; _saveLayers(); renderStudio(); }
 }
 function studioRemoveOpt(){
   const l=tmplLayers[_studioTpl];
-  if(l&&l.layers[_studioPart]){ delete l.layers[_studioPart][_studioOpt]; _saveLayers(); renderStudio(); }
+  if(l&&l.layers[_studioPart]){ delete l.layers[_studioPart][_studioOpt]; _saveLayers(); _studioRefresh(); }
+}
+function studioRenamePart(){
+  if(!_studioPart) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h) return;
+  const v=prompt('اسم الجزء:', h.label); if(v===null) return;
+  const nm=v.trim(); if(!nm) return;
+  h.label=nm; _saveHotspots(); _studioRefresh();
+}
+function studioMovePart(dir){
+  const spots=_ensureTmplSpots(_studioTpl);
+  const i=spots.findIndex(x=>String(x.id)===String(_studioPart)); if(i<0) return;
+  const j=i+dir; if(j<0||j>=spots.length) return;
+  const t=spots[i]; spots[i]=spots[j]; spots[j]=t;
+  _saveHotspots(); _studioRefresh();
+}
+function studioRenameOpt(){
+  if(!_studioOpt) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h) return;
+  const old=_studioOpt;
+  const v=prompt('اسم الخيار:', old); if(v===null) return;
+  const nm=v.trim(); if(!nm) return;
+  if(nm!==old && (h.options||[]).includes(nm)){ alert('الاسم مستخدم'); return; }
+  h.options=(h.options||[]).map(o=>o===old?nm:o);
+  const l=tmplLayers[_studioTpl];
+  if(l&&l.layers&&l.layers[_studioPart]&&l.layers[_studioPart][old]){
+    l.layers[_studioPart][nm]=l.layers[_studioPart][old];
+    delete l.layers[_studioPart][old];
+  }
+  if(_studioSel[_studioPart]===old) _studioSel[_studioPart]=nm;
+  _studioOpt=nm; _saveHotspots(); _saveLayers(); _studioRefresh();
+}
+function studioDupOpt(){
+  if(!_studioOpt) return;
+  const spots=_ensureTmplSpots(_studioTpl);
+  const h=spots.find(x=>String(x.id)===String(_studioPart)); if(!h) return;
+  let bn=_studioOpt+' نسخة', nm=bn, k=2;
+  while((h.options||[]).includes(nm)){ nm=bn+' '+k; k++; }
+  h.options=h.options||[]; h.options.push(nm);
+  const l=_layObj(_studioTpl);
+  if(l.layers[_studioPart]&&l.layers[_studioPart][_studioOpt]){
+    l.layers[_studioPart][nm]=Object.assign({},l.layers[_studioPart][_studioOpt]);
+  }
+  _studioOpt=nm; _saveHotspots(); _saveLayers(); _studioRefresh();
 }
 function renderStudio(){
   const cv=document.getElementById('stud-canvas'); if(!cv) return;
   const l=tmplLayers[_studioTpl];
   const base=(l&&l.base)|| (tmplImages[_studioTpl]&&tmplImages[_studioTpl].model);
   const bg=base?`<img class="base" src="${base}">`:THOBE_BG_SVG;
+  // الطبقات: معاينة كاملة (كل الأجزاء) أو الخيار الحالي فقط
   let ov='';
-  const cur=_curLayer();
-  if(cur&&cur.img) ov=`<img class="ov" src="${cur.img}">`;
-  // نقاط المسميات قابلة للسحب لضبط موضعها على الموديل
-  const dots=getHotspots(_studioTpl).map(h=>`<div class="hspot ${String(h.id)===String(_studioPart)?'editing':''}" style="left:${h.x}%;top:${h.y}%;cursor:move;touch-action:none;opacity:.92" onpointerdown="studioHsDrag(event,'${h.id}')" title="اسحب لتغيير الموضع">${escHtml(h.label)}</div>`).join('');
+  if(_studioFullPreview){
+    getHotspots(_studioTpl).forEach(h=>{
+      const opt=(String(h.id)===String(_studioPart))?_studioOpt:(_studioSel[h.id]||_firstOptImg(h));
+      if(opt&&_optHasImg(h.id,opt)) ov+=`<img class="ov" src="${l.layers[h.id][opt].img}">`;
+    });
+  } else {
+    const cur=_curLayer();
+    if(cur&&cur.img) ov=`<img class="ov" src="${cur.img}">`;
+  }
+  // نقاط المسميات قابلة للسحب (اختيارية + شفافية متحكَّم بها)
+  let dots='';
+  if(_studioShowSpots){
+    dots=getHotspots(_studioTpl).map(h=>`<div class="hspot ${String(h.id)===String(_studioPart)?'editing':''}" style="left:${h.x}%;top:${h.y}%;cursor:move;touch-action:none;opacity:${_studioSpotsOp}" onpointerdown="studioHsDrag(event,'${h.id}')" title="اسحب لتغيير الموضع">${escHtml(h.label)}</div>`).join('');
+  }
   cv.innerHTML=bg+ov+dots;
   _fitCanvasToModel(cv, base);
-  // معاينة سريعة: أزرار خيارات الجزء الحالي
+  // معرض الخيارات بالصور المصغّرة للجزء الحالي
   const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
-  document.getElementById('stud-preview').innerHTML=((h&&h.options)||[]).map(o=>`<button class="btn btn-sm" style="background:${o===_studioOpt?'#2e7d32':'#eef'};color:${o===_studioOpt?'#fff':'#333'}" onclick="document.getElementById('stud-opt').value='${o.replace(/'/g,"")}';studioOptChange()">${escHtml(o)}</button>`).join('');
+  const g=document.getElementById('stud-gallery');
+  if(g){
+    g.innerHTML=((h&&h.options)||[]).map(o=>{
+      const im=_optHasImg(_studioPart,o)?l.layers[_studioPart][o].img:'';
+      const sel=o===_studioOpt;
+      const oo=o.replace(/'/g,"\\'");
+      return `<div onclick="studioPickOpt('${oo}')" title="${escHtml(o)}" style="cursor:pointer;border:2px solid ${sel?'#2e7d32':'#e0e0e0'};border-radius:8px;overflow:hidden">
+        <div style="height:50px;background:${im?`url('${im}') center/contain no-repeat, repeating-conic-gradient(#eee 0% 25%,#fafafa 0% 50%) 0/12px 12px`:'#f0f0f0'};display:flex;align-items:center;justify-content:center;color:#bbb;font-size:1.1rem">${im?'':'⬚'}</div>
+        <div style="font-size:.62rem;text-align:center;padding:2px 3px;background:${sel?'#2e7d32':'#fff'};color:${sel?'#fff':'#555'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(o)}</div>
+      </div>`;
+    }).join('')||'<div style="grid-column:1/-1;color:#bbb;font-size:.74rem;text-align:center;padding:8px">لا خيارات بعد</div>';
+  }
+  // مصغّرة الخيار الحالي بجانب زر الرفع
+  const th=document.getElementById('stud-thumb');
+  if(th){ const cur=_curLayer(); th.style.background=(cur&&cur.img)?`url('${cur.img}') center/contain no-repeat, repeating-conic-gradient(#eee 0% 25%,#fafafa 0% 50%) 0/10px 10px`:'#fafafa'; }
 }
 function studioHsDrag(ev,id){
   ev.preventDefault(); ev.stopPropagation();
