@@ -5168,7 +5168,7 @@ function studioPick(){
   const hs=getHotspots(_studioTpl);
   document.getElementById('stud-part').innerHTML=hs.map(h=>{
     const tot=(h.options||[]).length, cnt=(h.options||[]).filter(o=>_optHasImg(h.id,o)).length;
-    const tag = tot? (cnt===tot?' ✓':` (${cnt}/${tot})`) : ' (٠)';
+    const tag = tot? (cnt===tot?' ✓':` (${cnt}/${tot})`) : ' (بلا خيارات)';
     return `<option value="${escHtml(h.id)}">${escHtml(h.label)}${tag}</option>`;
   }).join('')||'<option value="">لا أجزاء</option>';
   _studioPart=document.getElementById('stud-part').value;
@@ -5213,8 +5213,7 @@ function studioAddOpt(){
   if(h.options.includes(v)){ alert('الخيار موجود'); return; }
   h.options.push(v); _saveHotspots();
   document.getElementById('stud-newopt').value='';
-  studioPartChange();
-  document.getElementById('stud-opt').value=v; studioOptChange();
+  _studioOpt=v; _studioRefresh();
 }
 function studioDelOpt(){
   if(!_studioOpt) return;
@@ -5223,7 +5222,7 @@ function studioDelOpt(){
   if(!confirm('حذف الخيار «'+_studioOpt+'» وصورته؟')) return;
   h.options=(h.options||[]).filter(o=>o!==_studioOpt);
   if(tmplLayers[_studioTpl]&&tmplLayers[_studioTpl].layers[_studioPart]) delete tmplLayers[_studioTpl].layers[_studioPart][_studioOpt];
-  _saveHotspots(); _saveLayers(); studioPartChange();
+  _studioOpt=''; _saveHotspots(); _saveLayers(); _studioRefresh();
 }
 function studioSaveOpt(){
   _saveLayers(); _saveHotspots();
