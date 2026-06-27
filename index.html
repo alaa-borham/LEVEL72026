@@ -402,11 +402,11 @@ body.ltr .dash-card::after{content:'›'}
 .unit-tog{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:8px;overflow:hidden}
 .unit-tog button{border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;color:#666}
 .unit-tog button.active{background:#2e7d32;color:#fff}
-.ord-body{display:grid;grid-template-columns:minmax(0,700px) minmax(440px,1fr);gap:18px;flex:1;min-height:0;align-items:stretch}
+.ord-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;flex:1;min-height:0;align-items:start}
 .ord-meas{min-width:0;align-content:start}
 .ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:10px;position:sticky;top:8px;align-self:start;max-height:calc(100vh - 20px);display:flex;flex-direction:column}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:6px}
-.ord-model .order-canvas{flex:0 0 auto;aspect-ratio:var(--ar,420/640);width:min(100%,calc((100vh - 120px) * var(--ar,.656)));max-width:100%;margin:0 auto;position:relative}
+.ord-model .order-canvas{flex:0 0 auto;aspect-ratio:var(--ar,420/640);height:calc(100vh - 96px);width:auto;max-width:100%;margin:0 auto;position:relative}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ord-model .order-canvas img.ov-layer{position:absolute;inset:0;width:100% !important;height:100% !important;object-fit:contain;pointer-events:none;z-index:2}
 .stud-canvas{position:relative;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;aspect-ratio:var(--ar,420/640);width:min(100%,calc(60vh * var(--ar,.656)));margin:0 auto}
@@ -419,7 +419,7 @@ body.ltr .dash-card::after{content:'›'}
 .ord-details input:focus,.ord-details select:focus{outline:none;border-color:#00897b !important;box-shadow:0 0 0 3px rgba(0,137,123,.22),0 0 17px rgba(0,150,136,.72)}
 @media(max-width:720px){
   .ord-body{grid-template-columns:1fr}
-  .ord-model{position:static;order:-1;height:auto}
+  .ord-model{position:static;order:-1;height:auto;max-height:none}
   .ord-model .order-canvas{flex:none;aspect-ratio:var(--ar,420/640);width:min(100%,calc(70vh * var(--ar,.656)));height:auto;max-width:100%;margin:0 auto}
 }
 /* حاوية الصورة التفاعلية ونقاطها */
