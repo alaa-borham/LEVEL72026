@@ -5105,7 +5105,7 @@ function renderMeasFields(values) {
     <div class="fg" style="margin:0">
       <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
-        value="${values && values[k] != null ? values[k] : ''}" oninput="validateMeasLive()">
+        value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
 }
@@ -7026,9 +7026,8 @@ function _naseejOrderNode(m, idx){
     });
   } else {
     (getTemplateKeys(m.template)||[]).forEach(k=>{
-      if(m.values&&m.values[k]!=null&&m.values[k]!==''){
-        s+='        <Type Abbreviation="'+_xmlEsc(String(k).toUpperCase().slice(0,4))+'" Name="'+_xmlEsc(MEAS_EN[k]||k)+'" Value="'+_toCm(m.values[k],m.unit)+'" />\n';
-      }
+      const v=(m.values&&m.values[k]!=null&&m.values[k]!=='')?_toCm(m.values[k],m.unit):0;
+      s+='        <Type Abbreviation="'+_xmlEsc(String(k).toUpperCase().slice(0,4))+'" Name="'+_xmlEsc(MEAS_EN[k]||k)+'" Value="'+v+'" />\n';
     });
   }
   s+='      </Measurement>\n    </Order>\n';
