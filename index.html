@@ -1318,6 +1318,7 @@ const fbDB   = firebase.firestore();
       <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
     </div>
     <div style="background:#fff;border:1px solid #e6ece0;border-radius:14px;padding:16px;max-width:900px;margin:auto">
+      <div style="background:#eef4ff;border:1px solid #b3d1f5;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:.85rem">🏢 إعدادات هذه المنشأة: <b id="nz-company" style="color:#1b3a6b"></b> <span style="color:#777;font-size:.78rem">— مستقلة تماماً عن أي منشأة أخرى</span></div>
       <div style="font-weight:800;color:#2e7d32;margin-bottom:8px">⚙️ الإعدادات العامة</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px">
         <div class="fg" style="margin:0"><label>رمز التاجر Reseller</label><input id="nz-reseller" style="direction:ltr" placeholder="10075"></div>
@@ -1325,7 +1326,10 @@ const fbDB   = firebase.firestore();
         <div class="fg" style="margin:0"><label>رقم الصنف Item Number</label><input id="nz-item" style="direction:ltr" placeholder="100751001"></div>
         <div class="fg" style="margin:0"><label>اسم جدول القياسات</label><input id="nz-table" style="direction:ltr" placeholder="Thobe_Non_Saudi_new"></div>
       </div>
-      <div style="font-size:.76rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:12px">💡 «رقم العميل» يُستخدم في ترقيم الأوامر (Number). إن تُرك فارغاً يُستخدم رقم العميل في كل طلب تلقائياً.</div>
+      <div style="font-size:.76rem;color:#777;background:#f7faf5;border-radius:8px;padding:8px;margin-bottom:10px">💡 «رقم العميل» يُستخدم في ترقيم الأوامر (Number). إن تُرك فارغاً يُستخدم رقم العميل في كل طلب تلقائياً.</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:#f1f8e9;border:1px solid #c5e1a5;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-weight:700;color:#33691e">
+        <input type="checkbox" id="nz-auto" style="width:auto"> ⚡ تصدير XML تلقائياً عند إتمام كل طلب (مباشرة من اختيارات الموديل دون أي إدخال)
+      </label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         <button class="btn btn-success" style="flex:1;min-width:160px" onclick="saveNaseejSettings()">💾 حفظ الإعدادات والجدول</button>
         <button class="btn btn-primary" style="flex:1;min-width:160px" onclick="saveNaseejSettings();exportNaseejAll()">📦 تصدير كل الطلبات (ملف واحد)</button>
@@ -5951,6 +5955,8 @@ function confirmCheckout(){
   const _on=pc.orderNo;
   alert('✔ تم إتمام الطلب'+(invNum?' وإصدار الفاتورة #'+invNum:'')+(paid>0?' وتسجيل دفعة '+formatNum(paid):''));
   if(confirm('🎫 طباعة إيصال الاستلام للعميل؟')) printClaimTicket(_on);
+  // تصدير نسيج XML تلقائياً عند إتمام الطلب (مفعّل افتراضياً متى ضُبط رمز التاجر)
+  if(settings.naseejAuto!==false && (settings.naseejReseller||'').trim()){ try{ exportNaseejOrder(_on); }catch(e){} }
   showMeasurements();
 }
 function skipCheckout(){ closeModal('checkout-modal'); _pendingCheckout=null; closeMeasure(); }
@@ -6996,7 +7002,8 @@ const NASEEJ_MEAS = [
 function _isThobe(tpl){ return tpl==='ثوب سعودي'||tpl==='ثوب أطفال'; }
 function _mdy(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? (p[1]+'/'+p[2]+'/'+p[0]) : iso; }
 function _toCm(val,unit){ const n=parseFloat(val); if(isNaN(n)) return 0; return unit==='inch' ? Math.round(n*2.54*1000)/1000 : n; }
-function _naseejVar(p){ return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || ''; }
+// فارييشن تلقائي: الاسم المربوط يدوياً إن وُجد، وإلا قيمة الاختيار نفسها — فكل قطعة تُضاف للموديل تحصل على فارييشن تلقائياً
+function _naseejVar(p){ return naseejVarMap[p.id+'::'+p.value] || naseejVarMap[p.value] || p.value || ''; }
 function _naseejOrderNode(m, idx){
   const reseller=(settings.naseejReseller||'').trim();
   const num=reseller+'-'+_naseejCli(m)+'-'+(idx+1)+'-'+(m.orderNo||m.id);
@@ -7070,10 +7077,12 @@ function exportNaseejAll(){
 }
 function showNaseej(){ if(!canAccess('tailoring')){ permDenied('tailoring'); return; } showScreen('naseej-screen'); }
 function renderNaseejForm(){
+  const cn=document.getElementById('nz-company'); if(cn) cn.textContent=settings.coName||'—';
   document.getElementById('nz-reseller').value=settings.naseejReseller||'';
   document.getElementById('nz-client').value=settings.naseejClient||'';
   document.getElementById('nz-item').value=settings.naseejItem||'';
   document.getElementById('nz-table').value=settings.naseejTable||'';
+  document.getElementById('nz-auto').checked = settings.naseejAuto!==false;
   const seen={}, rows=[];
   Object.keys(MEAS_TEMPLATES).forEach(tpl=>{
     getHotspots(tpl).forEach(h=>{
@@ -7087,7 +7096,7 @@ function renderNaseejForm(){
   document.getElementById('nz-map').innerHTML = rows.length ? rows.map(r=>`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:5px">
       <div style="flex:0 0 210px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${escHtml(r.label)}</b> · ${escHtml(r.opt)}</div>
-      <input data-nz="${escHtml(r.key)}" value="${escHtml(naseejVarMap[r.key]||'')}" placeholder="Variation Name (نسيج)" style="flex:1;min-width:0;direction:ltr;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
+      <input data-nz="${escHtml(r.key)}" value="${escHtml(naseejVarMap[r.key]||'')}" placeholder="تلقائي: ${escHtml(r.opt)}" title="اتركه فارغاً ليُصدَّر باسم «${escHtml(r.opt)}» تلقائياً، أو اكتب اسم Variation الإنجليزي في نسيج" style="flex:1;min-width:0;direction:ltr;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit">
     </div>`).join('') : '<div style="color:#bbb;text-align:center;padding:10px">لا اختيارات معرّفة بعد — أضِفها من «استوديو الموديل»</div>';
 }
 function saveNaseejSettings(){
@@ -7095,6 +7104,7 @@ function saveNaseejSettings(){
   settings.naseejClient=document.getElementById('nz-client').value.trim();
   settings.naseejItem=document.getElementById('nz-item').value.trim();
   settings.naseejTable=document.getElementById('nz-table').value.trim();
+  settings.naseejAuto=document.getElementById('nz-auto').checked;
   lsSet('appSettings', JSON.stringify(settings));
   document.querySelectorAll('#nz-map input[data-nz]').forEach(inp=>{
     const k=inp.getAttribute('data-nz'); const v=inp.value.trim();
