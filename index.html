@@ -5223,6 +5223,7 @@ function renderStudio(){
   const cur=_curLayer();
   if(cur&&cur.img) ov=`<img class="ov" src="${cur.img}">`;
   cv.innerHTML=bg+ov;
+  _fitCanvasToModel(cv, base);
   // معاينة سريعة: أزرار خيارات الجزء الحالي
   const h=getHotspots(_studioTpl).find(x=>String(x.id)===String(_studioPart));
   document.getElementById('stud-preview').innerHTML=((h&&h.options)||[]).map(o=>`<button class="btn btn-sm" style="background:${o===_studioOpt?'#2e7d32':'#eef'};color:${o===_studioOpt?'#fff':'#333'}" onclick="document.getElementById('stud-opt').value='${o.replace(/'/g,"")}';studioOptChange()">${escHtml(o)}</button>`).join('');
@@ -5257,6 +5258,16 @@ function renderOrderVisual() {
       ${escHtml(h.label)}${val?` <span class="hv">${escHtml(val)}</span>`:''}</div>`;
   }).join('');
   canvas.innerHTML = bg + overlays + dots;
+  _fitCanvasToModel(canvas, baseImg);
+}
+// يضبط نسبة أبعاد اللوحة على نسبة صورة الموديل نفسها، كي تملأ الصورة اللوحة تماماً
+// فتبقى المسميات (النقاط) منطبقة على القطع في كل أحجام الشاشة بلا انزياح
+function _fitCanvasToModel(canvas, baseImg){
+  if (!canvas) return;
+  if (!baseImg){ canvas.style.aspectRatio = '420/640'; return; }
+  const im = new Image();
+  im.onload = ()=>{ if (im.naturalWidth && im.naturalHeight) canvas.style.aspectRatio = im.naturalWidth + ' / ' + im.naturalHeight; };
+  im.src = baseImg;
 }
 function openPartMenu(hid, evt) {
   evt.stopPropagation();
@@ -5359,6 +5370,7 @@ function renderHotspotEditor(){
   const bg = modelImg ? `<img src="${modelImg}">` : THOBE_BG_SVG;
   const dots = spots.map(h=>`<div class="hspot" style="left:${h.x}%;top:${h.y}%;cursor:move;touch-action:none" onpointerdown="hsDragStart(event,'${h.id}')" title="اسحب لتغيير الموضع">${escHtml(h.label)} <span style="font-size:.6rem;opacity:.7">${h.x}٪,${h.y}٪</span></div>`).join('');
   document.getElementById('hs-edit-canvas').innerHTML = bg + dots;
+  _fitCanvasToModel(document.getElementById('hs-edit-canvas'), modelImg);
   document.getElementById('hs-list').innerHTML = spots.length ? spots.map(h=>`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid #eee;border-radius:8px;margin-bottom:5px">
       <b style="min-width:90px">${escHtml(h.label)}</b>
