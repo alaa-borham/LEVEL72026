@@ -1090,6 +1090,7 @@ const fbDB   = firebase.firestore();
         <div>✂️ القالب: <b id="mp-template" style="color:#1b5e20"></b></div>
       </div>
       <div class="mp-grid" id="mp-grid"></div>
+      <div id="mp-model-img" style="display:none;width:150px;aspect-ratio:420/640;position:relative;margin:8px auto;background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"></div>
       <div id="mp-model" style="background:#ede7f6;border:1.5px solid #b39ddb;border-radius:8px;padding:9px 13px;font-size:.88rem;margin-bottom:8px;display:none"></div>
       <div id="mp-notes" style="background:#f9fbe7;border:1.5px dashed #c0ca33;border-radius:8px;padding:9px 13px;font-size:.88rem;display:none"></div>
       <div style="display:flex;justify-content:space-between;margin-top:26px;font-size:.85rem;color:#444">
@@ -5967,6 +5968,11 @@ function printMeasurement(id) {
   modelEl.style.display = modParts.length ? 'block' : 'none';
   modelEl.innerHTML = modParts.length
     ? '✂️ <b>الموديل:</b> ' + modParts.map(([k,v])=>k+': <b>'+escHtml(v)+'</b>').join(' • ') : '';
+  // صورة الموديل المركّبة (إن وُجدت صورة أساس أو طبقات للخيارات)
+  const mImg = document.getElementById('mp-model-img');
+  const comp = _composedModelHTML(m.template, (mod.partsSel)||[]);
+  if (comp.baseImg || comp.hasLayers) { mImg.innerHTML = comp.html; _fitCanvasToModel(mImg, comp.baseImg); mImg.style.display='block'; }
+  else { mImg.style.display='none'; }
   const notesEl = document.getElementById('mp-notes');
   notesEl.style.display = m.notes ? 'block' : 'none';
   notesEl.innerHTML = m.notes ? '📝 <b>ملاحظات:</b> ' + escHtml(m.notes) : '';
@@ -6021,8 +6027,10 @@ function printOrder(orderNo){
     const grid=keys.filter(k=>m.values&&m.values[k]).map(k=>`<div class="mc"><div class="k">${escHtml(MEAS_DICT[k]||k)}${MEAS_EN[k]?'<br><span style="font-size:8px;color:#999">'+escHtml(MEAS_EN[k])+'</span>':''}</div><div class="v">${formatNum(m.values[k])}</div></div>`).join('');
     const mod=m.model||{}; const fab=mod.fabricId?_fabricById(mod.fabricId):null;
     const parts=(mod.partsSel||[]).map(p=>p.label+': '+p.value).concat([fab?'القماش: '+_fabricLabel(fab):'',mod.extFabric?'قماش العميل: '+mod.extFabric:'',mod.buttons?'الأزرار: '+mod.buttons:'',mod.embroidery?'التطريز: '+mod.embroidery:'',mod.taktak?'التكتك: '+mod.taktak:'',mod.metal?'معدنيات: '+mod.metal:'',mod.proofa?'بروفة: نعم':'']).filter(Boolean).map(escHtml).join(' • ');
+    const comp=_composedModelHTML(m.template,(mod.partsSel)||[]);
+    const imgBlock=(comp.baseImg||comp.hasLayers)?`<div style="width:118px;aspect-ratio:420/640;position:relative;flex:0 0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden">${comp.html}</div>`:'';
     return `<div class="pc"><div class="pch">قطعة ${idx+1}: ${escHtml(m.name||L(m.template))} <span style="color:#777;font-weight:400">(${escHtml(L(m.template))} — ${m.unit==='inch'?'إنش':'سم'})</span></div>
-      <div class="grid">${grid}</div>${parts?`<div class="mdl">✂️ ${parts}</div>`:''}${m.notes?`<div class="nt">📝 ${escHtml(m.notes)}</div>`:''}</div>`;
+      <div style="display:flex;gap:10px;align-items:flex-start">${imgBlock}<div style="flex:1;min-width:0"><div class="grid">${grid}</div>${parts?`<div class="mdl">✂️ ${parts}</div>`:''}${m.notes?`<div class="nt">📝 ${escHtml(m.notes)}</div>`:''}</div></div></div>`;
   };
   const w=window.open('','_blank');
   w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>طلب #${orderNo}</title>
