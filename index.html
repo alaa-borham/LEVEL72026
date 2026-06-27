@@ -1287,7 +1287,8 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0"><label style="font-size:.74rem">الخيارات (افصل بفاصلة)</label><input type="text" id="hs-opts" placeholder="ملكي، صيني، مربع"></div>
         </div>
         <button class="btn btn-success btn-sm" id="hs-place-btn" onclick="hsStartAdd()">📍 حدّد المكان على الصورة</button>
-        <div class="order-canvas" id="hs-edit-canvas" onclick="hsImageClick(event)" style="margin-top:10px;border:1.5px dashed #c5e1a5;cursor:crosshair"></div>
+        <div style="font-size:.74rem;color:#558b2f;margin-top:6px">💡 اسحب أي نقطة لضبط موضعها على الموديل (الموضع نسبي يتكيّف مع كل الشاشات)</div>
+        <div class="order-canvas" id="hs-edit-canvas" onclick="hsImageClick(event)" style="margin-top:6px;border:1.5px dashed #c5e1a5;cursor:crosshair"></div>
         <div id="hs-list" style="margin-top:10px"></div>
       </div>
     </div>
@@ -5151,6 +5152,22 @@ function hsImageClick(evt){
   const btn = document.getElementById('hs-place-btn'); btn.textContent='📍 حدّد المكان على الصورة'; btn.style.background='';
   renderHotspotEditor();
 }
+function hsDragStart(ev, id){
+  ev.preventDefault(); ev.stopPropagation();
+  const dot=ev.currentTarget;
+  const canvas=document.getElementById('hs-edit-canvas');
+  const tpl=document.getElementById('mset-template').value;
+  _ensureTmplSpots(tpl);
+  const h=tmplHotspots[tpl].find(x=>String(x.id)===String(id)); if(!h) return;
+  const move=e=>{
+    const r=canvas.getBoundingClientRect();
+    let x=(e.clientX-r.left)/r.width*100, y=(e.clientY-r.top)/r.height*100;
+    h.x=Math.max(0,Math.min(100,Math.round(x))); h.y=Math.max(0,Math.min(100,Math.round(y)));
+    dot.style.left=h.x+'%'; dot.style.top=h.y+'%';
+  };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); _saveHotspots(); renderHotspotEditor(); };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
 function hsDelete(id){
   const tpl = document.getElementById('mset-template').value;
   _ensureTmplSpots(tpl);
@@ -5170,7 +5187,7 @@ function renderHotspotEditor(){
   const spots = getHotspots(tpl);
   const modelImg = tmplImages[tpl] && tmplImages[tpl].model;
   const bg = modelImg ? `<img src="${modelImg}">` : THOBE_BG_SVG;
-  const dots = spots.map(h=>`<div class="hspot" style="left:${h.x}%;top:${h.y}%">${escHtml(h.label)}</div>`).join('');
+  const dots = spots.map(h=>`<div class="hspot" style="left:${h.x}%;top:${h.y}%;cursor:move;touch-action:none" onpointerdown="hsDragStart(event,'${h.id}')" title="اسحب لتغيير الموضع">${escHtml(h.label)} <span style="font-size:.6rem;opacity:.7">${h.x}٪,${h.y}٪</span></div>`).join('');
   document.getElementById('hs-edit-canvas').innerHTML = bg + dots;
   document.getElementById('hs-list').innerHTML = spots.length ? spots.map(h=>`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid #eee;border-radius:8px;margin-bottom:5px">
