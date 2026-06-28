@@ -457,6 +457,9 @@ body.ltr .dash-card::after{content:'›'}
 .pp-info>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pp-info b,.pp-box b{color:#1b3a26}
 .pp-box{border:1.2px solid #cdd;border-radius:7px;padding:3px 8px;font-size:.74rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* وضع العارض (دخول 1/1): يُقفل على تفاصيل الأمر فقط — تُخفى القائمة والتنقل */
+body.viewer-mode #sidebar, body.viewer-mode #sb-toggle, body.viewer-mode .pactions .btn-primary{display:none !important}
+body.viewer-mode .app-main, body.viewer-mode main, body.viewer-mode #prod-print-screen{margin:0 !important}
 @page{size:A4 portrait;margin:0 10mm}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -7468,9 +7471,12 @@ function _viewerLogin(){
     currentMember = { name:'عارض (QR)', viewer:true, perms: VIEWER_PERMS };
     currentAccProfile = currentAccProfile || { name:'عارض' };
     loadAccountData();
-    document.body.classList.add('app-on');
-    showScreen('dashboard');
-    _handleQRDeepLink();
+    history.replaceState(null,'',location.pathname);
+    document.body.classList.add('app-on','viewer-mode');
+    const num = parseInt(po);
+    const ord = prodOrders.find(x=>x.num===num);
+    if (ord) { printProdOrder(ord.id); }
+    else { showScreen('dashboard'); if(err){ err.style.color='#c62828'; err.textContent='لا يوجد أمر إنتاج رقم #'+num; } return; }
     if(err) err.textContent='';
     ['login-user','login-pass'].forEach(i=>{const el=document.getElementById(i); if(el) el.value='';});
   };
