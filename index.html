@@ -453,9 +453,10 @@ body.ltr .dash-card::after{content:'›'}
 .ms-fields-grid .fg input:focus{outline:none;border-color:#1b5e20 !important;box-shadow:0 0 0 3px rgba(46,125,50,.24),0 0 17px rgba(46,125,50,.85)}
 .ord-model .order-canvas{cursor:default}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
-.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px}
+.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 16px;margin-bottom:8px;border:1.4px solid #cdd;border-radius:9px;padding:8px 12px;background:#fff;font-size:.78rem}
+.pp-info>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-info b,.pp-box b{color:#1b3a26}
 .pp-box{border:1.2px solid #cdd;border-radius:7px;padding:3px 8px;font-size:.74rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-box b{color:#1b3a26}
 @page{size:A4 portrait;margin:0 10mm}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2110,12 +2111,12 @@ const fbDB   = firebase.firestore();
         <div id="pp-qr" style="width:92px;height:92px"></div>
       </div>
       <div class="pp-info">
-        <div class="pp-box">👤 العميل: <b id="pp-client"></b></div>
-        <div class="pp-box">📅 الاستلام: <b id="pp-recv" style="direction:ltr;display:inline-block"></b></div>
-        <div class="pp-box">🚚 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
-        <div class="pp-box">🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
-        <div class="pp-box">📏 السايز مان: <b id="pp-measurer"></b></div>
-        <div class="pp-box">🛍️ رجل المبيعات: <b id="pp-salesman"></b></div>
+        <div>👤 العميل: <b id="pp-client"></b></div>
+        <div>📅 الاستلام: <b id="pp-recv" style="direction:ltr;display:inline-block"></b></div>
+        <div>🚚 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
+        <div>🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
+        <div>📏 السايز مان: <b id="pp-measurer"></b></div>
+        <div>🛍️ رجل المبيعات: <b id="pp-salesman"></b></div>
       </div>
       <div id="pp-desc" class="pp-box" style="background:#f1f8e9;font-weight:700;margin-bottom:9px;white-space:normal"></div>
       <div id="pp-model-wrap" style="display:none;gap:12px;align-items:flex-start;margin-bottom:10px">
@@ -2538,7 +2539,9 @@ const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payment
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
                     'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap'];
 let _cloudTimer = null;
+let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
+  if (_viewerMode) return;
   if (!currentAccId) return;
   clearTimeout(_cloudTimer);
   _cloudTimer = setTimeout(cloudSaveNow, 1200);
@@ -2825,6 +2828,8 @@ function confirmResetPassword() { showAuthTab('login'); } // لم تعد مست�
 function login() {
   const id   = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
+  // دخول العارض السريع 1/1 — لعرض أمر الإنتاج فقط من أي جهاز (عبر رمز QR)
+  if (id === '1' && pass === '1') { _viewerLogin(); return; }
   const err  = document.getElementById('auth-err');
   if (!id || !pass) { err.textContent = tr('authFillAll'); return; }
   err.textContent = '⏳ جارٍ الدخول...';
@@ -7402,7 +7407,7 @@ function printProdOrder(id) {
   _loadQRLib().then(()=>{
     const cv = document.createElement('canvas');
     qrWrap.appendChild(cv);
-    QRCode.toCanvas(cv, location.origin + location.pathname + '?po=' + o.num, { width: 92, margin: 1 });
+    QRCode.toCanvas(cv, location.origin + location.pathname + '?po=' + o.num + '&t=' + encodeURIComponent(currentAccId||''), { width: 92, margin: 1 });
   }).catch(()=>{});
   showScreen('prod-print-screen');
 }
@@ -7449,13 +7454,42 @@ function onQRScanned(txt) {
   const num = m ? parseInt(m[1]) : parseInt(s.replace(/\D/g,''));
   _showScannedOrder(num);
 }
+// دخول العارض 1/1: يفتح أمر الإنتاج للعرض فقط من أي جهاز (يجلب بيانات المنشأة من الرابط t)
+function _viewerLogin(){
+  const params = new URLSearchParams(location.search);
+  const po = params.get('po'), t = params.get('t');
+  const err = document.getElementById('auth-err');
+  if (!t || !po) { if(err){ err.style.color='#c62828'; err.textContent='⚠ دخول العرض (1) يعمل فقط عند فتح رمز QR من أمر إنتاج'; } return; }
+  if(err){ err.style.color='#1b5e20'; err.textContent='⏳ جارٍ فتح أمر الإنتاج...'; }
+  const VIEWER_PERMS = { invoices:false,products:false,customers:false,tailoring:false,appointments:false,fabrics:false,production:true,purchases:false,expenses:false,analytics:false,archive:false,settings:false };
+  const proceed = ()=>{
+    _viewerMode = true;
+    currentAccId = t;
+    currentMember = { name:'عارض (QR)', viewer:true, perms: VIEWER_PERMS };
+    currentAccProfile = currentAccProfile || { name:'عارض' };
+    loadAccountData();
+    document.body.classList.add('app-on');
+    showScreen('dashboard');
+    _handleQRDeepLink();
+    if(err) err.textContent='';
+    ['login-user','login-pass'].forEach(i=>{const el=document.getElementById(i); if(el) el.value='';});
+  };
+  // إن كانت بيانات المنشأة محفوظة محلياً اعرض مباشرة، وإلا اجلبها سحابياً
+  if (localStorage.getItem('acc_'+t+'_prodOrders') != null) { proceed(); return; }
+  cloudLoad(t).then(p=>{
+    if (!p) { if(err){ err.style.color='#c62828'; err.textContent='تعذّر العثور على بيانات هذه المنشأة'; } return; }
+    proceed();
+  }).catch(e=>{
+    if(err){ err.style.color='#c62828'; err.textContent='تعذّر جلب البيانات: '+((e&&(e.message||e.code))||''); }
+  });
+}
 // تنبيه على شاشة الدخول عند الوصول من رابط QR (الموظف غير مسجَّل على هذا الجهاز)
 function _qrLoginNotice(){
   try{
     const po = new URLSearchParams(location.search).get('po');
     if(!po) return;
     const el = document.getElementById('auth-err');
-    if(el){ el.style.color='#1b5e20'; el.textContent='📦 سجّل الدخول لعرض أمر الإنتاج رقم #'+po+' — سيُفتح تلقائياً بعد الدخول'; }
+    if(el){ el.style.color='#1b5e20'; el.innerHTML='📦 لعرض أمر الإنتاج رقم #'+po+': سجّل دخولك، أو ادخل بالمستخدم <b>1</b> وكلمة المرور <b>1</b> للعرض فقط من أي جهاز'; }
   }catch(e){}
 }
 // فتح أمر الإنتاج مباشرة عند مسح رمز QR بكاميرا الجوال (رابط ?po=رقم)
@@ -7490,8 +7524,10 @@ function _showScannedOrder(num) {
       <div style="font-weight:800;font-size:1.05rem;direction:ltr">أمر #${o.num}</div>
       <div style="margin:4px 0">${escHtml(_custName(o.clientId))} — ${escHtml(o.desc)}</div>
       <div style="margin:6px 0">المرحلة الحالية: <b style="color:#1b5e20">${escHtml(L(stage))}</b></div>
-      ${!o.done?`<button class="btn btn-success" onclick="advanceProdStage(${o.id});_showScannedOrder(${o.num})" style="margin-top:6px">✔ إتمام مرحلة «${escHtml(L(PROD_STAGES[o.stageIdx]))}»</button>`
-        :`<div style="color:#2e7d32;font-weight:700;margin-top:6px">✅ الأمر مكتمل وجاهز</div>`}
+      ${_viewerMode
+        ? (o.done?`<div style="color:#2e7d32;font-weight:700;margin-top:6px">✅ الأمر مكتمل وجاهز</div>`:`<div style="color:#777;font-size:.82rem;margin-top:6px">👁️ وضع العرض فقط</div>`)
+        : (!o.done?`<button class="btn btn-success" onclick="advanceProdStage(${o.id});_showScannedOrder(${o.num})" style="margin-top:6px">✔ إتمام مرحلة «${escHtml(L(PROD_STAGES[o.stageIdx]))}»</button>`
+        :`<div style="color:#2e7d32;font-weight:700;margin-top:6px">✅ الأمر مكتمل وجاهز</div>`)}
     </div>`;
 }
 
