@@ -2896,6 +2896,7 @@ function _afterFirebaseLogin(user) {
     }
     err.textContent='';
     showScreen('dashboard');
+    _handleQRDeepLink();
     ['login-user','login-pass','reg-biz','reg-user','reg-pass','reg-email'].forEach(i=>{const el=document.getElementById(i); if(el) el.value='';});
   });
 }
@@ -7396,7 +7397,7 @@ function printProdOrder(id) {
   _loadQRLib().then(()=>{
     const cv = document.createElement('canvas');
     qrWrap.appendChild(cv);
-    QRCode.toCanvas(cv, 'PO-'+o.num, { width: 92, margin: 1 });
+    QRCode.toCanvas(cv, location.origin + location.pathname + '?po=' + o.num, { width: 92, margin: 1 });
   }).catch(()=>{});
   showScreen('prod-print-screen');
 }
@@ -7434,9 +7435,23 @@ function _stopQRScanner() {
 }
 function closeQRScan() { _stopQRScanner(); closeModal('qrscan-modal'); }
 function onQRScanned(txt) {
-  const m = String(txt).match(/PO-?(\d+)/i);
-  const num = m ? parseInt(m[1]) : parseInt(String(txt).replace(/\D/g,''));
+  const s = String(txt);
+  const m = s.match(/[?&]po=(\d+)/i) || s.match(/PO-?(\d+)/i);
+  const num = m ? parseInt(m[1]) : parseInt(s.replace(/\D/g,''));
   _showScannedOrder(num);
+}
+// فتح أمر الإنتاج مباشرة عند مسح رمز QR بكاميرا الجوال (رابط ?po=رقم)
+function _handleQRDeepLink(){
+  try{
+    const po = new URLSearchParams(location.search).get('po');
+    if(!po) return;
+    history.replaceState(null,'',location.pathname);
+    const num = parseInt(po); if(!num) return;
+    if(!canAccess('production')){ permDenied('production'); return; }
+    document.getElementById('qrscan-result').innerHTML='';
+    document.getElementById('qrscan-modal').classList.add('open');
+    _showScannedOrder(num);
+  }catch(e){}
 }
 function qrManualFind() {
   const num = parseInt(document.getElementById('qrscan-manual').value);
