@@ -2122,6 +2122,7 @@ const fbDB   = firebase.firestore();
         <div>🛍️ رجل المبيعات: <b id="pp-salesman"></b></div>
       </div>
       <div id="pp-desc" class="pp-box" style="background:#f1f8e9;font-weight:700;margin-bottom:9px;white-space:normal"></div>
+      <div id="pp-status" style="margin-bottom:10px"></div>
       <div id="pp-model-wrap" style="display:none;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="flex:0 0 56%;display:flex;flex-direction:column;gap:6px">
           <div id="pp-model" style="width:100%;aspect-ratio:420/640;position:relative;background:#fff;border:1.5px solid #cdd;border-radius:8px;overflow:hidden"></div>
@@ -7375,16 +7376,28 @@ function printProdOrder(id) {
   const _ptype = m ? L(m.template) : (o.desc||'');
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
   document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>';
+  // حالة الأمر: أين وصل في مراحل الإنتاج
+  const _stIdx = o.done ? PROD_STAGES.length-1 : (o.stageIdx||0);
+  const _chips = PROD_STAGES.map((st,i)=>{
+    const done = o.done || i < _stIdx, cur = !o.done && i === _stIdx;
+    const bg = cur?'#e65100':(done?'#2e7d32':'#eceff1'), col=(cur||done)?'#fff':'#90a4ae';
+    return '<span style="background:'+bg+';color:'+col+';border-radius:12px;padding:2px 9px;font-size:.72rem;font-weight:700;white-space:nowrap">'+((done&&!cur)?'✓ ':'')+escHtml(L(st))+'</span>';
+  }).join('');
+  document.getElementById('pp-status').innerHTML =
+    '<div style="border:1.4px solid #ffcc80;background:#fff8e1;border-radius:9px;padding:8px 11px">'
+    + '<div style="font-weight:800;color:#b28704;font-size:.85rem;margin-bottom:6px">📍 حالة الأمر: '
+    + (o.done ? '✅ جاهز للتسليم' : 'في «'+escHtml(L(PROD_STAGES[_stIdx]))+'» — المرحلة '+(_stIdx+1)+' من '+PROD_STAGES.length)
+    + '</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+_chips+'</div></div>';
   // القياسات المرتبطة تطبع داخل الأمر — صناديق مصغّرة لإفساح مكان لصورة الموديل
   // تظهر كل القياسات المحددة للموديل (من إعدادات القالب) حتى لو بلا أرقام — كي يكملها الخياط
   const _ppHidden = (m && measVisible[m.template]) || {};
   const _ppKeys = m ? (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>_ppHidden[k]!==false) : [];
   document.getElementById('pp-meas').innerHTML = m ? (
     '<div style="font-size:.8rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(L(m.template))+'):</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:4px">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:3px">' +
     _ppKeys.map(k=>{
       const has = m.values && m.values[k]!=null && m.values[k]!=='';
-      return `<div style="border:1px solid #c5e1a5;border-radius:6px;padding:3px 4px;text-align:center"><div style="font-size:.58rem;color:#666;line-height:1.15">${escHtml(MEAS_DICT[k]||k)}</div><div style="font-size:.9rem;font-weight:800;color:${has?'#1b5e20':'#bbb'};direction:ltr">${has?formatNum(m.values[k]):'—'}</div></div>`;
+      return `<div style="border:1px solid #c5e1a5;border-radius:6px;padding:2px 3px;text-align:center"><div style="font-size:.55rem;color:#666;line-height:1.1">${escHtml(MEAS_DICT[k]||k)}</div><div style="font-size:.86rem;font-weight:800;color:${has?'#1b5e20':'#bbb'};direction:ltr">${has?formatNum(m.values[k]):'—'}</div></div>`;
     }).join('') +
     '</div>') : '';
   // صورة الموديل المركّبة + مواصفات القطع (تساعد القصّاص على رؤية الشكل المطلوب)
