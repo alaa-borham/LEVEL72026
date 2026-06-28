@@ -1440,8 +1440,8 @@ const fbDB   = firebase.firestore();
     <div class="mhdr"><h3>🧵 إعدادات استهلاك الأقمشة</h3><button class="mcls" onclick="closeModal('fabricuse-modal')">✕</button></div>
     <div class="mlist" style="padding:14px">
       <div style="font-size:.8rem;color:#555;background:#f7faf5;border-radius:8px;padding:9px 11px;margin-bottom:12px">
-        🧮 <b>طريقة الحساب:</b> الاستهلاك (م) = (قياس الطول + البدل) ÷ 100 × المُعامل × الكمية.<br>
-        يُختار المُعامل حسب <b>عرض القماش</b>: إن كان العرض ≥ «حد العرض الواسع» يُستخدم «معامل الواسع»، وإلا «معامل الضيّق». تظهر القيمة في أمر الإنتاج تلقائياً.
+        🧮 <b>طريقة الحساب (كنظام القص):</b> تُحسب قطع البترون (أمام/خلف/كمّان/قطع صغيرة) من <b>قياسات العميل</b>، ثم تُرصّ جنباً إلى جنب على <b>عرض القماش</b> (مركر متعشّق). كلما اتّسع القماش دخلت قطع أكثر في الصف فقلّ الطول. الاستهلاك = طول المركر × عدد القطع — ويظهر في أمر الإنتاج تلقائياً.<br>
+        اضبط أدناه لكل موديل: <b>السعة</b> و<b>بدل الخياطة</b> و<b>زيادة الطول</b> و<b>فاصل المركر</b>، واضغط <b>🛈</b> لشرح حساب كل موديل.
       </div>
       <div id="fabricuse-rows"></div>
       <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="saveFabricUse()">💾 حفظ الإعدادات</button>
@@ -5577,7 +5577,7 @@ function renderOrderVisual() {
 // ═══════════════ استهلاك الأقمشة: حساب الكمية المطلوبة مع مراعاة عرض القماش
 function _fabricUseCfg(tpl){
   const thobe = (tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
-  const d={ lenKey: thobe?'frontLength':'length', allow:25, wideW:140, wideF:1, narrowF:2 };
+  const d={ lenKey: thobe?'frontLength':'length', allow:25, ease:6, seam:3, lenAllow:12, gap:2 };
   return Object.assign(d, fabricUse[tpl]||{});
 }
 function _fabricWidthOf(m){
@@ -5585,36 +5585,84 @@ function _fabricWidthOf(m){
   const w = f ? parseFloat(f.width) : parseFloat(mod.extFabricW);
   return (w && w>0) ? w : 0;
 }
-// يرجع {meters,width,factor} أو null إن تعذّر الحساب (لا طول)
+// قطع البترون لكل موديل وأبعادها (سم) محسوبة من قياسات العميل
+function _markerPieces(m){
+  const cfg=_fabricUseCfg(m.template); const v=m.values||{};
+  const n=k=>parseFloat(v[k])||0;
+  const ease=cfg.ease, seam=cfg.seam, la=cfg.lenAllow, tpl=m.template, P=[];
+  if(tpl==='ثوب سعودي'||tpl==='ثوب أطفال'){
+    const chest=n('fullChest')||n('chest')||110, fl=n('frontLength')||140, bl=n('backLength')||fl;
+    const sl=n('sleeveSada')||Math.round(fl*0.62), ah=n('armhole')||n('sadaRound')||24;
+    const bw=chest/2+ease+seam;
+    P.push({name:'الأمام', w:bw, h:fl+la});
+    P.push({name:'الخلف', w:bw, h:bl+la});
+    P.push({name:'كم يمين', w:ah+ease, h:sl+la});
+    P.push({name:'كم يسار', w:ah+ease, h:sl+la});
+    P.push({name:'ياقة/جبزور/جيوب', w:40, h:55});
+  } else {
+    const chest=n('chest')||n('fullChest')||100, len=n('length')||n('frontLength')||100, sl=n('sleeve')||n('sleeveSada')||0;
+    const bw=chest/2+ease+seam;
+    P.push({name:'الأمام', w:bw, h:len+la});
+    P.push({name:'الخلف', w:bw, h:len+la});
+    if(sl){ const ah=n('armhole')||22; P.push({name:'كم يمين', w:ah+ease, h:sl+la}); P.push({name:'كم يسار', w:ah+ease, h:sl+la}); }
+  }
+  return P;
+}
+// التعشيق على عرض القماش (مركر) — يرصّ القطع في صفوف بعرض القماش ويرجع طول المركر
+function _markerLayout(pieces, W, gap){
+  const ps=pieces.map(p=>({name:p.name,w:p.w,h:p.h})).sort((a,b)=>b.h-a.h);
+  const shelves=[];
+  ps.forEach(p=>{
+    let placed=false;
+    for(const sh of shelves){ if(sh.used+p.w+gap<=W){ sh.used+=p.w+gap; sh.items.push(p.name); placed=true; break; } }
+    if(!placed) shelves.push({used:p.w, h:p.h, items:[p.name]});
+  });
+  const length=shelves.reduce((s,sh)=>s+sh.h+gap, 0);
+  return {length, shelves};
+}
+// استهلاك القماش كنظام القص: طول المركر المتعشّق × عدد القطع
 function _fabricConsumption(m){
   if(!m) return null;
   const cfg=_fabricUseCfg(m.template);
-  const len=parseFloat((m.values||{})[cfg.lenKey])||0;
-  if(!len) return null;
-  const w=_fabricWidthOf(m);
-  const factor=(w && w>=cfg.wideW) ? cfg.wideF : cfg.narrowF;
+  const W=_fabricWidthOf(m);
   const qty=parseFloat((m.model||{}).qty)||1;
-  const meters=((len+cfg.allow)/100)*factor*qty;
-  return { meters:Math.round(meters*100)/100, width:w, factor, qty };
+  const pieces=_markerPieces(m); if(!pieces.length) return null;
+  if(!W){ // لا عرض معروف → تقدير مبدئي بالطول
+    const len=parseFloat((m.values||{})[cfg.lenKey])||0; if(!len) return null;
+    const meters=((len+cfg.allow)/100)*2*qty;
+    return { meters:Math.round(meters*100)/100, width:0, method:'simple', qty };
+  }
+  const lay=_markerLayout(pieces, W, cfg.gap);
+  const meters=(lay.length/100)*qty;
+  return { meters:Math.round(meters*100)/100, width:W, method:'marker', markerLen:Math.round(lay.length), rows:lay.shelves.length, qty };
 }
+function _markerFormulaText(tpl){
+  if(tpl==='ثوب سعودي'||tpl==='ثوب أطفال')
+    return 'موديل: '+L(tpl)+'\n\nالقطع تُحسب من قياسات العميل:\n• الأمام والخلف: العرض = نصف الصدر + سعة + بدل خياطة، الطول = الطول الأمامي/الخلفي + زيادة.\n• كمّان: العرض = أعلى الكم + سعة، الطول = طول الكم + زيادة.\n• قطع صغيرة (ياقة/جبزور/جيوب).\n\nالحساب كنظام القص: تُرصّ القطع جنباً إلى جنب على عرض القماش (مركر متعشّق). كلما اتّسع القماش دخلت قطع أكثر في الصف فقلّ طول المركر.\nالاستهلاك = طول المركر × عدد القطع.';
+  return 'موديل: '+L(tpl)+'\n\nالقطع: الأمام والخلف (العرض = نصف الصدر + سعة + بدل، الطول = الطول + زيادة) + كمّان إن وُجد طول كم.\nتُعشَّق القطع على عرض القماش ويُحسب طول المركر × عدد القطع.';
+}
+function showMarkerFormula(tpl){ alert(_markerFormulaText(tpl)); }
 function openFabricUse(){
   _closeAllOverlays();
+  const cols='1.1fr 1fr repeat(4,.62fr) .5fr';
   const rows=Object.keys(MEAS_TEMPLATES).map(tpl=>{
     const c=_fabricUseCfg(tpl);
     const keys=getTemplateKeys(tpl);
     const opts=keys.map(k=>`<option value="${escHtml(k)}" ${k===c.lenKey?'selected':''}>${escHtml(MEAS_DICT[k]||k)}</option>`).join('');
-    return `<div data-tpl="${escHtml(tpl)}" style="display:grid;grid-template-columns:1.3fr 1.4fr repeat(4,.8fr);gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">
-      <b style="font-size:.82rem">${escHtml(L(tpl))}</b>
-      <select class="fu-lenKey" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;font-size:.8rem">${opts}</select>
-      <input class="fu-allow" type="number" min="0" step="1" value="${c.allow}" title="البدل (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
-      <input class="fu-wideW" type="number" min="0" step="1" value="${c.wideW}" title="حد العرض الواسع (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
-      <input class="fu-wideF" type="number" min="0" step="0.1" value="${c.wideF}" title="معامل الواسع" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
-      <input class="fu-narrowF" type="number" min="0" step="0.1" value="${c.narrowF}" title="معامل الضيّق" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+    const tt=tpl.replace(/'/g,"\\'");
+    return `<div data-tpl="${escHtml(tpl)}" style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">
+      <b style="font-size:.8rem">${escHtml(L(tpl))}</b>
+      <select class="fu-lenKey" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;font-size:.76rem">${opts}</select>
+      <input class="fu-ease" type="number" min="0" step="0.5" value="${c.ease}" title="سعة (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-seam" type="number" min="0" step="0.5" value="${c.seam}" title="بدل الخياطة (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-lenAllow" type="number" min="0" step="1" value="${c.lenAllow}" title="زيادة الطول (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-gap" type="number" min="0" step="0.5" value="${c.gap}" title="فاصل المركر (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <button class="btn btn-info btn-sm" title="شرح طريقة الحساب" onclick="showMarkerFormula('${tt}')">🛈</button>
     </div>`;
   }).join('');
   document.getElementById('fabricuse-rows').innerHTML =
-    `<div style="display:grid;grid-template-columns:1.3fr 1.4fr repeat(4,.8fr);gap:6px;font-size:.7rem;font-weight:800;color:#2e7d32;padding-bottom:4px;border-bottom:2px solid #c5e1a5">
-      <span>القالب</span><span>قياس الطول</span><span>البدل سم</span><span>حد الواسع سم</span><span>معامل الواسع</span><span>معامل الضيّق</span>
+    `<div style="display:grid;grid-template-columns:${cols};gap:6px;font-size:.66rem;font-weight:800;color:#2e7d32;padding-bottom:4px;border-bottom:2px solid #c5e1a5">
+      <span>القالب</span><span>قياس الطول</span><span>سعة سم</span><span>بدل خياطة</span><span>زيادة طول</span><span>فاصل سم</span><span>شرح</span>
     </div>`+rows;
   document.getElementById('fabricuse-modal').classList.add('open');
 }
@@ -5623,10 +5671,10 @@ function saveFabricUse(){
     const tpl=row.getAttribute('data-tpl');
     fabricUse[tpl]={
       lenKey: row.querySelector('.fu-lenKey').value,
-      allow: parseFloat(row.querySelector('.fu-allow').value)||0,
-      wideW: parseFloat(row.querySelector('.fu-wideW').value)||0,
-      wideF: parseFloat(row.querySelector('.fu-wideF').value)||1,
-      narrowF: parseFloat(row.querySelector('.fu-narrowF').value)||1,
+      ease: parseFloat(row.querySelector('.fu-ease').value)||0,
+      seam: parseFloat(row.querySelector('.fu-seam').value)||0,
+      lenAllow: parseFloat(row.querySelector('.fu-lenAllow').value)||0,
+      gap: parseFloat(row.querySelector('.fu-gap').value)||0,
     };
   });
   lsSet('fabricUse', JSON.stringify(fabricUse));
@@ -7625,7 +7673,8 @@ function printProdOrder(id) {
   const _ptype = m ? L(m.template) : (o.desc||'');
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
   const _fc = _fabricConsumption(m);
-  const _fcTxt = _fc ? ' &nbsp;•&nbsp; 🧵 استهلاك القماش: <b>'+_fc.meters+' م</b>'+(_fc.width?' <span style="font-size:.85em;color:#777">(عرض '+_fc.width+' سم)</span>':'') : '';
+  const _fcDet = _fc ? (_fc.width ? ' (عرض '+_fc.width+' سم'+(_fc.method==='marker'?' · مركر '+_fc.markerLen+'سم/'+_fc.rows+' صف':'')+')' : ' (تقدير مبدئي)') : '';
+  const _fcTxt = _fc ? ' &nbsp;•&nbsp; 🧵 استهلاك القماش: <b>'+_fc.meters+' م</b><span style="font-size:.85em;color:#777">'+_fcDet+'</span>' : '';
   document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>'+_fcTxt;
   // حالة الأمر: أين وصل في مراحل الإنتاج
   const _stIdx = o.done ? PROD_STAGES.length-1 : (o.stageIdx||0);
