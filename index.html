@@ -406,7 +406,7 @@ body.ltr .dash-card::after{content:'›'}
 .ord-meas{min-width:0;align-content:start}
 .ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:8px;position:sticky;top:6px;align-self:start;max-height:calc(100vh - 8px);display:flex;flex-direction:column}
 .ord-model .ord-hint{flex:0 0 auto;margin-bottom:5px}
-.ord-model .order-canvas{flex:0 0 auto;aspect-ratio:var(--ar,420/640);height:calc(100vh - 52px);width:auto;max-width:100%;margin:0 auto;position:relative}
+.ord-model .order-canvas{flex:0 0 auto;aspect-ratio:var(--ar,420/640);height:calc(100vh - 52px);width:auto;max-width:100%;margin:0 auto;position:relative;container-type:size}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ord-model .order-canvas img.ov-layer{position:absolute;inset:0;width:100% !important;height:100% !important;object-fit:contain;pointer-events:none;z-index:2}
 .stud-canvas{position:relative;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;aspect-ratio:var(--ar,420/640);width:min(100%,calc(60vh * var(--ar,.656)));margin:0 auto}
@@ -448,11 +448,12 @@ body.ltr .dash-card::after{content:'›'}
 .ms-view-tabs{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:9px;overflow:hidden;margin-bottom:8px}
 .ms-view-tabs button{border:none;background:#fff;padding:7px 16px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.84rem;color:#666}
 .ms-view-tabs button.active{background:#2e7d32;color:#fff}
-.ms-diagram{position:relative;aspect-ratio:520/640;max-width:540px;width:100%;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;touch-action:none}
+.ms-diagram{position:relative;aspect-ratio:520/640;max-width:540px;width:100%;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;touch-action:none;container-type:size}
 .ms-diagram>svg,.ms-diagram>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .dgm-box{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:move;touch-action:none;z-index:2}
-.dgm-box input{width:46px;padding:2px 1px;text-align:center;border:1.5px solid #2e7d32;border-radius:5px;font-weight:800;font-size:.82rem;direction:ltr;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-.dgm-box span{font-size:.54rem;font-weight:700;color:#1b5e20;background:rgba(255,255,255,.9);border-radius:3px;padding:0 3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+/* حجم الصناديق يتناسب مع حجم الموديل (وحدات الحاوية) فتبقى المواضع متناسقة في كل الشاشات */
+.dgm-box input{width:clamp(30px,9cqw,52px);padding:1px;text-align:center;border:1.5px solid #2e7d32;border-radius:5px;font-weight:800;font-size:clamp(8px,2.7cqw,14px);direction:ltr;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.dgm-box span{font-size:clamp(6px,1.9cqw,9px);font-weight:700;color:#1b5e20;background:rgba(255,255,255,.9);border-radius:3px;padding:0 3px;white-space:nowrap;max-width:none;overflow:hidden;text-overflow:ellipsis}
 /* في وضع الإدخال: الاسم مخفي ويظهر كتلميح فوق الصندوق عند مرور الماوس */
 .dgm-lbl-hover>span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;display:none;background:#1b5e20;color:#fff;max-width:none;box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:6;pointer-events:none}
 .dgm-lbl-hover:hover>span{display:block}
