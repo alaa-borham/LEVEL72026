@@ -512,6 +512,7 @@ const fbDB   = firebase.firestore();
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
   <a data-perm="production" onclick="showPatterns();closeSb()">🧩 البترونات</a>
   <a data-perm="production" onclick="showQRScan();closeSb()">📷 مسح QR</a>
+  <a data-perm="production" onclick="showMarker();closeSb()">🧮 المركر (تخطيط القص)</a>
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
   <div class="sb-sec">المبيعات والمالية</div>
   <a data-perm="invoices" onclick="newInvoice();closeSb()">➕ فاتورة جديدة</a>
@@ -1361,6 +1362,34 @@ const fbDB   = firebase.firestore();
       </div>
       <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار، أو اضغط «تعبئة الأسماء المعروفة» للبدء السريع ثم عدّل ما يلزم واحفظ. الاختيار الفارغ يُصدَّر باسمه تلقائياً.</div>
       <div id="nz-map"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN: MARKER / CUTTING LAYOUT (المركر — تخطيط القص) -->
+<div id="marker-screen" class="screen">
+  <div class="page-wrap">
+    <div class="page-header">
+      <h2>🧮 المركر — تخطيط القص</h2>
+      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
+    </div>
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
+        <div class="fg"><label>📂 اختر طلباً (أو يدوي)</label><select id="mk-order" onchange="markerFromOrder()" style="padding:7px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;width:100%"></select></div>
+        <div class="fg"><label>الموديل</label><select id="mk-tpl" onchange="runMarker()" style="padding:7px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;width:100%"></select></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>عرض القماش (سم)</label><input type="number" id="mk-width" value="150" style="direction:ltr;text-align:center"></div>
+          <div class="fg"><label>عدد القطع</label><input type="number" id="mk-qty" value="1" style="direction:ltr;text-align:center"></div>
+          <div class="fg"><label>مقاس الصدر (سم)</label><input type="number" id="mk-chest" value="110" style="direction:ltr;text-align:center"></div>
+          <div class="fg"><label>الطول (سم)</label><input type="number" id="mk-len" value="150" style="direction:ltr;text-align:center"></div>
+          <div class="fg"><label>طول الكم (سم)</label><input type="number" id="mk-sleeve" value="95" style="direction:ltr;text-align:center"></div>
+        </div>
+        <button class="btn btn-success" style="width:100%;margin-top:6px" onclick="runMarker()">🔄 تعشيق / إعادة التعشيق</button>
+        <div id="mk-results" style="margin-top:12px"></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px;min-height:60vh;display:flex;justify-content:center;align-items:flex-start">
+        <div id="mk-visual-wrap" style="width:100%;display:flex;justify-content:center"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -4486,7 +4515,7 @@ const PERM_SCREENS = {
   'invoice-list':'invoices', 'invoice-form-screen':'invoices', 'print-screen':'invoices',
   'receipt-screen':'customers',
   'products-screen':'products', 'analytics-screen':'analytics',
-  'archive-screen':'archive', 'settings-screen':'settings', 'naseej-screen':'tailoring',
+  'archive-screen':'archive', 'settings-screen':'settings', 'naseej-screen':'tailoring', 'marker-screen':'production',
 };
 function canAccess(area) {
   if (!currentMember) return true; // صاحب المنشأة: كل الصلاحيات
@@ -5620,6 +5649,18 @@ function _markerLayout(pieces, W, gap){
   const length=shelves.reduce((s,sh)=>s+sh.h+gap, 0);
   return {length, shelves};
 }
+// مثل _markerLayout لكن يرجع إحداثيات كل قطعة لرسم المركر بصرياً
+function _markerRects(pieces, W, gap){
+  const ps=pieces.map(p=>({name:p.name,w:p.w,h:p.h})).sort((a,b)=>b.h-a.h);
+  const shelves=[]; const rects=[]; let curY=0;
+  ps.forEach(p=>{
+    let sh=shelves.find(s=>s.used+p.w+gap<=W);
+    if(!sh){ sh={y:curY, h:p.h, used:0}; shelves.push(sh); curY+=p.h+gap; }
+    rects.push({name:p.name, x:sh.used, y:sh.y, w:p.w, h:p.h});
+    sh.used+=p.w+gap;
+  });
+  return { length:curY, rects, rows:shelves.length, W };
+}
 // استهلاك القماش كنظام القص: طول المركر المتعشّق × عدد القطع
 function _fabricConsumption(m){
   if(!m) return null;
@@ -5642,6 +5683,61 @@ function _markerFormulaText(tpl){
   return 'موديل: '+L(tpl)+'\n\nالقطع: الأمام والخلف (العرض = نصف الصدر + سعة + بدل، الطول = الطول + زيادة) + كمّان إن وُجد طول كم.\nتُعشَّق القطع على عرض القماش ويُحسب طول المركر × عدد القطع.';
 }
 function showMarkerFormula(tpl){ alert(_markerFormulaText(tpl)); }
+// ═══════════════ صفحة المركر: رؤية التعشيق بصرياً وإعادة تعشيق أي طلب/ملف
+function showMarker(){
+  if(!canAccess('production')){ permDenied('production'); return; }
+  const ord=[...measurements].sort((a,b)=>b.id-a.id).slice(0,80)
+    .map(m=>`<option value="${m.id}">${escHtml(_custName(m.clientId))} — ${escHtml(L(m.template))}${m.orderNo?(' #'+escHtml(String(m.orderNo))):''}</option>`).join('');
+  document.getElementById('mk-order').innerHTML='<option value="">— إدخال يدوي —</option>'+ord;
+  document.getElementById('mk-tpl').innerHTML=Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
+  showScreen('marker-screen');
+  runMarker();
+}
+function markerFromOrder(){
+  const m=measurements.find(x=>String(x.id)===String(document.getElementById('mk-order').value));
+  if(!m){ return; }
+  const v=m.values||{};
+  document.getElementById('mk-tpl').value=m.template;
+  document.getElementById('mk-chest').value=v.fullChest||v.chest||110;
+  document.getElementById('mk-len').value=v.frontLength||v.length||150;
+  document.getElementById('mk-sleeve').value=v.sleeveSada||v.sleeve||95;
+  document.getElementById('mk-qty').value=(m.model&&m.model.qty)||1;
+  const w=_fabricWidthOf(m); if(w) document.getElementById('mk-width').value=w;
+  runMarker();
+}
+function _markerInputM(){
+  const tpl=document.getElementById('mk-tpl').value;
+  const num=id=>parseFloat(document.getElementById(id).value)||0;
+  const chest=num('mk-chest'), len=num('mk-len'), sl=num('mk-sleeve'), qty=num('mk-qty')||1, w=num('mk-width');
+  const thobe=(tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
+  const values=thobe?{fullChest:chest,frontLength:len,backLength:len,sleeveSada:sl}:{chest,length:len,sleeve:sl};
+  return {template:tpl, values, model:{qty, extFabricW:w}};
+}
+function runMarker(){
+  const wrap=document.getElementById('mk-visual-wrap'), res=document.getElementById('mk-results');
+  if(!wrap||!res) return;
+  const m=_markerInputM();
+  const W=parseFloat(document.getElementById('mk-width').value)||0;
+  const cfg=_fabricUseCfg(m.template);
+  const pieces=_markerPieces(m);
+  if(!W || !pieces.length){ res.innerHTML='<div style="color:#c62828;font-size:.85rem">أدخل عرض القماش والقياسات</div>'; wrap.innerHTML=''; return; }
+  const lay=_markerRects(pieces, W, cfg.gap);
+  const qty=m.model.qty||1;
+  const meters=Math.round((lay.length/100)*qty*100)/100;
+  const usedArea=pieces.reduce((s,p)=>s+p.w*p.h,0);
+  const eff=lay.length?Math.round(usedArea/(W*lay.length)*100):0;
+  res.innerHTML=`<div style="background:#f1f8e9;border:1px solid #c5e1a5;border-radius:8px;padding:11px;font-size:.85rem;line-height:1.95">
+    <div>📏 عرض القماش: <b>${W} سم</b></div>
+    <div>📐 طول المركر: <b>${Math.round(lay.length)} سم</b> (${lay.rows} صف)</div>
+    <div>🧵 الاستهلاك للقطعة: <b>${Math.round(lay.length)/100} م</b></div>
+    <div>🧶 الإجمالي (${qty} قطعة): <b style="color:#1b5e20;font-size:1.05em">${meters} م</b></div>
+    <div>♻️ كفاءة التعشيق: <b style="color:${eff>=70?'#2e7d32':'#e65100'}">${eff}%</b></div>
+  </div>`;
+  const colors=['#c8e6c9','#bbdefb','#ffe0b2','#f8bbd0','#d1c4e9','#b2dfdb','#fff9c4','#ffccbc'];
+  const rects=lay.rects.map((r,i)=>`<div style="position:absolute;left:${r.x/W*100}%;top:${r.y/lay.length*100}%;width:${r.w/W*100}%;height:${r.h/lay.length*100}%;background:${colors[i%colors.length]};border:1px solid #607d8b;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#333;text-align:center;overflow:hidden;padding:2px"><span>${escHtml(r.name)}</span><span style="font-size:.9em;color:#666;direction:ltr">${Math.round(r.w)}×${Math.round(r.h)}</span></div>`).join('');
+  wrap.innerHTML=`<div style="text-align:center"><div style="font-size:.74rem;color:#888;margin-bottom:4px">⬇️ اتجاه القماش (الطول) — العرض ${W} سم</div>
+    <div style="position:relative;background:repeating-linear-gradient(#fff,#fff 14px,#f4f7f2 14px,#f4f7f2 15px);border:2px solid #2e7d32;border-radius:6px;height:70vh;aspect-ratio:${W}/${Math.round(lay.length)||1};max-width:100%;margin:auto">${rects}</div></div>`;
+}
 function openFabricUse(){
   _closeAllOverlays();
   const cols='1.1fr 1fr repeat(4,.62fr) .5fr';
