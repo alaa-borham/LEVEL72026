@@ -453,6 +453,10 @@ body.ltr .dash-card::after{content:'›'}
 .dgm-box{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:move;touch-action:none;z-index:2}
 .dgm-box input{width:46px;padding:2px 1px;text-align:center;border:1.5px solid #2e7d32;border-radius:5px;font-weight:800;font-size:.82rem;direction:ltr;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 .dgm-box span{font-size:.54rem;font-weight:700;color:#1b5e20;background:rgba(255,255,255,.9);border-radius:3px;padding:0 3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+/* في وضع الإدخال: الاسم مخفي ويظهر كتلميح فوق الصندوق عند مرور الماوس */
+.dgm-lbl-hover>span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;display:none;background:#1b5e20;color:#fff;max-width:none;box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:6;pointer-events:none}
+.dgm-lbl-hover:hover>span{display:block}
+.dgm-lbl-hover:hover{z-index:7}
 .ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px 9px}
 .ms-fields-grid .fg{display:flex;flex-direction:column}
 .ms-fields-grid .fg label{font-size:.7rem !important;margin-bottom:3px;line-height:1.2;min-height:2.5em;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#2e7d32;font-weight:800;overflow:hidden}
@@ -2653,6 +2657,7 @@ let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية
 let tmplMeasPos = {};   // مواضع صناديق القياس على مخطط الثوب لكل قالب (key: {x,y})
 let fabricUse = {};     // إعدادات استهلاك الأقمشة لكل قالب (الطول/البدل/حد العرض/المعاملات)
 let _measView = 'grid'; // طريقة إدخال القياس: شبكة grid أو مخطط diagram
+let _dgmOrder = [];     // ترتيب مفاتيح القياس في المخطط (لتنقّل Tab بالتسلسل)
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
@@ -5195,12 +5200,25 @@ function _measBoxesHTML(tpl){
   const keys=getTemplateKeys(tpl).filter(k=>hidden[k]!==false);
   const pos=tmplMeasPos[tpl]||{};
   // الصناديق مثبّتة (لا تتحرك) أثناء الإدخال — يُضبط موضعها من «إعدادات القالب ← مواضع القياس»
+  // الاسم مخفي ويظهر عند مرور الماوس؛ وزر Tab ينتقل للصندوق التالي بترتيب الإعدادات
+  _dgmOrder = keys.slice();
   return keys.map((k,i)=>{
     const p=pos[k]||MEAS_DIAGRAM[k]||{x:93,y:6+(i%18)*5};
-    return `<div class="dgm-box" style="left:${p.x}%;top:${p.y}%;cursor:default">
-      <input type="number" id="dgm-${k}" min="0" step="0.5" value="${_msfVal(k)}" onfocus="this.select()" oninput="dgmInput('${k}',this.value)">
-      <span>${escHtml(MEAS_DICT[k]||k)}</span></div>`;
+    const lbl=escHtml(MEAS_DICT[k]||k);
+    return `<div class="dgm-box dgm-lbl-hover" style="left:${p.x}%;top:${p.y}%;cursor:default" title="${lbl}">
+      <input type="number" id="dgm-${k}" min="0" step="0.5" value="${_msfVal(k)}" onfocus="this.select()" oninput="dgmInput('${k}',this.value)" onkeydown="dgmTab(event)">
+      <span>${lbl}</span></div>`;
   }).join('');
+}
+function dgmTab(e){
+  if(e.key!=='Tab') return;
+  e.preventDefault();
+  const id=e.target.id||''; if(id.indexOf('dgm-')!==0) return;
+  const k=id.slice(4); const n=_dgmOrder.length; if(!n) return;
+  let i=_dgmOrder.indexOf(k); if(i<0) return;
+  i = e.shiftKey ? (i-1+n)%n : (i+1)%n;
+  const next=document.getElementById('dgm-'+_dgmOrder[i]);
+  if(next){ next.focus(); if(next.select) next.select(); }
 }
 function dgmInput(k,v){ const el=document.getElementById('msf-'+k); if(el) el.value=v; validateMeasLive(); }
 function dgmDrag(ev,k){
