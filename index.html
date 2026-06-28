@@ -453,7 +453,7 @@ body.ltr .dash-card::after{content:'›'}
 .ms-fields-grid .fg input:focus{outline:none;border-color:#1b5e20 !important;box-shadow:0 0 0 3px rgba(46,125,50,.24),0 0 17px rgba(46,125,50,.85)}
 .ord-model .order-canvas{cursor:default}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
-.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-bottom:8px;border:1.4px solid #cdd;border-radius:9px;overflow:hidden;background:#cdd;font-size:.78rem}
+.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#cdd;font-size:.78rem}
 .pp-info>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff;padding:6px 10px}
 .pp-info b,.pp-box b{color:#1b3a26}
 .pp-box{border:1.2px solid #cdd;border-radius:7px;padding:3px 8px;font-size:.74rem;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2102,7 +2102,8 @@ const fbDB   = firebase.firestore();
       <button class="btn btn-primary" onclick="showScreen('dashboard');showProduction()">← رجوع</button>
     </div>
     <div class="meas-print">
-      <div class="mp-head">
+      <div class="pp-topbox" style="border:1.4px solid #cdd;border-radius:10px;overflow:hidden;background:#fff;margin-bottom:10px">
+      <div class="mp-head" style="margin:0;padding:9px 12px">
         <div>
           <img id="pp-hdr-img" alt="" style="display:none;max-height:52px;object-fit:contain">
           <svg id="pp-hdr-svg" width="108" height="37" viewBox="0 0 340 116"><use href="#level7logo"/></svg>
@@ -2120,6 +2121,7 @@ const fbDB   = firebase.firestore();
         <div>🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
         <div>📏 السايز مان: <b id="pp-measurer"></b></div>
         <div>🛍️ رجل المبيعات: <b id="pp-salesman"></b></div>
+      </div>
       </div>
       <div id="pp-desc" class="pp-box" style="background:#f1f8e9;font-weight:700;margin-bottom:9px;white-space:normal"></div>
       <div id="pp-status" style="margin-bottom:10px"></div>
