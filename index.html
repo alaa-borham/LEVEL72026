@@ -7444,6 +7444,15 @@ function onQRScanned(txt) {
   const num = m ? parseInt(m[1]) : parseInt(s.replace(/\D/g,''));
   _showScannedOrder(num);
 }
+// تنبيه على شاشة الدخول عند الوصول من رابط QR (الموظف غير مسجَّل على هذا الجهاز)
+function _qrLoginNotice(){
+  try{
+    const po = new URLSearchParams(location.search).get('po');
+    if(!po) return;
+    const el = document.getElementById('auth-err');
+    if(el){ el.style.color='#1b5e20'; el.textContent='📦 سجّل الدخول لعرض أمر الإنتاج رقم #'+po+' — سيُفتح تلقائياً بعد الدخول'; }
+  }catch(e){}
+}
 // فتح أمر الإنتاج مباشرة عند مسح رمز QR بكاميرا الجوال (رابط ?po=رقم)
 function _handleQRDeepLink(){
   try{
@@ -8416,7 +8425,7 @@ if (location.hash === '#admin') {
   fbAuth.onAuthStateChanged(u=>{
     if (_booted) return;
     _booted = true;
-    if (!u) return;
+    if (!u) { _qrLoginNotice(); return; }
     _afterFirebaseLogin(u).catch(e=>{
       document.getElementById('auth-err').textContent = '⚠ تعذر استئناف الجلسة: ' + (e && (e.message||e.code) || '');
     });
