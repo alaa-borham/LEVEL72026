@@ -747,6 +747,7 @@ const fbDB   = firebase.firestore();
         <div class="fg" style="margin-top:8px"><label>نظام القص للتصدير XML</label>
           <select id="set-cad"><option>Gerber</option><option>Lectra</option><option>Optitex</option><option>Grafis</option><option>Gemini</option><option>Bullmer</option><option>عام / Generic</option></select></div>
         <button class="btn" style="width:100%;margin-top:8px;background:#5c6bc0;color:#fff" onclick="showNaseej()">🧬 تصدير نسيج XML (إعدادات + جدول الربط + تصدير الكل)</button>
+        <button class="btn" style="width:100%;margin-top:8px;background:#00897b;color:#fff" onclick="openFabricUse()">🧵 إعدادات استهلاك الأقمشة</button>
 
         <div id="members-btn">
           <h4 style="color:#2e7d32;margin:18px 0 12px">👤 مستخدمو المنشأة</h4>
@@ -1424,6 +1425,21 @@ const fbDB   = firebase.firestore();
         <div style="font-size:.74rem;color:#888;margin-bottom:10px">اسحب كل قياس إلى مكانه على الثوب. تُحفظ المواضع للقالب، وتبقى ثابتة (غير متحركة) أثناء إدخال القياسات في شاشة الأوردر.</div>
         <div id="mpos-canvas" class="ms-diagram" style="max-width:460px"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: FABRIC CONSUMPTION SETTINGS (إعدادات استهلاك الأقمشة) -->
+<div class="moverlay" id="fabricuse-modal">
+  <div class="mbox" style="max-width:880px;width:96vw">
+    <div class="mhdr"><h3>🧵 إعدادات استهلاك الأقمشة</h3><button class="mcls" onclick="closeModal('fabricuse-modal')">✕</button></div>
+    <div class="mlist" style="padding:14px">
+      <div style="font-size:.8rem;color:#555;background:#f7faf5;border-radius:8px;padding:9px 11px;margin-bottom:12px">
+        🧮 <b>طريقة الحساب:</b> الاستهلاك (م) = (قياس الطول + البدل) ÷ 100 × المُعامل × الكمية.<br>
+        يُختار المُعامل حسب <b>عرض القماش</b>: إن كان العرض ≥ «حد العرض الواسع» يُستخدم «معامل الواسع»، وإلا «معامل الضيّق». تظهر القيمة في أمر الإنتاج تلقائياً.
+      </div>
+      <div id="fabricuse-rows"></div>
+      <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="saveFabricUse()">💾 حفظ الإعدادات</button>
     </div>
   </div>
 </div>
@@ -2571,7 +2587,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2635,6 +2651,7 @@ let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قال�
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
 let tmplMeasPos = {};   // مواضع صناديق القياس على مخطط الثوب لكل قالب (key: {x,y})
+let fabricUse = {};     // إعدادات استهلاك الأقمشة لكل قالب (الطول/البدل/حد العرض/المعاملات)
 let _measView = 'grid'; // طريقة إدخال القياس: شبكة grid أو مخطط diagram
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
@@ -2684,6 +2701,7 @@ function loadAccountData() {
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
   tmplMeasPos     = JSON.parse(lsGet('tmplMeasPos','{}'));
+  fabricUse       = JSON.parse(lsGet('fabricUse','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
@@ -5537,6 +5555,64 @@ function renderOrderVisual() {
   canvas.innerHTML = bg + overlays + markers;
   _fitCanvasToModel(canvas, baseImg);
 }
+// ═══════════════ استهلاك الأقمشة: حساب الكمية المطلوبة مع مراعاة عرض القماش
+function _fabricUseCfg(tpl){
+  const thobe = (tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
+  const d={ lenKey: thobe?'frontLength':'length', allow:25, wideW:140, wideF:1, narrowF:2 };
+  return Object.assign(d, fabricUse[tpl]||{});
+}
+function _fabricWidthOf(m){
+  const mod=m.model||{}; const f=mod.fabricId?_fabricById(mod.fabricId):null;
+  const w = f ? parseFloat(f.width) : parseFloat(mod.extFabricW);
+  return (w && w>0) ? w : 0;
+}
+// يرجع {meters,width,factor} أو null إن تعذّر الحساب (لا طول)
+function _fabricConsumption(m){
+  if(!m) return null;
+  const cfg=_fabricUseCfg(m.template);
+  const len=parseFloat((m.values||{})[cfg.lenKey])||0;
+  if(!len) return null;
+  const w=_fabricWidthOf(m);
+  const factor=(w && w>=cfg.wideW) ? cfg.wideF : cfg.narrowF;
+  const qty=parseFloat((m.model||{}).qty)||1;
+  const meters=((len+cfg.allow)/100)*factor*qty;
+  return { meters:Math.round(meters*100)/100, width:w, factor, qty };
+}
+function openFabricUse(){
+  _closeAllOverlays();
+  const rows=Object.keys(MEAS_TEMPLATES).map(tpl=>{
+    const c=_fabricUseCfg(tpl);
+    const keys=getTemplateKeys(tpl);
+    const opts=keys.map(k=>`<option value="${escHtml(k)}" ${k===c.lenKey?'selected':''}>${escHtml(MEAS_DICT[k]||k)}</option>`).join('');
+    return `<div data-tpl="${escHtml(tpl)}" style="display:grid;grid-template-columns:1.3fr 1.4fr repeat(4,.8fr);gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0">
+      <b style="font-size:.82rem">${escHtml(L(tpl))}</b>
+      <select class="fu-lenKey" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;font-size:.8rem">${opts}</select>
+      <input class="fu-allow" type="number" min="0" step="1" value="${c.allow}" title="البدل (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-wideW" type="number" min="0" step="1" value="${c.wideW}" title="حد العرض الواسع (سم)" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-wideF" type="number" min="0" step="0.1" value="${c.wideF}" title="معامل الواسع" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+      <input class="fu-narrowF" type="number" min="0" step="0.1" value="${c.narrowF}" title="معامل الضيّق" style="padding:5px;border:1.5px solid #ddd;border-radius:6px;direction:ltr;text-align:center">
+    </div>`;
+  }).join('');
+  document.getElementById('fabricuse-rows').innerHTML =
+    `<div style="display:grid;grid-template-columns:1.3fr 1.4fr repeat(4,.8fr);gap:6px;font-size:.7rem;font-weight:800;color:#2e7d32;padding-bottom:4px;border-bottom:2px solid #c5e1a5">
+      <span>القالب</span><span>قياس الطول</span><span>البدل سم</span><span>حد الواسع سم</span><span>معامل الواسع</span><span>معامل الضيّق</span>
+    </div>`+rows;
+  document.getElementById('fabricuse-modal').classList.add('open');
+}
+function saveFabricUse(){
+  document.querySelectorAll('#fabricuse-rows [data-tpl]').forEach(row=>{
+    const tpl=row.getAttribute('data-tpl');
+    fabricUse[tpl]={
+      lenKey: row.querySelector('.fu-lenKey').value,
+      allow: parseFloat(row.querySelector('.fu-allow').value)||0,
+      wideW: parseFloat(row.querySelector('.fu-wideW').value)||0,
+      wideF: parseFloat(row.querySelector('.fu-wideF').value)||1,
+      narrowF: parseFloat(row.querySelector('.fu-narrowF').value)||1,
+    };
+  });
+  lsSet('fabricUse', JSON.stringify(fabricUse));
+  alert('💾 حُفظت إعدادات استهلاك الأقمشة');
+}
 // صورة الموديل المركّبة (أساس + طبقات الخيارات المختارة) لقالب وقطعٍ محفوظة — للطباعة والأوامر
 function _modelBaseImg(tpl){ const lay=tmplLayers[tpl]; return (lay&&lay.base)||(tmplImages[tpl]&&tmplImages[tpl].model)||''; }
 function _composedModelHTML(tpl, partsSel){
@@ -7529,7 +7605,9 @@ function printProdOrder(id) {
   document.getElementById('pp-salesman').textContent = (m && m.salesman) || (currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || ''));
   const _ptype = m ? L(m.template) : (o.desc||'');
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
-  document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>';
+  const _fc = _fabricConsumption(m);
+  const _fcTxt = _fc ? ' &nbsp;•&nbsp; 🧵 استهلاك القماش: <b>'+_fc.meters+' م</b>'+(_fc.width?' <span style="font-size:.85em;color:#777">(عرض '+_fc.width+' سم)</span>':'') : '';
+  document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>'+_fcTxt;
   // حالة الأمر: أين وصل في مراحل الإنتاج
   const _stIdx = o.done ? PROD_STAGES.length-1 : (o.stageIdx||0);
   const _chips = PROD_STAGES.map((st,i)=>{
