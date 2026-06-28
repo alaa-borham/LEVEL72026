@@ -445,6 +445,14 @@ body.ltr .dash-card::after{content:'›'}
 .part-menu button{display:block;width:100%;text-align:start;background:#f7faf5;border:1px solid #eef2ea;border-radius:8px;padding:8px 11px;margin:3px 0;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;color:#333;transition:all .12s}
 .part-menu button:hover{background:#e8f5e9;border-color:#aed581}
 .part-menu button.cur{background:#2e7d32;color:white;border-color:#2e7d32}
+.ms-view-tabs{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:9px;overflow:hidden;margin-bottom:8px}
+.ms-view-tabs button{border:none;background:#fff;padding:7px 16px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.84rem;color:#666}
+.ms-view-tabs button.active{background:#2e7d32;color:#fff}
+.ms-diagram{position:relative;aspect-ratio:520/640;max-width:540px;width:100%;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;touch-action:none}
+.ms-diagram>svg,.ms-diagram>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.dgm-box{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:move;touch-action:none;z-index:2}
+.dgm-box input{width:46px;padding:2px 1px;text-align:center;border:1.5px solid #2e7d32;border-radius:5px;font-weight:800;font-size:.82rem;direction:ltr;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.dgm-box span{font-size:.54rem;font-weight:700;color:#1b5e20;background:rgba(255,255,255,.9);border-radius:3px;padding:0 3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
 .ms-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px 9px}
 .ms-fields-grid .fg{display:flex;flex-direction:column}
 .ms-fields-grid .fg label{font-size:.7rem !important;margin-bottom:3px;line-height:1.2;min-height:2.5em;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#2e7d32;font-weight:800;overflow:hidden}
@@ -1461,8 +1469,16 @@ const fbDB   = firebase.firestore();
           </div>
           <div class="fg" style="margin:0;grid-column:1/-1"><label>ملاحظات إضافية</label><input type="text" id="ms-notes"></div>
         </div>
-        <div style="font-weight:800;color:#2e7d32;font-size:.84rem;margin:12px 0 6px">📐 القياسات</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 6px">
+          <div style="font-weight:800;color:#2e7d32;font-size:.84rem">📐 القياسات</div>
+          <div class="ms-view-tabs">
+            <button type="button" id="msv-grid" class="active" onclick="msMeasView('grid')">▦ شبكة</button>
+            <button type="button" id="msv-diagram" onclick="msMeasView('diagram')">🧍 مخطط</button>
+          </div>
+        </div>
         <div id="ms-fields" class="ms-fields-grid"></div>
+        <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
+        <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 اكتب القياس في موضعه على الثوب — يمكنك سحب أي صندوق لضبط مكانه (يُحفظ للقالب)</div>
         <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
@@ -2543,7 +2559,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2606,6 +2622,8 @@ let tmplImages = {};    // صور الموديل وخيارات الأجزاء �
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
+let tmplMeasPos = {};   // مواضع صناديق القياس على مخطط الثوب لكل قالب (key: {x,y})
+let _measView = 'grid'; // طريقة إدخال القياس: شبكة grid أو مخطط diagram
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
 let nextInvNum=1, nextProdSeq=1, nextRcptNum=1, nextDsbNum=1;
 let lang = localStorage.getItem('lang') || 'ar';
@@ -2653,6 +2671,7 @@ function loadAccountData() {
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
+  tmplMeasPos     = JSON.parse(lsGet('tmplMeasPos','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
@@ -5119,6 +5138,65 @@ function renderMeasFields(values) {
         value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
+  if (document.getElementById('ms-diagram')) msMeasView(_measView);
+}
+// ═══════════════ مخطط القياس: إدخال القياسات في مواضعها على رسم الثوب (طريقة بصرية)
+// مواضع افتراضية لصناديق القياس (٪ من اللوحة) — قابلة للسحب وتُحفظ لكل قالب
+const MEAS_DIAGRAM = {
+  collarSada:{x:50,y:7}, collarGallab:{x:63,y:9}, collarSadaH:{x:38,y:8},
+  thobeShoulder:{x:50,y:15}, downShoulderR:{x:65,y:15}, downShoulderL:{x:35,y:15}, downShoulderB:{x:50,y:12},
+  jabzourLen:{x:50,y:27}, jabzourWidth:{x:60,y:23}, gallabFrontH:{x:42,y:24}, gallabBackH:{x:42,y:30}, gallabOpen:{x:57,y:30},
+  fullChest:{x:50,y:34}, upperChest:{x:37,y:21}, frontChest:{x:63,y:34}, backYoke:{x:50,y:19},
+  waist:{x:50,y:45}, hips:{x:50,y:55}, bottom:{x:50,y:93}, bFoldWidth:{x:35,y:93},
+  armhole:{x:30,y:21}, sleeveSada:{x:20,y:31}, sleeveKabak:{x:13,y:37}, halfSleeve2:{x:26,y:44},
+  elbowWidth:{x:18,y:48}, sadaRound:{x:11,y:45}, sadaWidth:{x:8,y:52}, kabakRound:{x:13,y:72}, kabakWidth:{x:8,y:78},
+  pocketDown:{x:67,y:26}, chestPocketLen:{x:71,y:31}, chestPocketW:{x:75,y:35}, ashtackLen:{x:71,y:41}, ashtackW:{x:75,y:45},
+  sidePocketDown:{x:67,y:58}, sidePocketOpen:{x:60,y:60}, sidePocketLen:{x:71,y:63}, sidePocketW:{x:75,y:67},
+  mobilePocketLen:{x:29,y:62}, mobilePocketW:{x:33,y:66},
+  frontLength:{x:50,y:78}, backLength:{x:40,y:70},
+  length:{x:50,y:62}, shoulder:{x:50,y:15}, sleeve:{x:20,y:35}, neck:{x:50,y:9}, chest:{x:50,y:30},
+  cuff:{x:12,y:60}, back:{x:50,y:22}, upperArm:{x:25,y:30}, wrist:{x:12,y:50},
+  outseam:{x:60,y:60}, inseam:{x:42,y:60}, rise:{x:50,y:30}, thigh:{x:56,y:40}, knee:{x:56,y:65}, legOpen:{x:56,y:92}, jacketLen:{x:50,y:60},
+};
+function _msfVal(k){ const el=document.getElementById('msf-'+k); return el ? el.value : '0'; }
+function renderMeasDiagram(){
+  const tpl=document.getElementById('ms-template').value;
+  const hidden=measVisible[tpl]||{};
+  const keys=getTemplateKeys(tpl).filter(k=>hidden[k]!==false);
+  const pos=tmplMeasPos[tpl]||{};
+  const cv=document.getElementById('ms-diagram'); if(!cv) return;
+  const base=(tmplImages[tpl]&&tmplImages[tpl].model);
+  const bg= base ? `<img src="${base}">` : THOBE_BG_SVG;
+  const boxes=keys.map((k,i)=>{
+    const p=pos[k]||MEAS_DIAGRAM[k]||{x:93,y:6+(i%18)*5};
+    return `<div class="dgm-box" style="left:${p.x}%;top:${p.y}%" onpointerdown="dgmDrag(event,'${k}')">
+      <input type="number" id="dgm-${k}" min="0" step="0.5" value="${_msfVal(k)}" onfocus="this.select()" onpointerdown="event.stopPropagation()" oninput="dgmInput('${k}',this.value)">
+      <span>${escHtml(MEAS_DICT[k]||k)}</span></div>`;
+  }).join('');
+  cv.innerHTML=bg+boxes;
+}
+function dgmInput(k,v){ const el=document.getElementById('msf-'+k); if(el) el.value=v; validateMeasLive(); }
+function dgmDrag(ev,k){
+  ev.preventDefault();
+  const cv=document.getElementById('ms-diagram'); const box=ev.currentTarget;
+  const tpl=document.getElementById('ms-template').value;
+  tmplMeasPos[tpl]=tmplMeasPos[tpl]||{};
+  let moved=false;
+  const move=e=>{ moved=true; const r=cv.getBoundingClientRect();
+    const x=Math.max(2,Math.min(98,Math.round((e.clientX-r.left)/r.width*100)));
+    const y=Math.max(2,Math.min(98,Math.round((e.clientY-r.top)/r.height*100)));
+    tmplMeasPos[tpl][k]={x,y}; box.style.left=x+'%'; box.style.top=y+'%'; };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(moved) lsSet('tmplMeasPos',JSON.stringify(tmplMeasPos)); };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+function msMeasView(mode){
+  _measView=mode;
+  const grid=document.getElementById('ms-fields'), diag=document.getElementById('ms-diagram'), hint=document.getElementById('ms-diagram-hint');
+  const bg=document.getElementById('msv-grid'), bd=document.getElementById('msv-diagram');
+  if(bg) bg.classList.toggle('active',mode==='grid');
+  if(bd) bd.classList.toggle('active',mode==='diagram');
+  if(mode==='diagram'){ renderMeasDiagram(); if(grid)grid.style.display='none'; if(diag)diag.style.display='block'; if(hint)hint.style.display='block'; }
+  else { if(grid)grid.style.display=''; if(diag)diag.style.display='none'; if(hint)hint.style.display='none'; }
 }
 // ═══════════════ محرّك النقاط التفاعلية لأوردر التفصيل
 // النقاط الافتراضية للثوب (تُستخدم عند عدم تخصيص نقاط للقالب)
