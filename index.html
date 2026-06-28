@@ -7370,11 +7370,11 @@ function printProdOrder(id) {
   const m = o.measId ? measurements.find(x=>String(x.id)===String(o.measId)) : null;
   document.getElementById('pp-co-name').textContent = settings.coName;
   document.getElementById('pp-client').textContent = _custName(o.clientId);
-  document.getElementById('pp-recv').textContent = m && m.date ? isoToDMY(m.date) : (o.createdAt ? isoToDMY(o.createdAt.split('T')[0]) : '-');
-  document.getElementById('pp-due').textContent = o.due ? isoToDMY(o.due) : '-';
+  document.getElementById('pp-recv').textContent = m && m.date ? isoToDMY(m.date) : (o.createdAt ? isoToDMY(o.createdAt.split('T')[0]) : '');
+  document.getElementById('pp-due').textContent = o.due ? isoToDMY(o.due) : '';
   document.getElementById('pp-num').textContent = '#'+o.num;
-  document.getElementById('pp-measurer').textContent = (m && m.measurer) || '-';
-  document.getElementById('pp-salesman').textContent = (m && m.salesman) || (currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || '-'));
+  document.getElementById('pp-measurer').textContent = (m && m.measurer) || '';
+  document.getElementById('pp-salesman').textContent = (m && m.salesman) || (currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || ''));
   const _ptype = m ? L(m.template) : (o.desc||'');
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
   document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>';
