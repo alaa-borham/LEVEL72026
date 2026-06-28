@@ -2061,8 +2061,12 @@ const fbDB   = firebase.firestore();
         <option value="جاهز">✅ الجاهزة</option>
         <option value="">الكل</option>
       </select>
-      <input type="text" id="po-search" placeholder="🔍 بحث برقم الأمر أو العميل..." oninput="renderProduction()"
+      <input type="text" id="po-search" placeholder="🔍 رقم الأمر / العميل / الجوال" oninput="renderProduction()"
         style="flex:1;min-width:150px;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit">
+      <select id="po-stage" onchange="renderProduction()" title="المرحلة الحالية" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"></select>
+      <select id="po-branch" onchange="renderProduction()" title="الفرع" style="display:none;padding:7px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"></select>
+      <span style="display:flex;align-items:center;gap:4px;font-size:.8rem;color:#555">📅<input type="date" id="po-from" onchange="renderProduction()" title="من تاريخ" style="padding:6px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"><span>—</span><input type="date" id="po-to" onchange="renderProduction()" title="إلى تاريخ" style="padding:6px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"></span>
+      <button class="btn btn-outline btn-sm" onclick="poResetFilters()" title="إعادة ضبط">↺</button>
     </div>
     <div class="mlist">
       <table style="width:100%;border-collapse:collapse">
@@ -7268,15 +7272,33 @@ function saveLeadSettings(){
 function showProduction() {
   _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
+  const stSel=document.getElementById('po-stage');
+  if(stSel && !stSel.dataset.filled){ stSel.innerHTML='<option value="">كل المراحل</option>'+PROD_STAGES.map(s=>`<option value="${escHtml(s)}">${escHtml(L(s))}</option>`).join(''); stSel.dataset.filled='1'; }
+  const brSel=document.getElementById('po-branch');
+  if(brSel){ if(branches&&branches.length){ brSel.innerHTML='<option value="">كل الفروع</option>'+branches.map(b=>`<option value="${escHtml(b.name)}">${escHtml(b.name)}</option>`).join(''); brSel.style.display=''; } else { brSel.style.display='none'; } }
   renderProduction();
   document.getElementById('production-modal').classList.add('open');
 }
+function poResetFilters(){
+  ['po-search','po-from','po-to','po-stage','po-branch'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const f=document.getElementById('po-filter'); if(f) f.value='جاري';
+  renderProduction();
+}
+function _poBranch(o){ const m=o.measId?measurements.find(x=>String(x.id)===String(o.measId)):null; return (m&&m.branchName)||''; }
+function _poDate(o){ return (o.createdAt||'').slice(0,10) || (()=>{const m=o.measId?measurements.find(x=>String(x.id)===String(o.measId)):null; return m?m.date:'';})(); }
 function renderProduction() {
   const f = document.getElementById('po-filter').value;
   const q = (document.getElementById('po-search').value||'').trim().toLowerCase();
+  const stageF = (document.getElementById('po-stage')||{}).value||'';
+  const branchF = (document.getElementById('po-branch')||{}).value||'';
+  const fromF = (document.getElementById('po-from')||{}).value||'';
+  const toF = (document.getElementById('po-to')||{}).value||'';
   const list = prodOrders
     .filter(o => f==='جاري' ? !o.done : (f==='جاهز' ? o.done : true))
-    .filter(o => !q || String(o.num).includes(q) || _custName(o.clientId).toLowerCase().includes(q) || (o.desc||'').toLowerCase().includes(q))
+    .filter(o => { if(!q) return true; const ph=(_custById(o.clientId)||{}).phone||''; return String(o.num).includes(q) || _custName(o.clientId).toLowerCase().includes(q) || (o.desc||'').toLowerCase().includes(q) || ph.includes(q); })
+    .filter(o => !stageF || (!o.done && PROD_STAGES[o.stageIdx]===stageF))
+    .filter(o => !branchF || _poBranch(o)===branchF)
+    .filter(o => { const d=_poDate(o); return (!fromF || d>=fromF) && (!toF || d<=toF); })
     .sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.due||'9999').localeCompare(b.due||'9999') || b.id-a.id);
   document.getElementById('po-empty').style.display = list.length ? 'none' : 'block';
   const today = new Date().toISOString().split('T')[0];
@@ -7284,7 +7306,12 @@ function renderProduction() {
     const late = !o.done && o.due && o.due < today;
     const bar = PROD_STAGES.map((st,i)=>
       `<span class="${i < o.stageIdx ? 'don' : (i === o.stageIdx && !o.done ? 'cur' : (o.done?'don':''))}" title="${st}"></span>`).join('');
-    const curStage = o.delivered ? '📦 '+L('تم التسليم') : (o.done ? '✅ '+L('جاهز') : L(PROD_STAGES[o.stageIdx]) + ' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')');
+    let bBg, bTxt;
+    if(o.delivered){ bBg='#607d8b'; bTxt='📦 '+L('تم التسليم'); }
+    else if(o.done){ bBg='#2e7d32'; bTxt='✅ '+L('جاهز'); }
+    else if(late){ bBg='#c62828'; bTxt='⚠️ متأخر — '+L(PROD_STAGES[o.stageIdx]); }
+    else { bBg='#e65100'; bTxt=L(PROD_STAGES[o.stageIdx])+' ('+(o.stageIdx+1)+'/'+PROD_STAGES.length+')'; }
+    const curStage = `<span style="display:inline-block;background:${bBg};color:#fff;border-radius:12px;padding:2px 10px;font-size:.73rem;font-weight:800">${escHtml(bTxt)}</span>`;
     const who = !o.done && (o.assignees||{})[PROD_STAGES[o.stageIdx]] || '';
     return `
     <tr style="${late?'background:#ffebee':''}">
