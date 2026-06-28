@@ -7368,11 +7368,16 @@ function printProdOrder(id) {
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
   document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>';
   // القياسات المرتبطة تطبع داخل الأمر — صناديق مصغّرة لإفساح مكان لصورة الموديل
+  // تظهر كل القياسات المحددة للموديل (من إعدادات القالب) حتى لو بلا أرقام — كي يكملها الخياط
+  const _ppHidden = (m && measVisible[m.template]) || {};
+  const _ppKeys = m ? (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>_ppHidden[k]!==false) : [];
   document.getElementById('pp-meas').innerHTML = m ? (
     '<div style="font-size:.8rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(L(m.template))+'):</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:4px">' +
-    (MEAS_TEMPLATES[m.template]||Object.keys(m.values||{})).filter(k=>m.values && m.values[k])
-      .map(k=>`<div style="border:1px solid #c5e1a5;border-radius:6px;padding:3px 4px;text-align:center"><div style="font-size:.58rem;color:#666;line-height:1.15">${escHtml(MEAS_DICT[k]||k)}</div><div style="font-size:.9rem;font-weight:800;color:#1b5e20;direction:ltr">${formatNum(m.values[k])}</div></div>`).join('') +
+    _ppKeys.map(k=>{
+      const has = m.values && m.values[k]!=null && m.values[k]!=='';
+      return `<div style="border:1px solid #c5e1a5;border-radius:6px;padding:3px 4px;text-align:center"><div style="font-size:.58rem;color:#666;line-height:1.15">${escHtml(MEAS_DICT[k]||k)}</div><div style="font-size:.9rem;font-weight:800;color:${has?'#1b5e20':'#bbb'};direction:ltr">${has?formatNum(m.values[k]):'—'}</div></div>`;
+    }).join('') +
     '</div>') : '';
   // صورة الموديل المركّبة + مواصفات القطع (تساعد القصّاص على رؤية الشكل المطلوب)
   const mw = document.getElementById('pp-model-wrap');
