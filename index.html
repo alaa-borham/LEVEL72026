@@ -453,6 +453,9 @@ body.ltr .dash-card::after{content:'›'}
 .ms-fields-grid .fg input:focus{outline:none;border-color:#1b5e20 !important;box-shadow:0 0 0 3px rgba(46,125,50,.24),0 0 17px rgba(46,125,50,.85)}
 .ord-model .order-canvas{cursor:default}
 /* الهوامش العلوية والسفلية صفر: تمنع المتصفح من طباعة سطريه (التاريخ أعلى والرابط أسفل) — المسافات معوضة داخل الفاتورة */
+.pp-info{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.pp-box{border:1.5px solid #cdd;border-radius:8px;padding:6px 9px;font-size:.82rem;background:#fff}
+.pp-box b{color:#1b3a26}
 @page{size:A4 portrait;margin:0 10mm}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2106,27 +2109,27 @@ const fbDB   = firebase.firestore();
         </div>
         <div id="pp-qr" style="width:92px;height:92px"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px 14px;font-size:.86rem;margin-bottom:9px;background:#f1f8e9;border:1px solid #dcedc8;border-radius:8px;padding:9px 12px">
-        <div>🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
-        <div>📅 الاستلام: <b id="pp-recv" style="direction:ltr;display:inline-block"></b></div>
-        <div>🚚 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
-        <div>👤 العميل: <b id="pp-client"></b></div>
-        <div>📞 الجوال: <b id="pp-phone" style="direction:ltr;display:inline-block"></b></div>
-        <div>📦 الكمية: <b id="pp-qty"></b></div>
-        <div>🏢 الشركة: <b id="pp-company"></b></div>
-        <div>🏬 الفرع: <b id="pp-branch"></b></div>
-        <div>📏 السايز مان: <b id="pp-measurer"></b></div>
-        <div>🧑‍💼 المستخدم: <b id="pp-user"></b></div>
+      <div class="pp-info">
+        <div class="pp-box">🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
+        <div class="pp-box">📅 الاستلام: <b id="pp-recv" style="direction:ltr;display:inline-block"></b></div>
+        <div class="pp-box">🚚 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
+        <div class="pp-box">👤 العميل: <b id="pp-client"></b></div>
+        <div class="pp-box">📞 الجوال: <b id="pp-phone" style="direction:ltr;display:inline-block"></b></div>
+        <div class="pp-box">📦 الكمية: <b id="pp-qty"></b></div>
+        <div class="pp-box">🏢 الشركة: <b id="pp-company"></b></div>
+        <div class="pp-box">🏬 الفرع: <b id="pp-branch"></b></div>
+        <div class="pp-box">📏 السايز مان: <b id="pp-measurer"></b></div>
+        <div class="pp-box">🧑‍💼 المستخدم: <b id="pp-user"></b></div>
       </div>
-      <div id="pp-desc" style="background:#f1f8e9;border-radius:8px;padding:9px 13px;font-size:.92rem;font-weight:600;margin-bottom:10px"></div>
-      <div id="pp-model-wrap" style="display:none;gap:14px;align-items:flex-start;margin-bottom:10px;border:1px solid #e0e0e0;border-radius:10px;padding:10px;background:#fafafa">
-        <div id="pp-model" style="width:300px;max-width:48%;aspect-ratio:420/640;position:relative;flex:0 0 auto;background:#fff;border-radius:8px;overflow:hidden"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;color:#1b5e20;font-size:.88rem;margin-bottom:5px">👕 مواصفات الموديل:</div>
-          <div id="pp-model-opts" style="font-size:.85rem;line-height:1.85"></div>
+      <div id="pp-desc" class="pp-box" style="background:#f1f8e9;font-weight:700;margin-bottom:10px"></div>
+      <div id="pp-model-wrap" style="display:none;gap:12px;align-items:flex-start;margin-bottom:10px">
+        <div style="flex:0 0 50%;display:flex;flex-direction:column;gap:6px">
+          <div id="pp-model" style="width:100%;aspect-ratio:420/640;position:relative;background:#fff;border:1.5px solid #cdd;border-radius:8px;overflow:hidden"></div>
+          <div style="font-weight:800;color:#1b5e20;font-size:.82rem">👕 مواصفات الموديل</div>
+          <div id="pp-model-opts" style="font-size:.82rem;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:8px;line-height:1.7"></div>
         </div>
+        <div id="pp-meas" style="flex:1;min-width:0"></div>
       </div>
-      <div id="pp-meas" style="margin-bottom:10px"></div>
       <div id="pp-notes" style="background:#f9fbe7;border:1.5px dashed #c0ca33;border-radius:8px;padding:9px 13px;font-size:.88rem;display:none"></div>
     </div>
   </div>
