@@ -2110,16 +2110,12 @@ const fbDB   = firebase.firestore();
         <div id="pp-qr" style="width:92px;height:92px"></div>
       </div>
       <div class="pp-info">
-        <div class="pp-box">🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
+        <div class="pp-box">👤 العميل: <b id="pp-client"></b></div>
         <div class="pp-box">📅 الاستلام: <b id="pp-recv" style="direction:ltr;display:inline-block"></b></div>
         <div class="pp-box">🚚 التسليم: <b id="pp-due" style="direction:ltr;display:inline-block"></b></div>
-        <div class="pp-box">👤 العميل: <b id="pp-client"></b></div>
-        <div class="pp-box">📞 الجوال: <b id="pp-phone" style="direction:ltr;display:inline-block"></b></div>
-        <div class="pp-box">📦 الكمية: <b id="pp-qty"></b></div>
-        <div class="pp-box">🏢 الشركة: <b id="pp-company"></b></div>
-        <div class="pp-box">🏬 الفرع: <b id="pp-branch"></b></div>
+        <div class="pp-box">🔢 رقم الإنتاج: <b id="pp-num" style="direction:ltr;display:inline-block"></b></div>
         <div class="pp-box">📏 السايز مان: <b id="pp-measurer"></b></div>
-        <div class="pp-box">🧑‍💼 المستخدم: <b id="pp-user"></b></div>
+        <div class="pp-box">🛍️ رجل المبيعات: <b id="pp-salesman"></b></div>
       </div>
       <div id="pp-desc" class="pp-box" style="background:#f1f8e9;font-weight:700;margin-bottom:9px;white-space:normal"></div>
       <div id="pp-model-wrap" style="display:none;gap:12px;align-items:flex-start;margin-bottom:10px">
@@ -5797,6 +5793,7 @@ function _buildMeasData(){
     unit: _orderUnit, values, model: _collectModel(),
     notes: document.getElementById('ms-notes').value.trim(),
     measurer: currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || (settings && settings.coName) || 'صاحب المنشأة'),
+    salesman: currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || (settings && settings.coName) || 'صاحب المنشأة'),
     branchName: (currentMember && currentMember.branchName) || '',
   };
 }
@@ -7360,17 +7357,15 @@ function printProdOrder(id) {
   const cust = _custById(o.clientId);
   const m = o.measId ? measurements.find(x=>String(x.id)===String(o.measId)) : null;
   document.getElementById('pp-co-name').textContent = settings.coName;
-  document.getElementById('pp-num').textContent = '#'+o.num;
+  document.getElementById('pp-client').textContent = _custName(o.clientId);
   document.getElementById('pp-recv').textContent = m && m.date ? isoToDMY(m.date) : (o.createdAt ? isoToDMY(o.createdAt.split('T')[0]) : '-');
   document.getElementById('pp-due').textContent = o.due ? isoToDMY(o.due) : '-';
-  document.getElementById('pp-client').textContent = _custName(o.clientId);
-  document.getElementById('pp-phone').textContent = cust && cust.phone ? cust.phone : '-';
-  document.getElementById('pp-qty').textContent = o.qty||1;
-  document.getElementById('pp-company').textContent = settings.coName || '-';
-  document.getElementById('pp-branch').textContent = (m && m.branchName) || (currentMember && currentMember.branchName) || 'المركز الرئيسي';
+  document.getElementById('pp-num').textContent = '#'+o.num;
   document.getElementById('pp-measurer').textContent = (m && m.measurer) || '-';
-  document.getElementById('pp-user').textContent = currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || settings.coName || 'صاحب المنشأة');
-  document.getElementById('pp-desc').textContent = '✂️ ' + o.desc;
+  document.getElementById('pp-salesman').textContent = (m && m.salesman) || (currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || '-'));
+  const _ptype = m ? L(m.template) : (o.desc||'');
+  const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
+  document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>';
   // القياسات المرتبطة تطبع داخل الأمر — صناديق مصغّرة لإفساح مكان لصورة الموديل
   document.getElementById('pp-meas').innerHTML = m ? (
     '<div style="font-size:.8rem;font-weight:700;color:#1b5e20;margin-bottom:4px">📐 القياسات — '+(m.unit==='inch'?'إنش':'سم')+' ('+escHtml(L(m.template))+'):</div>' +
