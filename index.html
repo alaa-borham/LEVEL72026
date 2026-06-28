@@ -1950,12 +1950,12 @@ const fbDB   = firebase.firestore();
     <div style="padding:16px">
       <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;background:#000;min-height:60px"></div>
       <div id="qrscan-result" style="margin-top:12px"></div>
-      <div style="margin-top:12px;display:flex;gap:7px">
+      <div id="qr-manual-row" style="margin-top:12px;display:flex;gap:7px">
         <input type="number" id="qrscan-manual" placeholder="أو أدخل رقم الأمر يدوياً" onkeydown="if(event.key==='Enter')qrManualFind()"
           style="flex:1;padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;direction:ltr;text-align:center">
         <button class="btn btn-primary" onclick="qrManualFind()">بحث</button>
       </div>
-      <div style="font-size:.74rem;color:#999;text-align:center;margin-top:8px">امسح الكود المطبوع على أمر الإنتاج لتحريك مرحلته فوراً</div>
+      <div id="qr-hint" style="font-size:.74rem;color:#999;text-align:center;margin-top:8px">امسح الكود المطبوع على أمر الإنتاج لتحريك مرحلته فوراً</div>
     </div>
   </div>
 </div>
@@ -7407,6 +7407,10 @@ let _qrScanner = null;
 function showQRScan() {
   _closeAllOverlays();
   if (!canAccess('production')) { permDenied('production'); return; }
+  // إظهار أدوات المسح (قد تكون مخفية بعد الفتح من رابط QR)
+  document.getElementById('qr-reader').style.display = '';
+  document.getElementById('qr-manual-row').style.display = 'flex';
+  document.getElementById('qr-hint').style.display = '';
   document.getElementById('qrscan-result').innerHTML = '';
   document.getElementById('qrscan-manual').value = '';
   document.getElementById('qr-reader').innerHTML = '<div style="padding:20px;text-align:center;color:#999">جارٍ تشغيل الكاميرا...</div>';
@@ -7448,6 +7452,10 @@ function _handleQRDeepLink(){
     history.replaceState(null,'',location.pathname);
     const num = parseInt(po); if(!num) return;
     if(!canAccess('production')){ permDenied('production'); return; }
+    // فتح مباشر لأمر الإنتاج: إخفاء الكاميرا والإدخال اليدوي وإظهار صندوق الحالة فقط
+    document.getElementById('qr-reader').style.display='none';
+    document.getElementById('qr-manual-row').style.display='none';
+    document.getElementById('qr-hint').style.display='none';
     document.getElementById('qrscan-result').innerHTML='';
     document.getElementById('qrscan-modal').classList.add('open');
     _showScannedOrder(num);
