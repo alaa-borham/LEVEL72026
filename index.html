@@ -1441,7 +1441,7 @@ const fbDB   = firebase.firestore();
   <div class="mbox" style="max-width:520px;width:96vw">
     <div class="mhdr"><h3>📥 قياسات (X) — مرتبطة بالمدخلات</h3><button class="mcls" onclick="closeModal('xvalues-modal')">✕</button></div>
     <div class="mlist" style="padding:12px">
-      <div style="font-size:.76rem;color:#777;margin-bottom:8px">هذه المتغيّرات تأتي مباشرة من قياسات العميل. استعملها باسمها داخل معادلات النقاط (مثال: <code style="direction:ltr">fullChest/2+6</code>).</div>
+      <div style="font-size:.76rem;color:#777;margin-bottom:8px">لكل قياس <b>رمز ثابت</b> (x1, x2…) لا يتغيّر ولا يتكرّر. استعمله في المعادلات بالرمز أو بالاسم (مثال: <code style="direction:ltr">x9/2+6</code> أو <code style="direction:ltr">fullChest/2+6</code>).</div>
       <div id="xvalues-rows"></div>
     </div>
   </div>
@@ -5020,6 +5020,10 @@ const MEAS_EN = {
   back:'Back Width', wrist:'Wrist', jacketLen:'Jacket Length',
   outseam:'Outseam', inseam:'Inseam', rise:'Rise', thigh:'Thigh', knee:'Knee', legOpen:'Leg Opening',
 };
+// رمز ثابت لكل قياس (x1, x2, ...) يُسنَد بترتيب القاموس — إلحاقي فقط ولا يُعاد استخدامه
+// مهم: لا تُعِد ترتيب مفاتيح MEAS_DICT ولا تحذف منها؛ أضف الجديد في النهاية فقط لتبقى الأكواد ثابتة
+const MEAS_CODE = {}, CODE_MEAS = {};
+(function(){ let i=1; Object.keys(MEAS_DICT).forEach(k=>{ const c='x'+(i++); MEAS_CODE[k]=c; CODE_MEAS[c]=k; }); })();
 // القائمة المعتمدة للثوب بالتسلسل 0-41
 const THOBE_KEYS = ['frontLength','backLength','thobeShoulder','downShoulderR','downShoulderL','downShoulderB',
   'sleeveSada','sleeveKabak','fullChest','waist','hips','bottom','bFoldWidth','upperChest','frontChest',
@@ -5268,7 +5272,7 @@ function renderMeasFields(values) {
   const keys = getTemplateKeys(tpl).filter(k => hidden[k] !== false);
   document.getElementById('ms-fields').innerHTML = keys.map(k=>`
     <div class="fg" style="margin:0">
-      <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
+      <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}<span style="color:#9c27b0;font-size:.58rem;font-weight:800;direction:ltr;display:block">${MEAS_CODE[k]||''}</span></label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
         value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="validateMeasLive()">
     </div>`).join('');
@@ -5700,7 +5704,7 @@ function _evalExpr(expr, scope){
 }
 // نطاق التقييم: كل القياسات (X، الافتراضي 0) + المتغيّرات المساعدة (Z) للقالب
 function _scopeFor(tpl, vals){
-  const scope={}; Object.keys(MEAS_DICT).forEach(k=>scope[k]=parseFloat((vals||{})[k])||0);
+  const scope={}; Object.keys(MEAS_DICT).forEach(k=>{ const v=parseFloat((vals||{})[k])||0; scope[k]=v; if(MEAS_CODE[k]) scope[MEAS_CODE[k]]=v; });
   (tmplZ[tpl]||[]).forEach(z=>{ if(z && z.name && /^[A-Za-z_]\w*$/.test(z.name)) scope[z.name]=_evalExpr(z.expr, scope); });
   return scope;
 }
@@ -5956,9 +5960,9 @@ function patSeedDefault(){ if(!confirm('تحميل شكل مبدئي بمعاد�
 function openXValues(){
   const keys=getTemplateKeys(_patTpl)||Object.keys(MEAS_DICT);
   document.getElementById('xvalues-rows').innerHTML=
-    '<div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:4px;font-weight:800;color:#1565c0;font-size:.7rem;border-bottom:2px solid #bbdefb;padding-bottom:3px"><span>المتغيّر</span><span>القياس</span><span>القيمة</span></div>'+
-    keys.map(k=>`<div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:4px;padding:3px 0;border-bottom:1px solid #f2f2f2;font-size:.8rem">
-      <b style="direction:ltr">${escHtml(k)}</b><span>${escHtml(MEAS_DICT[k]||k)}</span><span style="direction:ltr;color:#1b5e20;font-weight:700">${parseFloat((_patSample||{})[k])||0}</span></div>`).join('');
+    '<div style="display:grid;grid-template-columns:.5fr 1.3fr 1fr .6fr;gap:4px;font-weight:800;color:#1565c0;font-size:.7rem;border-bottom:2px solid #bbdefb;padding-bottom:3px"><span>الرمز</span><span>المتغيّر</span><span>القياس</span><span>القيمة</span></div>'+
+    keys.map(k=>`<div style="display:grid;grid-template-columns:.5fr 1.3fr 1fr .6fr;gap:4px;padding:3px 0;border-bottom:1px solid #f2f2f2;font-size:.8rem">
+      <b style="direction:ltr;color:#1565c0">${escHtml(MEAS_CODE[k]||'')}</b><span style="direction:ltr;font-size:.74rem">${escHtml(k)}</span><span>${escHtml(MEAS_DICT[k]||k)}</span><span style="direction:ltr;color:#1b5e20;font-weight:700">${parseFloat((_patSample||{})[k])||0}</span></div>`).join('');
   document.getElementById('xvalues-modal').classList.add('open');
 }
 // قائمة المعادلات المساعدة (Z) — قابلة للتحرير
