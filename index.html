@@ -1447,7 +1447,8 @@ const fbDB   = firebase.firestore();
         <div id="pat-toolhint" style="font-size:.72rem;color:#558b2f;margin-bottom:6px;min-height:1.1em"></div>
         <div id="pat-pen" style="display:none;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px;background:#eef4ff;border:1px solid #cfe0ff;border-radius:8px;padding:6px 8px">
           <span style="font-size:.72rem;color:#1565c0;font-weight:800">خطوة بقيمة من x/z:</span>
-          <input id="pat-pen-val" placeholder="x9 أو 20" style="width:96px;padding:4px 6px;border:1.5px solid #bbd6ff;border-radius:6px;direction:ltr;font-size:.76rem">
+          <input id="pat-pen-val" list="pat-pen-list" autocomplete="off" placeholder="اكتب x أو z…" style="width:130px;padding:4px 6px;border:1.5px solid #bbd6ff;border-radius:6px;direction:ltr;font-size:.76rem">
+          <datalist id="pat-pen-list"></datalist>
           <div style="display:flex;gap:3px">
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('L')" title="يسار">←</button>
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('R')" title="يمين">→</button>
@@ -6010,6 +6011,13 @@ function patFillInserts(){
   sx.innerHTML='<option value="">＋ أدرج قياس X…</option>'+keys.map(k=>`<option value="${escHtml(MEAS_CODE[k]||k)}">${escHtml(MEAS_CODE[k]||k)} — ${escHtml(MEAS_DICT[k]||k)}</option>`).join('');
   const scope=_scopeFor(_patTpl,_patSample);
   sz.innerHTML='<option value="">＋ أدرج معادلة Z…</option>'+(_zList().map(z=>{ const pz=_zParse(z); if(!pz.name)return ''; const val=_patEval(pz.expr,scope); return `<option value="${escHtml(pz.name)}">${escHtml(pz.name)} — ${isFinite(val)?(Math.round(val*10)/10):(z.text||pz.expr||'')}</option>`; }).join(''));
+  // قائمة الإكمال التلقائي لخانة «خطوة بقيمة» — كل رموز X ومتغيّرات Z (يظهر كلٌّ عند كتابة x أو z)
+  const dl=document.getElementById('pat-pen-list');
+  if(dl){
+    const xo=keys.map(k=>`<option value="${escHtml(MEAS_CODE[k]||k)}">${escHtml(MEAS_DICT[k]||k)}${isFinite(_patEval(MEAS_CODE[k]||k,scope))?(' = '+Math.round(_patEval(MEAS_CODE[k]||k,scope)*10)/10):''}</option>`).join('');
+    const zo=_zList().map(z=>{ const pz=_zParse(z); if(!pz.name)return ''; const val=_patEval(pz.expr,scope); return `<option value="${escHtml(pz.name)}">${escHtml(z.text||pz.expr||'')}${isFinite(val)?(' = '+Math.round(val*10)/10):''}</option>`; }).join('');
+    dl.innerHTML=xo+zo;
+  }
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
 let _patTool='sel', _patUndo=[];
