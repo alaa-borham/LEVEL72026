@@ -1415,6 +1415,11 @@ const fbDB   = firebase.firestore();
           <div class="fg" style="margin:0"><label>العدد</label><input id="pat-count" type="number" min="1" value="1" oninput="patMeta()" style="padding:6px;border:1.5px solid #ddd;border-radius:7px;direction:ltr;text-align:center"></div>
         </div>
         <div style="font-weight:800;color:#2e7d32;font-size:.8rem;margin:10px 0 4px;display:flex;justify-content:space-between;align-items:center">نقاط القطعة (معادلات) <button class="btn btn-info btn-sm" onclick="patAddVert()">＋ نقطة</button></div>
+        <div style="font-size:.66rem;color:#999;margin-bottom:4px">انقر داخل خانة <b>x</b> أو <b>y</b> ثم اختر متغيّراً لإدراجه — أو اكتب معادلة مباشرة. الرقم الأخضر = القيمة بالسنتيمتر.</div>
+        <div style="display:flex;gap:4px;margin:0 0 6px">
+          <select id="pat-ins-x" onchange="patInsert('x')" style="flex:1;min-width:0;padding:4px;border:1.5px solid #bbdefb;border-radius:6px;font-family:inherit;font-size:.68rem;color:#1565c0"></select>
+          <select id="pat-ins-z" onchange="patInsert('z')" style="flex:1;min-width:0;padding:4px;border:1.5px solid #d1c4e9;border-radius:6px;font-family:inherit;font-size:.68rem;color:#7e57c2"></select>
+        </div>
         <div id="pat-verts" style="max-height:28vh;overflow:auto"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
           <button class="btn btn-success" style="flex:1" onclick="patSave()">💾 حفظ البترون</button>
@@ -5928,22 +5933,48 @@ function patRender(){
   const cur=ps[_patIdx];
   document.getElementById('pat-name').value=cur?(cur.name||''):'';
   document.getElementById('pat-count').value=cur?(cur.count||1):1;
-  document.getElementById('pat-verts').innerHTML = cur ? ((cur.verts||[]).map((v,i)=>`
-    <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
+  const scope=_scopeFor(_patTpl,_patSample);
+  document.getElementById('pat-verts').innerHTML = cur ? ((cur.verts||[]).map((v,i)=>{
+    const ex=_patEval(v.x,scope), ey=_patEval(v.y,scope);
+    const fmt=n=>isFinite(n)?(Math.round(n*10)/10):'—';
+    return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
       <span style="font-size:.7rem;color:#999;width:16px">${i+1}</span>
-      <input value="${escHtml(v.x)}" oninput="patVert(${i},'x',this.value)" placeholder="x" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
-      <input value="${escHtml(v.y)}" oninput="patVert(${i},'y',this.value)" placeholder="y" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+      <input value="${escHtml(v.x)}" data-i="${i}" data-axis="x" onfocus="_patFocusEl=this" oninput="patVert(${i},'x',this.value)" placeholder="x" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+      <input value="${escHtml(v.y)}" data-i="${i}" data-axis="y" onfocus="_patFocusEl=this" oninput="patVert(${i},'y',this.value)" placeholder="y" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+      <span id="patv-${i}" title="القيمة بالسنتيمتر" style="font-size:.62rem;direction:ltr;color:${(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'};width:64px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmt(ex)},${fmt(ey)}</span>
       <button class="btn btn-danger btn-sm" onclick="patDelVert(${i})">×</button>
-    </div>`).join('')||'<div style="color:#bbb;font-size:.78rem;padding:6px">لا نقاط — انقر اللوحة أو «＋ نقطة»</div>') : '<div style="color:#bbb;font-size:.78rem;padding:6px">أضِف قطعة أولاً</div>';
-  document.getElementById('pat-legend').innerHTML='vars: '+(getTemplateKeys(_patTpl)||[]).map(k=>`<b title="${escHtml(MEAS_DICT[k]||k)}">${k}</b>`).join(', ');
+    </div>`;}).join('')||'<div style="color:#bbb;font-size:.78rem;padding:6px">لا نقاط — انقر اللوحة أو «＋ نقطة»</div>') : '<div style="color:#bbb;font-size:.78rem;padding:6px">أضِف قطعة أولاً</div>';
+  patFillInserts();
+  document.getElementById('pat-legend').innerHTML='vars: '+(getTemplateKeys(_patTpl)||[]).map(k=>`<b title="${escHtml(MEAS_DICT[k]||k)}">${escHtml(MEAS_CODE[k]||k)}=${escHtml(k)}</b>`).join(', ');
   patPreview();
+}
+function _patEval(expr,scope){ try{ const v=_evalExpr(expr,scope); return (typeof v==='number'&&isFinite(v))?v:NaN; }catch(e){ return NaN; } }
+// تعبئة قائمتَي إدراج المتغيّرات X و Z
+function patFillInserts(){
+  const sx=document.getElementById('pat-ins-x'); const sz=document.getElementById('pat-ins-z'); if(!sx||!sz)return;
+  const keys=getTemplateKeys(_patTpl)||Object.keys(MEAS_DICT);
+  sx.innerHTML='<option value="">＋ أدرج قياس X…</option>'+keys.map(k=>`<option value="${escHtml(MEAS_CODE[k]||k)}">${escHtml(MEAS_CODE[k]||k)} — ${escHtml(MEAS_DICT[k]||k)}</option>`).join('');
+  const scope=_scopeFor(_patTpl,_patSample);
+  sz.innerHTML='<option value="">＋ أدرج معادلة Z…</option>'+(_zList().map(z=>{ const pz=_zParse(z); if(!pz.name)return ''; const val=_patEval(pz.expr,scope); return `<option value="${escHtml(pz.name)}">${escHtml(pz.name)} — ${isFinite(val)?(Math.round(val*10)/10):(z.text||pz.expr||'')}</option>`; }).join(''));
+}
+// إدراج رمز القياس (x9) أو متغيّر Z (z1) داخل آخر خانة x/y جرى التركيز عليها
+let _patFocusEl=null;
+function patInsert(kind){
+  const sel=document.getElementById(kind==='x'?'pat-ins-x':'pat-ins-z'); const tok=sel.value; sel.selectedIndex=0;
+  if(!tok)return;
+  const el=_patFocusEl;
+  if(!el || el.dataset.i==null){ alert('انقر داخل خانة x أو y لنقطة أولاً، ثم اختر المتغيّر'); return; }
+  const s=(el.selectionStart!=null?el.selectionStart:el.value.length), e=(el.selectionEnd!=null?el.selectionEnd:el.value.length);
+  el.value=el.value.slice(0,s)+tok+el.value.slice(e);
+  patVert(parseInt(el.dataset.i), el.dataset.axis, el.value);
+  el.focus(); const np=s+tok.length; try{ el.setSelectionRange(np,np); }catch(_){}
 }
 function patPieceChange(){ _patIdx=parseInt(document.getElementById('pat-piece').value)||0; patRender(); }
 function patMeta(){ const cur=_patPieces()[_patIdx]; if(!cur)return; cur.name=document.getElementById('pat-name').value; cur.count=parseInt(document.getElementById('pat-count').value)||1; const sel=document.getElementById('pat-piece'); if(sel.options[_patIdx]) sel.options[_patIdx].text=cur.name||('قطعة '+(_patIdx+1)); }
 function patAddPiece(){ const ps=_patPieces(); ps.push({name:'قطعة '+(ps.length+1),count:1,verts:[]}); _patIdx=ps.length-1; patRender(); }
 function patDelPiece(){ const ps=_patPieces(); if(!ps.length)return; if(!confirm('حذف هذه القطعة؟'))return; ps.splice(_patIdx,1); _patIdx=0; patRender(); }
 function patAddVert(){ let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; } cur.verts=cur.verts||[]; cur.verts.push({x:'0',y:'0'}); patRender(); }
-function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i][axis]=val; patPreview(); } }
+function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i][axis]=val; const sp=document.getElementById('patv-'+i); if(sp){ const scope=_scopeFor(_patTpl,_patSample); const ex=_patEval(cur.verts[i].x,scope), ey=_patEval(cur.verts[i].y,scope); const fmt=n=>isFinite(n)?(Math.round(n*10)/10):'—'; sp.textContent=fmt(ex)+','+fmt(ey); sp.style.color=(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'; } patPreview(); } }
 function patDelVert(i){ const cur=_patPieces()[_patIdx]; if(cur){ cur.verts.splice(i,1); patRender(); } }
 function patSave(){ lsSet('tmplPatterns', JSON.stringify(tmplPatterns)); alert('💾 حُفظ البترون لهذا القالب'); }
 function _builtinPatternDefs(tpl){
