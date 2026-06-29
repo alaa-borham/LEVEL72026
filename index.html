@@ -5656,15 +5656,37 @@ const MARKER_SHAPES = {
   rect:   [[0,0],[1,0],[1,1],[0,1]],
 };
 function _polyArea(pts){ let a=0; for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length]; a+=p[0]*q[1]-q[0]*p[1]; } return Math.abs(a)/2; }
-// مثل _markerLayout لكن يرجع إحداثيات كل قطعة (وشكلها) لرسم المركر بصرياً
+// محرّك تعشيق heuristic: يقلب القطع المتكاملة ويداخلها لتقليل الهدر
+const NEST_FACTOR = { body:0.64, sleeve:0.44 }; // نسبة العرض المشترك عند تداخل قطعتين مقلوبتين
+function _nestUnit(p){ return { w:p.w, h:p.h, members:[{name:p.name,shape:p.shape,lx:0,ly:0,lw:p.w,lh:p.h,flip:false}] }; }
+function _nestUnits(pieces, W){
+  const byShape={}; pieces.forEach(p=>{ (byShape[p.shape]=byShape[p.shape]||[]).push(p); });
+  const units=[];
+  Object.keys(byShape).forEach(shape=>{
+    const arr=byShape[shape].slice(); const f=NEST_FACTOR[shape];
+    while(f && arr.length>=2){
+      const a=arr.shift(), b=arr.shift();
+      const cw=Math.max(a.w,b.w)*(1+f);   // عرض الزوج المتعشّق (واحدة مقلوبة)
+      if(cw<=W){
+        units.push({ w:cw, h:Math.max(a.h,b.h), members:[
+          {name:a.name,shape,lx:0,ly:0,lw:a.w,lh:a.h,flip:false},
+          {name:b.name,shape,lx:cw-b.w,ly:0,lw:b.w,lh:b.h,flip:true}
+        ]});
+      } else { units.push(_nestUnit(a)); units.push(_nestUnit(b)); }
+    }
+    arr.forEach(p=>units.push(_nestUnit(p)));
+  });
+  return units;
+}
+// يعشّق القطع (مع القلب والتداخل) ويرجع إحداثيات كل قطعة لرسم المركر
 function _markerRects(pieces, W, gap){
-  const ps=pieces.map(p=>({name:p.name,w:p.w,h:p.h,shape:p.shape||'rect'})).sort((a,b)=>b.h-a.h);
+  const units=_nestUnits(pieces.map(p=>({name:p.name,w:p.w,h:p.h,shape:p.shape||'rect'})), W).sort((a,b)=>b.h-a.h);
   const shelves=[]; const rects=[]; let curY=0;
-  ps.forEach(p=>{
-    let sh=shelves.find(s=>s.used+p.w+gap<=W);
-    if(!sh){ sh={y:curY, h:p.h, used:0}; shelves.push(sh); curY+=p.h+gap; }
-    rects.push({name:p.name, x:sh.used, y:sh.y, w:p.w, h:p.h, shape:p.shape});
-    sh.used+=p.w+gap;
+  units.forEach(u=>{
+    let sh=shelves.find(s=>s.used+u.w+gap<=W);
+    if(!sh){ sh={y:curY, h:u.h, used:0}; shelves.push(sh); curY+=u.h+gap; }
+    u.members.forEach(mb=>rects.push({name:mb.name, shape:mb.shape, flip:mb.flip, x:sh.used+mb.lx, y:sh.y+mb.ly, w:mb.lw, h:mb.lh}));
+    sh.used+=u.w+gap;
   });
   return { length:curY, rects, rows:shelves.length, W };
 }
@@ -5680,9 +5702,9 @@ function _fabricConsumption(m){
     const meters=((len+cfg.allow)/100)*2*qty;
     return { meters:Math.round(meters*100)/100, width:0, method:'simple', qty };
   }
-  const lay=_markerLayout(pieces, W, cfg.gap);
+  const lay=_markerRects(pieces, W, cfg.gap);
   const meters=(lay.length/100)*qty;
-  return { meters:Math.round(meters*100)/100, width:W, method:'marker', markerLen:Math.round(lay.length), rows:lay.shelves.length, qty };
+  return { meters:Math.round(meters*100)/100, width:W, method:'marker', markerLen:Math.round(lay.length), rows:lay.rows, qty };
 }
 function _markerFormulaText(tpl){
   if(tpl==='ثوب سعودي'||tpl==='ثوب أطفال')
@@ -5746,10 +5768,10 @@ function runMarker(){
   const sl=Math.round(lay.length)||1;
   const polys=lay.rects.map((r,i)=>{
     const shape=MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect;
-    const pts=shape.map(p=>((r.x+p[0]*r.w).toFixed(1))+','+((r.y+p[1]*r.h).toFixed(1))).join(' ');
+    const pts=shape.map(p=>{ const sx=r.flip?1-p[0]:p[0], sy=r.flip?1-p[1]:p[1]; return ((r.x+sx*r.w).toFixed(1))+','+((r.y+sy*r.h).toFixed(1)); }).join(' ');
     const fs=Math.max(2.6,Math.min(6,r.w/9)).toFixed(1);
     return `<polygon points="${pts}" fill="${colors[i%colors.length]}" stroke="#607d8b" stroke-width="0.5"/>
-      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#333">${escHtml(r.name)}</text>
+      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#333">${escHtml(r.name)}${r.flip?' ↻':''}</text>
       <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2+ +fs*1.2).toFixed(1)}" font-size="${(fs*0.85).toFixed(1)}" text-anchor="middle" fill="#777" direction="ltr">${Math.round(r.w)}×${Math.round(r.h)}</text>`;
   }).join('');
   wrap.innerHTML=`<div style="text-align:center"><div style="font-size:.74rem;color:#888;margin-bottom:4px">⬇️ اتجاه القماش (الطول) — العرض ${W} سم</div>
