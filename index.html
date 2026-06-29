@@ -1452,16 +1452,16 @@ const fbDB   = firebase.firestore();
         </div>
         <div id="pat-toolhint" style="font-size:.72rem;color:#558b2f;margin-bottom:6px;min-height:1.1em"></div>
         <div id="pat-pen" style="display:none;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px;background:#eef4ff;border:1px solid #cfe0ff;border-radius:8px;padding:6px 8px">
-          <span style="font-size:.72rem;color:#1565c0;font-weight:800">خطوة بقيمة من x/z:</span>
+          <span id="pat-pen-label" style="font-size:.72rem;color:#1565c0;font-weight:800">قيمة (x/z):</span>
           <input id="pat-pen-val" list="pat-pen-list" autocomplete="off" placeholder="اكتب x أو z…" style="width:130px;padding:4px 6px;border:1.5px solid #bbd6ff;border-radius:6px;direction:ltr;font-size:.76rem">
           <datalist id="pat-pen-list"></datalist>
-          <div style="display:flex;gap:3px">
+          <div id="pat-pen-arrows" style="display:flex;gap:3px">
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('L')" title="يسار">←</button>
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('R')" title="يمين">→</button>
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('U')" title="أعلى">↑</button>
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('D')" title="أسفل">↓</button>
           </div>
-          <span style="font-size:.64rem;color:#789">تُضاف نقطة بُعدها = القيمة عن آخر نقطة، وتبقى مرتبطة بالقياس تلقائياً.</span>
+          <span id="pat-pen-note" style="font-size:.64rem;color:#789">تُضاف نقطة بُعدها = القيمة عن آخر نقطة، وتبقى مرتبطة بالقياس تلقائياً.</span>
         </div>
         <div style="display:flex;justify-content:center;gap:10px;margin-bottom:6px">
           <button id="pat-undo-arrow" onclick="patUndo()" title="رجوع خطوة للخلف (Ctrl+Z)" style="width:42px;height:36px;border:1.5px solid #c7d6c0;background:#f3f7f0;border-radius:9px;font-size:1.2rem;color:#33691e;cursor:pointer">↶</button>
@@ -6034,12 +6034,16 @@ function patFillInserts(){
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
 let _patTool='sel', _patUndo=[], _patRedo=[];
-const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. اضغط Shift لتقييد الخط أفقياً/رأسياً (90°/180°)، وكليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة باتجاه نقرتك ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. Shift للأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
+const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. اضغط Shift لتقييد الخط أفقياً/رأسياً (90°/180°)، وكليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة باتجاه نقرتك ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. Shift للأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
   document.querySelectorAll('#pat-tools [data-tool]').forEach(b=>{ const on=b.dataset.tool===t; b.style.background=on?'#2e7d32':'#eef3ea'; b.style.color=on?'#fff':'#33691e'; b.style.fontWeight=on?'800':'600'; });
   const hint=document.getElementById('pat-toolhint'); if(hint) hint.textContent=_PAT_TOOLHINT[t]||'';
-  const pen=document.getElementById('pat-pen'); if(pen) pen.style.display=(t==='line'||t==='curve')?'flex':'none';
+  const pen=document.getElementById('pat-pen'); if(pen) pen.style.display=(t==='line'||t==='curve'||t==='add')?'flex':'none';
+  const arrows=document.getElementById('pat-pen-arrows'); if(arrows) arrows.style.display=(t==='add')?'none':'flex';
+  const plabel=document.getElementById('pat-pen-label'); const pnote=document.getElementById('pat-pen-note');
+  if(t==='add'){ if(plabel)plabel.textContent='مسافة على الضلع:'; if(pnote)pnote.textContent='اكتب المسافة ثم انقر على ضلع موجود لإضافة نقطة عليه عند تلك المسافة من أقرب طرف.'; }
+  else { if(plabel)plabel.textContent='طول الضلع (x/z):'; if(pnote)pnote.textContent='اكتب القيمة فيصبح طول الضلع التالي = القيمة باتجاه نقرتك، ويبقى مرتبطاً بالقياس.'; }
   const svg=document.getElementById('pat-svg'); if(svg) svg.style.cursor=(t==='del')?'not-allowed':(t==='sel'?'move':'crosshair');
 }
 function patPushUndo(){ const cur=_patPieces()[_patIdx]; if(!cur)return; _patUndo.push(JSON.stringify(cur.verts||[])); if(_patUndo.length>60)_patUndo.shift(); _patRedo=[]; }
@@ -6058,8 +6062,18 @@ function patClearVerts(){ const cur=_patPieces()[_patIdx]; if(!cur||!(cur.verts|
 function patNodeDown(e,i){
   const cur=_patPieces()[_patIdx]; if(!cur||!cur.verts[i])return;
   if(_patTool==='del'){ e.preventDefault(); e.stopPropagation(); patPushUndo(); cur.verts.splice(i,1); patRender(); return; }
-  // وضع القلم (خط/منحنى): النقر على نقطة موجودة = إنهاء الرسم (الوصول لنقطة أخرى/إغلاق الشكل)
-  if(_patTool==='line'||_patTool==='curve'){ e.preventDefault(); e.stopPropagation(); patSetTool('sel'); patRender(); return; }
+  // وضع القلم (خط/منحنى): النقر على نقطة موجودة
+  if(_patTool==='line'||_patTool==='curve'){
+    e.preventDefault(); e.stopPropagation();
+    // Shift = اربط الرسم بهذه النقطة (أضف نقطة ترث معادلتها فتلتصق بها)
+    if(e.shiftKey && i!==cur.verts.length-1){
+      patPushUndo();
+      if(i===0 && cur.verts.length>=3){ cur.closed=true; patSetTool('sel'); patRender(); return; }
+      const gv=cur.verts[i], c=(_patTool==='curve')?1:0;
+      cur.verts.push({x:gv.x,y:gv.y,c}); patRender(); return;
+    }
+    patSetTool('sel'); patRender(); return; // بدون Shift = إنهاء الرسم
+  }
   patDragVert(e,i); // sel / add → سحب
 }
 // إدراج رمز القياس (x9) أو متغيّر Z (z1) داخل آخر خانة x/y جرى التركيز عليها
@@ -6214,9 +6228,21 @@ function patCanvasDown(e){
     patRender(); return;
   }
   // وضع «نقطة»: إدراج عند أقرب ضلع للحفاظ على ترتيب الشكل
-  let at=cur.verts.length;
-  if(pts.length>=2){ let bd=Infinity,bi=pts.length-1; for(let i=0;i<pts.length;i++){ const d=_distToSeg(x,y,pts[i],pts[(i+1)%pts.length]); if(d<bd){bd=d;bi=i;} } at=bi+1; }
+  let at=cur.verts.length, bi=pts.length-1;
+  if(pts.length>=2){ let bd=Infinity; for(let i=0;i<pts.length;i++){ const d=_distToSeg(x,y,pts[i],pts[(i+1)%pts.length]); if(d<bd){bd=d;bi=i;} } at=bi+1; }
   patPushUndo();
+  // إن كُتبت مسافة: ضع النقطة على الضلع عند تلك المسافة من أقرب طرف (تبقى على الخط ومرتبطة)
+  const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
+  const dval=penVal?_patEval(penVal,scope):NaN;
+  if(isFinite(dval) && pts.length>=2){
+    const A=cur.verts[bi], B=cur.verts[(bi+1)%pts.length], Ae=pts[bi], Be=pts[(bi+1)%pts.length];
+    const len=Math.hypot(Be[0]-Ae[0], Be[1]-Ae[1])||1;
+    const fromA=Math.hypot(x-Ae[0],y-Ae[1])<=Math.hypot(x-Be[0],y-Be[1]);
+    const t=Math.max(0,Math.min(1, fromA ? dval/len : 1-dval/len)).toFixed(4);
+    const fx=_patWrap(A.x)+' + ('+_patWrap(B.x)+' - '+_patWrap(A.x)+')*'+t;
+    const fy=_patWrap(A.y)+' + ('+_patWrap(B.y)+' - '+_patWrap(A.y)+')*'+t;
+    cur.verts.splice(at,0,{x:fx,y:fy,c:0}); patRender(); return;
+  }
   cur.verts.splice(at,0,{x:String(x),y:String(y),c:0}); patRender();
 }
 // رسم الخط المطّاطي الذي يتبع المؤشّر أثناء وضع القلم + إبراز أول نقطة عند اقتراب الإغلاق
