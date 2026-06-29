@@ -5623,17 +5623,17 @@ function _markerPieces(m){
     const chest=n('fullChest')||n('chest')||110, fl=n('frontLength')||140, bl=n('backLength')||fl;
     const sl=n('sleeveSada')||Math.round(fl*0.62), ah=n('armhole')||n('sadaRound')||24;
     const bw=chest/2+ease+seam;
-    P.push({name:'الأمام', w:bw, h:fl+la});
-    P.push({name:'الخلف', w:bw, h:bl+la});
-    P.push({name:'كم يمين', w:ah+ease, h:sl+la});
-    P.push({name:'كم يسار', w:ah+ease, h:sl+la});
-    P.push({name:'ياقة/جبزور/جيوب', w:40, h:55});
+    P.push({name:'الأمام', w:bw, h:fl+la, shape:'body'});
+    P.push({name:'الخلف', w:bw, h:bl+la, shape:'body'});
+    P.push({name:'كم يمين', w:ah+ease, h:sl+la, shape:'sleeve'});
+    P.push({name:'كم يسار', w:ah+ease, h:sl+la, shape:'sleeve'});
+    P.push({name:'ياقة/جبزور/جيوب', w:40, h:55, shape:'rect'});
   } else {
     const chest=n('chest')||n('fullChest')||100, len=n('length')||n('frontLength')||100, sl=n('sleeve')||n('sleeveSada')||0;
     const bw=chest/2+ease+seam;
-    P.push({name:'الأمام', w:bw, h:len+la});
-    P.push({name:'الخلف', w:bw, h:len+la});
-    if(sl){ const ah=n('armhole')||22; P.push({name:'كم يمين', w:ah+ease, h:sl+la}); P.push({name:'كم يسار', w:ah+ease, h:sl+la}); }
+    P.push({name:'الأمام', w:bw, h:len+la, shape:'body'});
+    P.push({name:'الخلف', w:bw, h:len+la, shape:'body'});
+    if(sl){ const ah=n('armhole')||22; P.push({name:'كم يمين', w:ah+ease, h:sl+la, shape:'sleeve'}); P.push({name:'كم يسار', w:ah+ease, h:sl+la, shape:'sleeve'}); }
   }
   return P;
 }
@@ -5649,14 +5649,21 @@ function _markerLayout(pieces, W, gap){
   const length=shelves.reduce((s,sh)=>s+sh.h+gap, 0);
   return {length, shelves};
 }
-// مثل _markerLayout لكن يرجع إحداثيات كل قطعة لرسم المركر بصرياً
+// أشكال القطع الفعلية (نسبية 0..1 من الصندوق الحدّي) لرسمها وحساب مساحتها
+const MARKER_SHAPES = {
+  body:   [[0.18,0],[0.40,0],[0.5,0.07],[0.60,0],[0.82,0],[1,0.16],[1,1],[0,1],[0,0.16]],
+  sleeve: [[0.06,0],[0.94,0],[0.72,1],[0.28,1]],
+  rect:   [[0,0],[1,0],[1,1],[0,1]],
+};
+function _polyArea(pts){ let a=0; for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length]; a+=p[0]*q[1]-q[0]*p[1]; } return Math.abs(a)/2; }
+// مثل _markerLayout لكن يرجع إحداثيات كل قطعة (وشكلها) لرسم المركر بصرياً
 function _markerRects(pieces, W, gap){
-  const ps=pieces.map(p=>({name:p.name,w:p.w,h:p.h})).sort((a,b)=>b.h-a.h);
+  const ps=pieces.map(p=>({name:p.name,w:p.w,h:p.h,shape:p.shape||'rect'})).sort((a,b)=>b.h-a.h);
   const shelves=[]; const rects=[]; let curY=0;
   ps.forEach(p=>{
     let sh=shelves.find(s=>s.used+p.w+gap<=W);
     if(!sh){ sh={y:curY, h:p.h, used:0}; shelves.push(sh); curY+=p.h+gap; }
-    rects.push({name:p.name, x:sh.used, y:sh.y, w:p.w, h:p.h});
+    rects.push({name:p.name, x:sh.used, y:sh.y, w:p.w, h:p.h, shape:p.shape});
     sh.used+=p.w+gap;
   });
   return { length:curY, rects, rows:shelves.length, W };
@@ -5724,7 +5731,8 @@ function runMarker(){
   const lay=_markerRects(pieces, W, cfg.gap);
   const qty=m.model.qty||1;
   const meters=Math.round((lay.length/100)*qty*100)/100;
-  const usedArea=pieces.reduce((s,p)=>s+p.w*p.h,0);
+  // المساحة من شكل القطعة الفعلي (لا الصندوق) لكفاءة أدقّ
+  const usedArea=lay.rects.reduce((s,r)=>s+r.w*r.h*_polyArea(MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect),0);
   const eff=lay.length?Math.round(usedArea/(W*lay.length)*100):0;
   res.innerHTML=`<div style="background:#f1f8e9;border:1px solid #c5e1a5;border-radius:8px;padding:11px;font-size:.85rem;line-height:1.95">
     <div>📏 عرض القماش: <b>${W} سم</b></div>
@@ -5732,11 +5740,20 @@ function runMarker(){
     <div>🧵 الاستهلاك للقطعة: <b>${Math.round(lay.length)/100} م</b></div>
     <div>🧶 الإجمالي (${qty} قطعة): <b style="color:#1b5e20;font-size:1.05em">${meters} م</b></div>
     <div>♻️ كفاءة التعشيق: <b style="color:${eff>=70?'#2e7d32':'#e65100'}">${eff}%</b></div>
-  </div>`;
+  </div>
+  <div style="font-size:.7rem;color:#999;margin-top:6px;line-height:1.6">ℹ️ الأشكال تقريبية بحسب القياسات، وطول المركر يُحسب بصناديق القطع؛ نظام القص الفعلي قد يوفّر قليلاً بالتعشيق المتداخل.</div>`;
   const colors=['#c8e6c9','#bbdefb','#ffe0b2','#f8bbd0','#d1c4e9','#b2dfdb','#fff9c4','#ffccbc'];
-  const rects=lay.rects.map((r,i)=>`<div style="position:absolute;left:${r.x/W*100}%;top:${r.y/lay.length*100}%;width:${r.w/W*100}%;height:${r.h/lay.length*100}%;background:${colors[i%colors.length]};border:1px solid #607d8b;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#333;text-align:center;overflow:hidden;padding:2px"><span>${escHtml(r.name)}</span><span style="font-size:.9em;color:#666;direction:ltr">${Math.round(r.w)}×${Math.round(r.h)}</span></div>`).join('');
+  const sl=Math.round(lay.length)||1;
+  const polys=lay.rects.map((r,i)=>{
+    const shape=MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect;
+    const pts=shape.map(p=>((r.x+p[0]*r.w).toFixed(1))+','+((r.y+p[1]*r.h).toFixed(1))).join(' ');
+    const fs=Math.max(2.6,Math.min(6,r.w/9)).toFixed(1);
+    return `<polygon points="${pts}" fill="${colors[i%colors.length]}" stroke="#607d8b" stroke-width="0.5"/>
+      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#333">${escHtml(r.name)}</text>
+      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2+ +fs*1.2).toFixed(1)}" font-size="${(fs*0.85).toFixed(1)}" text-anchor="middle" fill="#777" direction="ltr">${Math.round(r.w)}×${Math.round(r.h)}</text>`;
+  }).join('');
   wrap.innerHTML=`<div style="text-align:center"><div style="font-size:.74rem;color:#888;margin-bottom:4px">⬇️ اتجاه القماش (الطول) — العرض ${W} سم</div>
-    <div style="position:relative;background:repeating-linear-gradient(#fff,#fff 14px,#f4f7f2 14px,#f4f7f2 15px);border:2px solid #2e7d32;border-radius:6px;height:70vh;aspect-ratio:${W}/${Math.round(lay.length)||1};max-width:100%;margin:auto">${rects}</div></div>`;
+    <svg viewBox="0 0 ${W} ${sl}" preserveAspectRatio="xMidYMid meet" style="height:70vh;max-width:100%;background:#fff;border:2px solid #2e7d32;border-radius:6px">${polys}</svg></div>`;
 }
 function openFabricUse(){
   _closeAllOverlays();
