@@ -6213,17 +6213,23 @@ function patCanvasDown(e){
     }
     // إغلاق الشكل عند النقر قرب أول نقطة
     if(pts.length>=3){ const f=pts[0]; if(Math.hypot(x-f[0],y-f[1])<7){ patPushUndo(); cur.closed=true; patSetTool('sel'); patRender(); return; } }
-    // Shift (بعيداً عن النقاط): قيّد الاتجاه أفقياً/رأسياً
-    if(e.shiftKey && pts.length>=1){ const lp=pts[pts.length-1]; if(Math.abs(x-lp[0])>=Math.abs(y-lp[1])) y=Math.round(lp[1]); else x=Math.round(lp[0]); }
     patPushUndo();
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
-    // إن كُتبت قيمة (x/z/رقم): ضع النقطة باتجاه النقر لكن بطولٍ = القيمة، وتبقى مرتبطة بالقياس
+    const lv=cur.verts[cur.verts.length-1], last=pts.length?pts[pts.length-1]:null;
+    // Shift = ضلع مستقيم: نربط الإحداثي المُقيَّد بالنقطة السابقة كي يبقى أفقياً/رأسياً دائماً
+    const straight=e.shiftKey && last; const axis=straight?((Math.abs(x-last[0])>=Math.abs(y-last[1]))?'h':'v'):null;
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
-      const last=pts[pts.length-1]; let dx=x-last[0], dy=y-last[1];
-      if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; }
-      const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
-      const lv=cur.verts[cur.verts.length-1], v='('+penVal+')';
-      cur.verts.push({x:_patWrap(lv.x)+' + '+v+'*'+dx.toFixed(4), y:_patWrap(lv.y)+' + '+v+'*'+dy.toFixed(4), c, len:penVal});
+      const v='('+penVal+')';
+      if(straight){
+        if(axis==='h'){ const s=(x>=last[0])?'+':'-'; cur.verts.push({x:_patWrap(lv.x)+' '+s+' '+v, y:_patWrap(lv.y), c, len:penVal, axis}); }
+        else { const s=(y>=last[1])?'+':'-'; cur.verts.push({x:_patWrap(lv.x), y:_patWrap(lv.y)+' '+s+' '+v, c, len:penVal, axis}); }
+      } else {
+        let dx=x-last[0], dy=y-last[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+        cur.verts.push({x:_patWrap(lv.x)+' + '+v+'*'+dx.toFixed(4), y:_patWrap(lv.y)+' + '+v+'*'+dy.toFixed(4), c, len:penVal});
+      }
+    } else if(straight){
+      if(axis==='h') cur.verts.push({x:String(x), y:_patWrap(lv.y), c, axis});
+      else cur.verts.push({x:_patWrap(lv.x), y:String(y), c, axis});
     } else {
       cur.verts.push({x:String(x),y:String(y),c});
     }
@@ -6290,19 +6296,25 @@ function patPenStep(dir){
   let nx=last.x, ny=last.y;
   if(dir==='R') nx=lx+' + '+v; else if(dir==='L') nx=lx+' - '+v;
   if(dir==='D') ny=ly+' + '+v; else if(dir==='U') ny=ly+' - '+v;
-  cur.verts.push({x:String(nx),y:String(ny),c:isCurve,len:val});
+  const axis=(dir==='R'||dir==='L')?'h':'v';
+  cur.verts.push({x:String(nx),y:String(ny),c:isCurve,len:val,axis});
   patRender();
 }
 // سحب نقطة بالماوس (CAD). إن كان طول الضلع مرتبطاً بـ x/z يبقى الطول ثابتاً ويتغيّر الاتجاه فقط
 function patDragVert(e,i){
   e.preventDefault(); e.stopPropagation();
   const VB=240; const cur=_patPieces()[_patIdx]; if(!cur||!cur.verts[i])return;
-  const v=cur.verts[i]; const locked = (v.len!=null && i>=1); // ضلع طوله مرتبط بقيمة x/z
+  const v=cur.verts[i]; const hasPrev=i>=1;
+  const lenLock=(v.len!=null && hasPrev), axisLock=(v.axis && hasPrev); // طول مرتبط بـ x/z و/أو ضلع مستقيم
   let moved=false;
   const move=ev=>{ if(!moved){ patPushUndo(); } moved=true; const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,ev.clientX,ev.clientY);
     let x=Math.max(0,Math.min(VB,Math.round(pt.x))), y=Math.max(0,Math.min(VB,Math.round(pt.y)));
-    if(locked){
-      const scope=_scopeFor(_patTpl,_patSample); const prev=cur.verts[i-1];
+    const scope=hasPrev?_scopeFor(_patTpl,_patSample):null; const prev=hasPrev?cur.verts[i-1]:null;
+    if(axisLock){ // ضلع مستقيم: يبقى أفقياً/رأسياً، الإحداثي المُقيَّد = السابق
+      const px=_patEval(prev.x,scope), py=_patEval(prev.y,scope);
+      if(v.axis==='v'){ v.x=_patWrap(prev.x); v.y = (v.len!=null)? (_patWrap(prev.y)+' '+((y>=py)?'+':'-')+' ('+v.len+')') : String(y); }
+      else { v.y=_patWrap(prev.y); v.x = (v.len!=null)? (_patWrap(prev.x)+' '+((x>=px)?'+':'-')+' ('+v.len+')') : String(x); }
+    } else if(lenLock){ // طول ثابت، الاتجاه حر
       const px=_patEval(prev.x,scope), py=_patEval(prev.y,scope);
       let dx=x-px, dy=y-py; if(ev.shiftKey){ if(Math.abs(dx)>=Math.abs(dy))dy=0; else dx=0; } const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
       v.x=_patWrap(prev.x)+' + ('+v.len+')*'+dx.toFixed(4);
