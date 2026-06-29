@@ -5656,39 +5656,51 @@ const MARKER_SHAPES = {
   rect:   [[0,0],[1,0],[1,1],[0,1]],
 };
 function _polyArea(pts){ let a=0; for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length]; a+=p[0]*q[1]-q[0]*p[1]; } return Math.abs(a)/2; }
-// محرّك تعشيق heuristic: يقلب القطع المتكاملة ويداخلها لتقليل الهدر
-const NEST_FACTOR = { body:0.64, sleeve:0.44 }; // نسبة العرض المشترك عند تداخل قطعتين مقلوبتين
-function _nestUnit(p){ return { w:p.w, h:p.h, members:[{name:p.name,shape:p.shape,lx:0,ly:0,lw:p.w,lh:p.h,flip:false}] }; }
-function _nestUnits(pieces, W){
-  const byShape={}; pieces.forEach(p=>{ (byShape[p.shape]=byShape[p.shape]||[]).push(p); });
-  const units=[];
-  Object.keys(byShape).forEach(shape=>{
-    const arr=byShape[shape].slice(); const f=NEST_FACTOR[shape];
-    while(f && arr.length>=2){
-      const a=arr.shift(), b=arr.shift();
-      const cw=Math.max(a.w,b.w)*(1+f);   // عرض الزوج المتعشّق (واحدة مقلوبة)
-      if(cw<=W){
-        units.push({ w:cw, h:Math.max(a.h,b.h), members:[
-          {name:a.name,shape,lx:0,ly:0,lw:a.w,lh:a.h,flip:false},
-          {name:b.name,shape,lx:cw-b.w,ly:0,lw:b.w,lh:b.h,flip:true}
-        ]});
-      } else { units.push(_nestUnit(a)); units.push(_nestUnit(b)); }
-    }
-    arr.forEach(p=>units.push(_nestUnit(p)));
-  });
-  return units;
+// ═══════════════ محرّك تعشيق هندسي (Raster NFP): يضع القطع بأشكالها الحقيقية مع القلب والتداخل
+function _pointInPoly(x,y,pts){
+  let inside=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i][0],yi=pts[i][1],xj=pts[j][0],yj=pts[j][1];
+    if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/((yj-yi)||1e-9)+xi)) inside=!inside;
+  }
+  return inside;
 }
-// يعشّق القطع (مع القلب والتداخل) ويرجع إحداثيات كل قطعة لرسم المركر
+function _orientPoly(shape, fx, fy){ return shape.map(p=>[fx?1-p[0]:p[0], fy?1-p[1]:p[1]]); }
+function _rasterMask(shapePts, w, h, res){
+  const cols=Math.max(1,Math.ceil(w/res)), rows=Math.max(1,Math.ceil(h/res));
+  const pts=shapePts.map(p=>[p[0]*w,p[1]*h]); const mask=new Array(rows);
+  for(let r=0;r<rows;r++){ const row=new Uint8Array(cols); const cy=(r+0.5)*res;
+    for(let c=0;c<cols;c++){ if(_pointInPoly((c+0.5)*res,cy,pts)) row[c]=1; } mask[r]=row; }
+  return {mask, cols, rows};
+}
+// تعشيق هندسي شبكي bottom-left مع 4 اتجاهات (أصل/عكس أفقي/180/عكس رأسي) تحافظ على اتجاه السدى
 function _markerRects(pieces, W, gap){
-  const units=_nestUnits(pieces.map(p=>({name:p.name,w:p.w,h:p.h,shape:p.shape||'rect'})), W).sort((a,b)=>b.h-a.h);
-  const shelves=[]; const rects=[]; let curY=0;
-  units.forEach(u=>{
-    let sh=shelves.find(s=>s.used+u.w+gap<=W);
-    if(!sh){ sh={y:curY, h:u.h, used:0}; shelves.push(sh); curY+=u.h+gap; }
-    u.members.forEach(mb=>rects.push({name:mb.name, shape:mb.shape, flip:mb.flip, x:sh.used+mb.lx, y:sh.y+mb.ly, w:mb.lw, h:mb.lh}));
-    sh.used+=u.w+gap;
+  const res=Math.max(1.5, W/80), cols=Math.max(1,Math.round(W/res));
+  const grid=[]; const ensure=r=>{ while(grid.length<=r) grid.push(new Uint8Array(cols)); };
+  const orients=[[0,0],[1,0],[1,1],[0,1]];
+  const items=pieces.map(p=>{
+    const shape=MARKER_SHAPES[p.shape]||MARKER_SHAPES.rect;
+    const variants=orients.map(([fx,fy])=>{ const m=_rasterMask(_orientPoly(shape,fx,fy), p.w, p.h, res); return {fx,fy,mask:m.mask,mc:m.cols,mr:m.rows}; });
+    return { name:p.name, shape:p.shape, w:p.w, h:p.h, area:p.w*p.h*_polyArea(shape), variants };
+  }).sort((a,b)=>b.area-a.area);
+  const collides=(mask,mc,mr,r0,c0)=>{ for(let r=0;r<mr;r++){ ensure(r0+r); const g=grid[r0+r],mrow=mask[r]; for(let c=0;c<mc;c++){ if(mrow[c]&&g[c0+c]) return true; } } return false; };
+  const stamp=(mask,mc,mr,r0,c0)=>{ for(let r=0;r<mr;r++){ ensure(r0+r); const g=grid[r0+r]; for(let c=0;c<mc;c++){ if(mask[r][c]) g[c0+c]=1; } } };
+  const rects=[];
+  items.forEach(p=>{
+    let best=null;
+    p.variants.forEach(v=>{
+      if(v.mc>cols) return;
+      for(let r0=0; (best===null)||r0<=best.r0; r0++){
+        let found=false;
+        for(let c0=0; c0+v.mc<=cols; c0++){ if(!collides(v.mask,v.mc,v.mr,r0,c0)){ if(best===null||r0<best.r0||(r0===best.r0&&c0<best.c0)) best={r0,c0,v}; found=true; break; } }
+        if(found) break;
+        if(r0>grid.length+v.mr+2) break;
+      }
+    });
+    if(best){ stamp(best.v.mask,best.v.mc,best.v.mr,best.r0,best.c0);
+      rects.push({name:p.name, shape:p.shape, fx:best.v.fx, fy:best.v.fy, x:Math.round(best.c0*res*10)/10, y:Math.round(best.r0*res*10)/10, w:p.w, h:p.h}); }
   });
-  return { length:curY, rects, rows:shelves.length, W };
+  return { length:grid.length*res, rects, rows:rects.length, W, res };
 }
 // استهلاك القماش كنظام القص: طول المركر المتعشّق × عدد القطع
 function _fabricConsumption(m){
@@ -5758,20 +5770,20 @@ function runMarker(){
   const eff=lay.length?Math.round(usedArea/(W*lay.length)*100):0;
   res.innerHTML=`<div style="background:#f1f8e9;border:1px solid #c5e1a5;border-radius:8px;padding:11px;font-size:.85rem;line-height:1.95">
     <div>📏 عرض القماش: <b>${W} سم</b></div>
-    <div>📐 طول المركر: <b>${Math.round(lay.length)} سم</b> (${lay.rows} صف)</div>
+    <div>📐 طول المركر: <b>${Math.round(lay.length)} سم</b> (${lay.rects.length} قطعة متعشّقة)</div>
     <div>🧵 الاستهلاك للقطعة: <b>${Math.round(lay.length)/100} م</b></div>
     <div>🧶 الإجمالي (${qty} قطعة): <b style="color:#1b5e20;font-size:1.05em">${meters} م</b></div>
     <div>♻️ كفاءة التعشيق: <b style="color:${eff>=70?'#2e7d32':'#e65100'}">${eff}%</b></div>
   </div>
-  <div style="font-size:.7rem;color:#999;margin-top:6px;line-height:1.6">ℹ️ الأشكال تقريبية بحسب القياسات، وطول المركر يُحسب بصناديق القطع؛ نظام القص الفعلي قد يوفّر قليلاً بالتعشيق المتداخل.</div>`;
+  <div style="font-size:.7rem;color:#999;margin-top:6px;line-height:1.6">ℹ️ تعشيق هندسي حقيقي (يضع الأشكال ويقلبها ويملأ الفجوات). الأشكال تقريبية بحسب القياسات؛ للرقم النهائي بدقّة البترون اعتمد نظام نسيج.</div>`;
   const colors=['#c8e6c9','#bbdefb','#ffe0b2','#f8bbd0','#d1c4e9','#b2dfdb','#fff9c4','#ffccbc'];
   const sl=Math.round(lay.length)||1;
   const polys=lay.rects.map((r,i)=>{
     const shape=MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect;
-    const pts=shape.map(p=>{ const sx=r.flip?1-p[0]:p[0], sy=r.flip?1-p[1]:p[1]; return ((r.x+sx*r.w).toFixed(1))+','+((r.y+sy*r.h).toFixed(1)); }).join(' ');
+    const pts=shape.map(p=>{ const sx=r.fx?1-p[0]:p[0], sy=r.fy?1-p[1]:p[1]; return ((r.x+sx*r.w).toFixed(1))+','+((r.y+sy*r.h).toFixed(1)); }).join(' ');
     const fs=Math.max(2.6,Math.min(6,r.w/9)).toFixed(1);
     return `<polygon points="${pts}" fill="${colors[i%colors.length]}" stroke="#607d8b" stroke-width="0.5"/>
-      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#333">${escHtml(r.name)}${r.flip?' ↻':''}</text>
+      <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#333">${escHtml(r.name)}${(r.fx||r.fy)?' ↻':''}</text>
       <text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2+ +fs*1.2).toFixed(1)}" font-size="${(fs*0.85).toFixed(1)}" text-anchor="middle" fill="#777" direction="ltr">${Math.round(r.w)}×${Math.round(r.h)}</text>`;
   }).join('');
   wrap.innerHTML=`<div style="text-align:center"><div style="font-size:.74rem;color:#888;margin-bottom:4px">⬇️ اتجاه القماش (الطول) — العرض ${W} سم</div>
@@ -7808,7 +7820,7 @@ function printProdOrder(id) {
   const _ptype = m ? L(m.template) : (o.desc||'');
   const _modelNo = (m && m.orderNo) || o.orderNo || o.num || '-';
   const _fc = _fabricConsumption(m);
-  const _fcDet = _fc ? (_fc.width ? ' (عرض '+_fc.width+' سم'+(_fc.method==='marker'?' · مركر '+_fc.markerLen+'سم/'+_fc.rows+' صف':'')+')' : ' (تقدير مبدئي)') : '';
+  const _fcDet = _fc ? (_fc.width ? ' (عرض '+_fc.width+' سم'+(_fc.method==='marker'?' · مركر '+_fc.markerLen+'سم':'')+')' : ' (تقدير مبدئي)') : '';
   const _fcTxt = _fc ? ' &nbsp;•&nbsp; 🧵 استهلاك القماش: <b>'+_fc.meters+' م</b><span style="font-size:.85em;color:#777">'+_fcDet+'</span>' : '';
   document.getElementById('pp-desc').innerHTML = '✂️ <b>'+escHtml(_ptype)+'</b> &nbsp;•&nbsp; 📦 الكمية: <b>'+(o.qty||1)+'</b> &nbsp;•&nbsp; 🔖 رقم الموديل: <b style="direction:ltr;display:inline-block">'+escHtml(String(_modelNo))+'</b>'+_fcTxt;
   // حالة الأمر: أين وصل في مراحل الإنتاج
