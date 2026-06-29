@@ -512,6 +512,7 @@ const fbDB   = firebase.firestore();
   <a data-perm="production" onclick="showProduction();closeSb()">🏭 الإنتاج</a>
   <a data-perm="production" onclick="showPatterns();closeSb()">🧩 البترونات</a>
   <a data-perm="production" onclick="showQRScan();closeSb()">📷 مسح QR</a>
+  <a data-perm="production" onclick="showPattern();closeSb()">✏️ محرّر البترون (CAD)</a>
   <a data-perm="production" onclick="showMarker();closeSb()">🧮 المركر (تخطيط القص)</a>
   <a data-perm="products" onclick="showScreen('products-screen');closeSb()">📦 المستودع</a>
   <div class="sb-sec">المبيعات والمالية</div>
@@ -1389,6 +1390,43 @@ const fbDB   = firebase.firestore();
       </div>
       <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px;min-height:60vh;display:flex;justify-content:center;align-items:flex-start">
         <div id="mk-visual-wrap" style="width:100%;display:flex;justify-content:center"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN: PATTERN EDITOR (محرّر البترون البارامتري) -->
+<div id="pattern-screen" class="screen">
+  <div class="page-wrap">
+    <div class="page-header">
+      <h2>✏️ محرّر البترون (CAD بارامتري)</h2>
+      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
+    </div>
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
+        <div class="fg"><label>القالب</label><select id="pat-tpl" onchange="patPick()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></select></div>
+        <div style="display:flex;gap:6px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin:0"><label>القطعة</label><select id="pat-piece" onchange="patPieceChange()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></select></div>
+          <button class="btn btn-success btn-sm" onclick="patAddPiece()" title="قطعة جديدة">＋</button>
+          <button class="btn btn-danger btn-sm" onclick="patDelPiece()" title="حذف القطعة">🗑</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 70px;gap:6px;margin-top:6px">
+          <div class="fg" style="margin:0"><label>اسم القطعة</label><input id="pat-name" oninput="patMeta()" style="padding:6px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></div>
+          <div class="fg" style="margin:0"><label>العدد</label><input id="pat-count" type="number" min="1" value="1" oninput="patMeta()" style="padding:6px;border:1.5px solid #ddd;border-radius:7px;direction:ltr;text-align:center"></div>
+        </div>
+        <div style="font-weight:800;color:#2e7d32;font-size:.8rem;margin:10px 0 4px;display:flex;justify-content:space-between;align-items:center">نقاط القطعة (معادلات) <button class="btn btn-info btn-sm" onclick="patAddVert()">＋ نقطة</button></div>
+        <div id="pat-verts" style="max-height:28vh;overflow:auto"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-success" style="flex:1" onclick="patSave()">💾 حفظ البترون</button>
+          <button class="btn" style="background:#7e57c2;color:#fff" onclick="patSave();showMarker()">🧮 تعشيق</button>
+        </div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:6px" onclick="patSeedDefault()">↺ تحميل شكل مبدئي للقالب (بمعادلات)</button>
+        <div class="fg" style="margin:8px 0 0"><label>عيّنة قياس للمعاينة</label><select id="pat-sample" onchange="patSampleChange()" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></select></div>
+        <div id="pat-legend" style="font-size:.64rem;color:#888;margin-top:6px;line-height:1.7;direction:ltr;text-align:left"></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
+        <div style="font-size:.74rem;color:#888;margin-bottom:6px">💡 انقر داخل اللوحة لإضافة نقطة (سم)، ثم حرّر معادلتها لربطها بالقياس (مثال: <code style="direction:ltr">fullChest/2+6</code>). الشبكة كل 10 سم.</div>
+        <div id="pat-preview" style="display:flex;justify-content:center"></div>
       </div>
     </div>
   </div>
@@ -2621,7 +2659,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2686,6 +2724,7 @@ let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + 
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
 let tmplMeasPos = {};   // مواضع صناديق القياس على مخطط الثوب لكل قالب (key: {x,y})
 let fabricUse = {};     // إعدادات استهلاك الأقمشة لكل قالب (الطول/البدل/حد العرض/المعاملات)
+let tmplPatterns = {};  // بترون بارامتري لكل قالب: قطع نقاطها معادلات بدلالة القياسات
 let _measView = 'grid'; // طريقة إدخال القياس: شبكة grid أو مخطط diagram
 let _dgmOrder = [];     // ترتيب مفاتيح القياس في المخطط (لتنقّل Tab بالتسلسل)
 let tmplMeasKeys = {};  // قياسات كل نوع المختارة من الجدول الأساسي
@@ -2737,6 +2776,7 @@ function loadAccountData() {
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
   tmplMeasPos     = JSON.parse(lsGet('tmplMeasPos','{}'));
   fabricUse       = JSON.parse(lsGet('fabricUse','{}'));
+  tmplPatterns    = JSON.parse(lsGet('tmplPatterns','{}'));
   tmplMeasKeys    = JSON.parse(lsGet('tmplMeasKeys','{}'));
   customLabels    = JSON.parse(lsGet('customLabels','{}'));
   dashWidgets     = JSON.parse(lsGet('dashWidgets','{}'));
@@ -4515,7 +4555,7 @@ const PERM_SCREENS = {
   'invoice-list':'invoices', 'invoice-form-screen':'invoices', 'print-screen':'invoices',
   'receipt-screen':'customers',
   'products-screen':'products', 'analytics-screen':'analytics',
-  'archive-screen':'archive', 'settings-screen':'settings', 'naseej-screen':'tailoring', 'marker-screen':'production',
+  'archive-screen':'archive', 'settings-screen':'settings', 'naseej-screen':'tailoring', 'marker-screen':'production', 'pattern-screen':'production',
 };
 function canAccess(area) {
   if (!currentMember) return true; // صاحب المنشأة: كل الصلاحيات
@@ -5615,10 +5655,41 @@ function _fabricWidthOf(m){
   return (w && w>0) ? w : 0;
 }
 // قطع البترون لكل موديل وأبعادها (سم) محسوبة من قياسات العميل
+// تقييم معادلة نقطة البترون بدلالة القياسات (المفاتيح متاحة كمتغيرات + M للوصول العام)
+function _evalExpr(expr, values){
+  if(expr==null||expr==='') return 0;
+  if(typeof expr==='number') return expr;
+  try{
+    const keys=Object.keys(MEAS_DICT);
+    const vals=keys.map(k=>parseFloat((values||{})[k])||0);
+    const f=new Function(...keys,'M','return ('+expr+');');
+    const r=f(...vals, values||{});
+    return (typeof r==='number'&&isFinite(r))?r:0;
+  }catch(e){ return 0; }
+}
+// قطعة بترون مخصّصة: تقييم نقاطها وتطبيعها إلى صندوق حدّي + شكل نسبي
+function _evalPatternPiece(pc, values){
+  const pts=(pc.verts||[]).map(v=>[_evalExpr(v.x,values),_evalExpr(v.y,values)]);
+  if(pts.length<3) return null;
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const minx=Math.min.apply(null,xs),maxx=Math.max.apply(null,xs),miny=Math.min.apply(null,ys),maxy=Math.max.apply(null,ys);
+  const w=maxx-minx,h=maxy-miny; if(w<=0||h<=0) return null;
+  return { w, h, norm: pts.map(p=>[(p[0]-minx)/w,(p[1]-miny)/h]) };
+}
 function _markerPieces(m){
   const cfg=_fabricUseCfg(m.template); const v=m.values||{};
   const n=k=>parseFloat(v[k])||0;
   const ease=cfg.ease, seam=cfg.seam, la=cfg.lenAllow, tpl=m.template, P=[];
+  // إن وُجد بترون مخصّص للقالب → استخدم أبعاده الحقيقية
+  const pat=tmplPatterns[tpl];
+  if(pat && pat.length){
+    pat.forEach(pc=>{
+      const e=_evalPatternPiece(pc, v); if(!e) return;
+      const cnt=parseInt(pc.count)||1;
+      for(let i=0;i<cnt;i++) P.push({name:(pc.name||'قطعة')+(cnt>1?(' '+(i+1)):''), w:e.w, h:e.h, shape:'custom', poly:e.norm});
+    });
+    if(P.length) return P;
+  }
   if(tpl==='ثوب سعودي'||tpl==='ثوب أطفال'){
     const chest=n('fullChest')||n('chest')||110, fl=n('frontLength')||140, bl=n('backLength')||fl;
     const sl=n('sleeveSada')||Math.round(fl*0.62), ah=n('armhole')||n('sadaRound')||24;
@@ -5679,9 +5750,9 @@ function _markerRects(pieces, W, gap){
   const grid=[]; const ensure=r=>{ while(grid.length<=r) grid.push(new Uint8Array(cols)); };
   const orients=[[0,0],[1,0],[1,1],[0,1]];
   const items=pieces.map(p=>{
-    const shape=MARKER_SHAPES[p.shape]||MARKER_SHAPES.rect;
-    const variants=orients.map(([fx,fy])=>{ const m=_rasterMask(_orientPoly(shape,fx,fy), p.w, p.h, res); return {fx,fy,mask:m.mask,mc:m.cols,mr:m.rows}; });
-    return { name:p.name, shape:p.shape, w:p.w, h:p.h, area:p.w*p.h*_polyArea(shape), variants };
+    const poly=p.poly||MARKER_SHAPES[p.shape]||MARKER_SHAPES.rect;
+    const variants=orients.map(([fx,fy])=>{ const m=_rasterMask(_orientPoly(poly,fx,fy), p.w, p.h, res); return {fx,fy,mask:m.mask,mc:m.cols,mr:m.rows}; });
+    return { name:p.name, poly, w:p.w, h:p.h, area:p.w*p.h*_polyArea(poly), variants };
   }).sort((a,b)=>b.area-a.area);
   const collides=(mask,mc,mr,r0,c0)=>{ for(let r=0;r<mr;r++){ ensure(r0+r); const g=grid[r0+r],mrow=mask[r]; for(let c=0;c<mc;c++){ if(mrow[c]&&g[c0+c]) return true; } } return false; };
   const stamp=(mask,mc,mr,r0,c0)=>{ for(let r=0;r<mr;r++){ ensure(r0+r); const g=grid[r0+r]; for(let c=0;c<mc;c++){ if(mask[r][c]) g[c0+c]=1; } } };
@@ -5698,7 +5769,7 @@ function _markerRects(pieces, W, gap){
       }
     });
     if(best){ stamp(best.v.mask,best.v.mc,best.v.mr,best.r0,best.c0);
-      rects.push({name:p.name, shape:p.shape, fx:best.v.fx, fy:best.v.fy, x:Math.round(best.c0*res*10)/10, y:Math.round(best.r0*res*10)/10, w:p.w, h:p.h}); }
+      rects.push({name:p.name, poly:p.poly, fx:best.v.fx, fy:best.v.fy, x:Math.round(best.c0*res*10)/10, y:Math.round(best.r0*res*10)/10, w:p.w, h:p.h}); }
   });
   return { length:grid.length*res, rects, rows:rects.length, W, res };
 }
@@ -5766,7 +5837,7 @@ function runMarker(){
   const qty=m.model.qty||1;
   const meters=Math.round((lay.length/100)*qty*100)/100;
   // المساحة من شكل القطعة الفعلي (لا الصندوق) لكفاءة أدقّ
-  const usedArea=lay.rects.reduce((s,r)=>s+r.w*r.h*_polyArea(MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect),0);
+  const usedArea=lay.rects.reduce((s,r)=>s+r.w*r.h*_polyArea(r.poly||MARKER_SHAPES.rect),0);
   const eff=lay.length?Math.round(usedArea/(W*lay.length)*100):0;
   res.innerHTML=`<div style="background:#f1f8e9;border:1px solid #c5e1a5;border-radius:8px;padding:11px;font-size:.85rem;line-height:1.95">
     <div>📏 عرض القماش: <b>${W} سم</b></div>
@@ -5779,7 +5850,7 @@ function runMarker(){
   const colors=['#c8e6c9','#bbdefb','#ffe0b2','#f8bbd0','#d1c4e9','#b2dfdb','#fff9c4','#ffccbc'];
   const sl=Math.round(lay.length)||1;
   const polys=lay.rects.map((r,i)=>{
-    const shape=MARKER_SHAPES[r.shape]||MARKER_SHAPES.rect;
+    const shape=r.poly||MARKER_SHAPES.rect;
     const pts=shape.map(p=>{ const sx=r.fx?1-p[0]:p[0], sy=r.fy?1-p[1]:p[1]; return ((r.x+sx*r.w).toFixed(1))+','+((r.y+sy*r.h).toFixed(1)); }).join(' ');
     const fs=Math.max(2.6,Math.min(6,r.w/9)).toFixed(1);
     return `<polygon points="${pts}" fill="${colors[i%colors.length]}" stroke="#607d8b" stroke-width="0.5"/>
@@ -5788,6 +5859,78 @@ function runMarker(){
   }).join('');
   wrap.innerHTML=`<div style="text-align:center"><div style="font-size:.74rem;color:#888;margin-bottom:4px">⬇️ اتجاه القماش (الطول) — العرض ${W} سم</div>
     <svg viewBox="0 0 ${W} ${sl}" preserveAspectRatio="xMidYMid meet" style="height:70vh;max-width:100%;background:#fff;border:2px solid #2e7d32;border-radius:6px">${polys}</svg></div>`;
+}
+// ═══════════════ محرّر البترون البارامتري (CAD): رسم القطع وربطها بالقياسات
+let _patTpl='', _patIdx=0, _patSample={};
+function _patDefaultSample(tpl){
+  const thobe=(tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
+  return thobe? {fullChest:110,frontLength:150,backLength:150,sleeveSada:95,armhole:24,waist:100} : {chest:100,length:120,sleeve:60,armhole:22};
+}
+function showPattern(){
+  if(!canAccess('production')){ permDenied('production'); return; }
+  document.getElementById('pat-tpl').innerHTML=Object.keys(MEAS_TEMPLATES).map(t=>`<option value="${escHtml(t)}">${escHtml(L(t))}</option>`).join('');
+  const ord=[...measurements].sort((a,b)=>b.id-a.id).slice(0,60).map(m=>`<option value="${m.id}">${escHtml(_custName(m.clientId))} — ${escHtml(L(m.template))}</option>`).join('');
+  document.getElementById('pat-sample').innerHTML='<option value="">— قياسات مبدئية —</option>'+ord;
+  _patTpl=document.getElementById('pat-tpl').value; _patIdx=0; _patSample=_patDefaultSample(_patTpl);
+  showScreen('pattern-screen'); patRender();
+}
+function patPick(){ _patTpl=document.getElementById('pat-tpl').value; _patIdx=0; _patSample=_patDefaultSample(_patTpl); patRender(); }
+function patSampleChange(){ const m=measurements.find(x=>String(x.id)===String(document.getElementById('pat-sample').value)); _patSample=m?(m.values||{}):_patDefaultSample(_patTpl); patPreview(); }
+function _patPieces(){ tmplPatterns[_patTpl]=tmplPatterns[_patTpl]||[]; return tmplPatterns[_patTpl]; }
+function patRender(){
+  const ps=_patPieces(); if(_patIdx>=ps.length) _patIdx=Math.max(0,ps.length-1);
+  document.getElementById('pat-piece').innerHTML=ps.map((p,i)=>`<option value="${i}" ${i===_patIdx?'selected':''}>${escHtml(p.name||('قطعة '+(i+1)))}</option>`).join('')||'<option value="0">لا قطع</option>';
+  const cur=ps[_patIdx];
+  document.getElementById('pat-name').value=cur?(cur.name||''):'';
+  document.getElementById('pat-count').value=cur?(cur.count||1):1;
+  document.getElementById('pat-verts').innerHTML = cur ? ((cur.verts||[]).map((v,i)=>`
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
+      <span style="font-size:.7rem;color:#999;width:16px">${i+1}</span>
+      <input value="${escHtml(v.x)}" oninput="patVert(${i},'x',this.value)" placeholder="x" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+      <input value="${escHtml(v.y)}" oninput="patVert(${i},'y',this.value)" placeholder="y" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+      <button class="btn btn-danger btn-sm" onclick="patDelVert(${i})">×</button>
+    </div>`).join('')||'<div style="color:#bbb;font-size:.78rem;padding:6px">لا نقاط — انقر اللوحة أو «＋ نقطة»</div>') : '<div style="color:#bbb;font-size:.78rem;padding:6px">أضِف قطعة أولاً</div>';
+  document.getElementById('pat-legend').innerHTML='vars: '+(getTemplateKeys(_patTpl)||[]).map(k=>`<b title="${escHtml(MEAS_DICT[k]||k)}">${k}</b>`).join(', ');
+  patPreview();
+}
+function patPieceChange(){ _patIdx=parseInt(document.getElementById('pat-piece').value)||0; patRender(); }
+function patMeta(){ const cur=_patPieces()[_patIdx]; if(!cur)return; cur.name=document.getElementById('pat-name').value; cur.count=parseInt(document.getElementById('pat-count').value)||1; const sel=document.getElementById('pat-piece'); if(sel.options[_patIdx]) sel.options[_patIdx].text=cur.name||('قطعة '+(_patIdx+1)); }
+function patAddPiece(){ const ps=_patPieces(); ps.push({name:'قطعة '+(ps.length+1),count:1,verts:[]}); _patIdx=ps.length-1; patRender(); }
+function patDelPiece(){ const ps=_patPieces(); if(!ps.length)return; if(!confirm('حذف هذه القطعة؟'))return; ps.splice(_patIdx,1); _patIdx=0; patRender(); }
+function patAddVert(){ let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; } cur.verts=cur.verts||[]; cur.verts.push({x:'0',y:'0'}); patRender(); }
+function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i][axis]=val; patPreview(); } }
+function patDelVert(i){ const cur=_patPieces()[_patIdx]; if(cur){ cur.verts.splice(i,1); patRender(); } }
+function patSave(){ lsSet('tmplPatterns', JSON.stringify(tmplPatterns)); alert('💾 حُفظ البترون لهذا القالب'); }
+function _builtinPatternDefs(tpl){
+  const thobe=(tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
+  const bw=thobe?'(fullChest/2+6)':'(chest/2+6)', fl=thobe?'(frontLength+12)':'(length+12)', bl=thobe?'(backLength+12)':'(length+12)';
+  const sw='(armhole+6)', slh=thobe?'(sleeveSada+12)':'(sleeve+12)';
+  const mk=(wE,hE,shape)=>MARKER_SHAPES[shape].map(p=>({x:wE+'*'+p[0], y:hE+'*'+p[1]}));
+  return [
+    {name:'الأمام',count:1,verts:mk(bw,fl,'body')},
+    {name:'الخلف',count:1,verts:mk(bw,bl,'body')},
+    {name:'كم',count:2,verts:mk(sw,slh,'sleeve')},
+    {name:'ياقة/جيوب',count:1,verts:mk('40','55','rect')},
+  ];
+}
+function patSeedDefault(){ if(!confirm('تحميل شكل مبدئي بمعادلات القياسات؟ (يستبدل البترون الحالي لهذا القالب)'))return; tmplPatterns[_patTpl]=_builtinPatternDefs(_patTpl); _patIdx=0; patRender(); }
+function patPreview(){
+  const wrap=document.getElementById('pat-preview'); if(!wrap)return;
+  const VB=240;
+  let grid=''; for(let g=0;g<=VB;g+=10){ const w=(g%50===0)?0.6:0.3; grid+=`<line x1="${g}" y1="0" x2="${g}" y2="${VB}" stroke="#eee" stroke-width="${w}"/><line x1="0" y1="${g}" x2="${VB}" y2="${g}" stroke="#eee" stroke-width="${w}"/>`; }
+  const cur=_patPieces()[_patIdx]; let poly='';
+  if(cur && (cur.verts||[]).length>=2){
+    const pts=cur.verts.map(v=>[_evalExpr(v.x,_patSample),_evalExpr(v.y,_patSample)]);
+    poly='<polygon points="'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="rgba(46,125,50,.16)" stroke="#2e7d32" stroke-width="0.8"/>'+
+      pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.6" fill="#e65100"/><text x="${(p[0]+2).toFixed(1)}" y="${(p[1]-1.5).toFixed(1)}" font-size="4.5" fill="#555">${i+1}</text>`).join('');
+  }
+  wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onclick="patClickAdd(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair">${grid}${poly}</svg>`;
+}
+function patClickAdd(e){
+  const svg=document.getElementById('pat-svg'); if(!svg)return; const r=svg.getBoundingClientRect(); const VB=240;
+  const x=Math.round((e.clientX-r.left)/r.width*VB), y=Math.round((e.clientY-r.top)/r.height*VB);
+  let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; }
+  cur.verts=cur.verts||[]; cur.verts.push({x:String(x), y:String(y)}); patRender();
 }
 function openFabricUse(){
   _closeAllOverlays();
