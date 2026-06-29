@@ -1442,7 +1442,8 @@ const fbDB   = firebase.firestore();
           <button class="btn btn-sm" data-tool="del" onclick="patSetTool('del')" title="انقر نقطة لحذفها">🗑️ حذف</button>
           <span style="width:1px;background:#ddd;margin:2px 3px"></span>
           <button class="btn btn-sm btn-outline" id="pat-close-btn" onclick="patToggleClosed()" title="إغلاق الشكل (وصل آخر نقطة بأوّلها) أو فتحه">⭕ إغلاق</button>
-          <button class="btn btn-sm btn-outline" onclick="patUndo()" title="تراجع عن آخر تغيير">↶ تراجع</button>
+          <button class="btn btn-sm btn-outline" id="pat-undo-btn" onclick="patUndo()" title="تراجع (Ctrl+Z)">↶ تراجع</button>
+          <button class="btn btn-sm btn-outline" id="pat-redo-btn" onclick="patRedo()" title="إعادة (Ctrl+Y)">↷ إعادة</button>
           <button class="btn btn-sm btn-outline" onclick="patClearVerts()" title="مسح كل نقاط القطعة">✖ مسح</button>
         </div>
         <div id="pat-toolhint" style="font-size:.72rem;color:#558b2f;margin-bottom:6px;min-height:1.1em"></div>
@@ -1457,6 +1458,10 @@ const fbDB   = firebase.firestore();
             <button class="btn btn-sm" style="background:#1565c0;color:#fff;padding:3px 8px" onclick="patPenStep('D')" title="أسفل">↓</button>
           </div>
           <span style="font-size:.64rem;color:#789">تُضاف نقطة بُعدها = القيمة عن آخر نقطة، وتبقى مرتبطة بالقياس تلقائياً.</span>
+        </div>
+        <div style="display:flex;justify-content:center;gap:10px;margin-bottom:6px">
+          <button id="pat-undo-arrow" onclick="patUndo()" title="رجوع خطوة للخلف (Ctrl+Z)" style="width:42px;height:36px;border:1.5px solid #c7d6c0;background:#f3f7f0;border-radius:9px;font-size:1.2rem;color:#33691e;cursor:pointer">↶</button>
+          <button id="pat-redo-arrow" onclick="patRedo()" title="تقدّم خطوة للأمام (Ctrl+Y)" style="width:42px;height:36px;border:1.5px solid #c7d6c0;background:#f3f7f0;border-radius:9px;font-size:1.2rem;color:#33691e;cursor:pointer">↷</button>
         </div>
         <div id="pat-preview" style="display:flex;justify-content:center"></div>
       </div>
@@ -6001,6 +6006,8 @@ function patRender(){
     </div>`;}).join('')||'<div style="color:#bbb;font-size:.78rem;padding:6px">لا نقاط — انقر اللوحة أو «＋ نقطة»</div>') : '<div style="color:#bbb;font-size:.78rem;padding:6px">أضِف قطعة أولاً</div>';
   patFillInserts();
   const cb=document.getElementById('pat-close-btn'); if(cb){ const cl=_patClosed(cur); cb.textContent=cl?'🔓 فتح':'⭕ إغلاق'; cb.title=cl?'فتح الشكل (إلغاء وصل آخر نقطة بأوّلها)':'إغلاق الشكل (وصل آخر نقطة بأوّلها)'; }
+  ['pat-undo-btn','pat-undo-arrow'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.disabled=!_patUndo.length; b.style.opacity=_patUndo.length?'1':'.4'; } });
+  ['pat-redo-btn','pat-redo-arrow'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.disabled=!_patRedo.length; b.style.opacity=_patRedo.length?'1':'.4'; } });
   document.getElementById('pat-legend').innerHTML='vars: '+(getTemplateKeys(_patTpl)||[]).map(k=>`<b title="${escHtml(MEAS_DICT[k]||k)}">${escHtml(MEAS_CODE[k]||k)}=${escHtml(k)}</b>`).join(', ');
   patPreview();
   patSetTool(_patTool);
@@ -6022,7 +6029,7 @@ function patFillInserts(){
   }
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
-let _patTool='sel', _patUndo=[];
+let _patTool='sel', _patUndo=[], _patRedo=[];
 const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. اضغط Shift لتقييد الخط أفقياً/رأسياً (90°/180°)، وكليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة باتجاه نقرتك ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. Shift للأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
@@ -6031,8 +6038,17 @@ function patSetTool(t){
   const pen=document.getElementById('pat-pen'); if(pen) pen.style.display=(t==='line'||t==='curve')?'flex':'none';
   const svg=document.getElementById('pat-svg'); if(svg) svg.style.cursor=(t==='del')?'not-allowed':(t==='sel'?'move':'crosshair');
 }
-function patPushUndo(){ const cur=_patPieces()[_patIdx]; if(!cur)return; _patUndo.push(JSON.stringify(cur.verts||[])); if(_patUndo.length>40)_patUndo.shift(); }
-function patUndo(){ const cur=_patPieces()[_patIdx]; if(!cur||!_patUndo.length)return; cur.verts=JSON.parse(_patUndo.pop()); patRender(); }
+function patPushUndo(){ const cur=_patPieces()[_patIdx]; if(!cur)return; _patUndo.push(JSON.stringify(cur.verts||[])); if(_patUndo.length>60)_patUndo.shift(); _patRedo=[]; }
+function patUndo(){ const cur=_patPieces()[_patIdx]; if(!cur||!_patUndo.length)return; _patRedo.push(JSON.stringify(cur.verts||[])); cur.verts=JSON.parse(_patUndo.pop()); patRender(); }
+function patRedo(){ const cur=_patPieces()[_patIdx]; if(!cur||!_patRedo.length)return; _patUndo.push(JSON.stringify(cur.verts||[])); cur.verts=JSON.parse(_patRedo.pop()); patRender(); }
+// اختصارات لوحة المفاتيح في محرّر البترون: Ctrl+Z تراجع، Ctrl+Y أو Ctrl+Shift+Z إعادة
+document.addEventListener('keydown', function(e){
+  if(!(e.ctrlKey||e.metaKey)) return;
+  const pv=document.getElementById('pat-preview'); if(!pv || pv.offsetParent===null) return; // فقط داخل محرّر البترون المرئي
+  const k=(e.key||'').toLowerCase();
+  if(k==='z' && !e.shiftKey){ e.preventDefault(); patUndo(); }
+  else if(k==='y' || (k==='z' && e.shiftKey)){ e.preventDefault(); patRedo(); }
+});
 function patClearVerts(){ const cur=_patPieces()[_patIdx]; if(!cur||!(cur.verts||[]).length)return; if(!confirm('مسح كل نقاط هذه القطعة؟'))return; patPushUndo(); cur.verts=[]; patRender(); }
 // النقر على عقدة: السلوك حسب الأداة النشطة
 function patNodeDown(e,i){
@@ -6135,7 +6151,7 @@ function patPreview(){
     let lens=''; const nseg=pts.length-(closed?0:1);
     for(let i=0;i<nseg && pts.length>=2;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2; const len=Math.hypot(b[0]-a[0],b[1]-a[1]); if(len<3)continue; lens+=`<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="4.6" fill="#1565c0" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#fff" stroke-width="1.1">${Math.round(len)}</text>`; }
     const rubber = penMode ? '<line id="pat-rubber" x1="0" y1="0" x2="0" y2="0" stroke="#1565c0" stroke-width="0.7" stroke-dasharray="3 2" style="display:none" pointer-events="none"/><text id="pat-rubber-len" x="0" y="0" font-size="5" fill="#1565c0" text-anchor="middle" pointer-events="none" style="display:none;paint-order:stroke" stroke="#fff" stroke-width="1.2"></text>' : '';
-    const snap = (penMode && pts.length>=3 && !closed) ? `<circle id="pat-snap" cx="${pts[0][0].toFixed(1)}" cy="${pts[0][1].toFixed(1)}" r="4.5" fill="none" stroke="#e65100" stroke-width="1.2" style="display:none" pointer-events="none"/>` : '';
+    const snap = penMode ? '<circle id="pat-snap" cx="0" cy="0" r="4.5" fill="none" stroke="#e65100" stroke-width="1.2" style="display:none" pointer-events="none"/>' : '';
     poly=pathEl+lens+rubber+snap+handles;
   }
   wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" oncontextmenu="patCanvasContext(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair;touch-action:none">${grid}${poly}</svg>`;
@@ -6165,13 +6181,21 @@ function patCanvasDown(e){
   cur.verts=cur.verts||[];
   const scope=_scopeFor(_patTpl,_patSample);
   const pts=cur.verts.map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
-  // Shift: قيّد الاتجاه أفقياً/رأسياً (90°/180°) بالنسبة لآخر نقطة
-  if(e.shiftKey && pts.length>=1){ const lp=pts[pts.length-1]; if(Math.abs(x-lp[0])>=Math.abs(y-lp[1])) y=Math.round(lp[1]); else x=Math.round(lp[0]); }
-  // وضع القلم (خط/منحنى): أضِف النقطة في النهاية، وأغلق الشكل إذا نقرت قرب أول نقطة
+  // وضع القلم (خط/منحنى)
   if(_patTool==='line'||_patTool==='curve'){
-    if(pts.length>=3){ const f=pts[0]; if(Math.hypot(x-f[0],y-f[1])<7){ patPushUndo(); cur.closed=true; patSetTool('sel'); patRender(); return; } }
-    patPushUndo();
     const c=(_patTool==='curve')?1:0;
+    // Shift + قرب نقطة موجودة = ألصق النقطة الجديدة بها (تَرِث معادلتها فتبقيان ملتصقتين)
+    if(e.shiftKey && cur.verts.length>=1){
+      let bi=-1, bd=10; for(let i=0;i<cur.verts.length-1;i++){ const d=Math.hypot(x-pts[i][0], y-pts[i][1]); if(d<bd){ bd=d; bi=i; } }
+      if(bi>=0){ patPushUndo();
+        if(bi===0 && cur.verts.length>=3){ cur.closed=true; patSetTool('sel'); patRender(); return; }
+        const gv=cur.verts[bi]; cur.verts.push({x:gv.x,y:gv.y,c}); patRender(); return; }
+    }
+    // إغلاق الشكل عند النقر قرب أول نقطة
+    if(pts.length>=3){ const f=pts[0]; if(Math.hypot(x-f[0],y-f[1])<7){ patPushUndo(); cur.closed=true; patSetTool('sel'); patRender(); return; } }
+    // Shift (بعيداً عن النقاط): قيّد الاتجاه أفقياً/رأسياً
+    if(e.shiftKey && pts.length>=1){ const lp=pts[pts.length-1]; if(Math.abs(x-lp[0])>=Math.abs(y-lp[1])) y=Math.round(lp[1]); else x=Math.round(lp[0]); }
+    patPushUndo();
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
     // إن كُتبت قيمة (x/z/رقم): ضع النقطة باتجاه النقر لكن بطولٍ = القيمة، وتبقى مرتبطة بالقياس
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
@@ -6198,21 +6222,26 @@ function patHover(e){
   const cur=_patPieces()[_patIdx]; if(!cur||!(cur.verts||[]).length) return;
   const pt=_svgPt(svg,e.clientX,e.clientY);
   const scope=_scopeFor(_patTpl,_patSample);
-  const last=cur.verts[cur.verts.length-1];
-  const lx=_patEval(last.x,scope), ly=_patEval(last.y,scope);
-  let dx=pt.x-lx, dy=pt.y-ly;
-  if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift: أفقي/رأسي فقط
-  let ex=lx+dx, ey=ly+dy;
-  // إن كُتبت قيمة طول: ثبّت طول الخيط المطّاطي على القيمة باتجاه المؤشّر
-  const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
-  const Lval=penVal?_patEval(penVal,scope):NaN;
-  if(isFinite(Lval) && isFinite(lx) && isFinite(ly)){ const L=Math.hypot(dx,dy)||1; ex=lx+dx/L*Lval; ey=ly+dy/L*Lval; }
-  const rub=document.getElementById('pat-rubber');
-  if(rub && isFinite(lx) && isFinite(ly)){ rub.setAttribute('x1',lx.toFixed(1)); rub.setAttribute('y1',ly.toFixed(1)); rub.setAttribute('x2',ex.toFixed(1)); rub.setAttribute('y2',ey.toFixed(1)); rub.style.display=''; }
-  const rl=document.getElementById('pat-rubber-len');
-  if(rl){ if(isFinite(Lval)){ rl.setAttribute('x',((lx+ex)/2).toFixed(1)); rl.setAttribute('y',((ly+ey)/2-1.5).toFixed(1)); rl.textContent=Math.round(Lval*10)/10; rl.style.display=''; } else rl.style.display='none'; }
-  const snap=document.getElementById('pat-snap');
-  if(snap){ const f=cur.verts[0]; const fx=_patEval(f.x,scope), fy=_patEval(f.y,scope); const near=cur.verts.length>=3 && !_patClosed(cur) && Math.hypot(pt.x-fx,pt.y-fy)<7; snap.style.display=near?'':'none'; }
+  const pts=cur.verts.map(v=>[_patEval(v.x,scope),_patEval(v.y,scope)]);
+  const lx=pts[pts.length-1][0], ly=pts[pts.length-1][1];
+  const rub=document.getElementById('pat-rubber'); const rl=document.getElementById('pat-rubber-len'); const snap=document.getElementById('pat-snap');
+  // Shift + قرب نقطة موجودة = إبراز نقطة الالتصاق ووصل الخيط بها
+  let snapTo=null;
+  if(e.shiftKey){ let bd=10; for(let i=0;i<pts.length-1;i++){ const d=Math.hypot(pt.x-pts[i][0], pt.y-pts[i][1]); if(d<bd){ bd=d; snapTo=pts[i]; } } }
+  let ex, ey;
+  if(snapTo){ ex=snapTo[0]; ey=snapTo[1]; if(rl) rl.style.display='none'; }
+  else {
+    let dx=pt.x-lx, dy=pt.y-ly;
+    if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift: أفقي/رأسي
+    ex=lx+dx; ey=ly+dy;
+    const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
+    const Lval=penVal?_patEval(penVal,scope):NaN;
+    if(isFinite(Lval) && isFinite(lx) && isFinite(ly)){ const L=Math.hypot(dx,dy)||1; ex=lx+dx/L*Lval; ey=ly+dy/L*Lval; }
+    if(rl){ if(isFinite(Lval)){ rl.setAttribute('x',((lx+ex)/2).toFixed(1)); rl.setAttribute('y',((ly+ey)/2-1.5).toFixed(1)); rl.textContent=Math.round(Lval*10)/10; rl.style.display=''; } else rl.style.display='none'; }
+  }
+  if(rub && isFinite(lx)&&isFinite(ly)&&isFinite(ex)&&isFinite(ey)){ rub.setAttribute('x1',lx.toFixed(1)); rub.setAttribute('y1',ly.toFixed(1)); rub.setAttribute('x2',ex.toFixed(1)); rub.setAttribute('y2',ey.toFixed(1)); rub.style.display=''; }
+  if(snap){ if(snapTo){ snap.setAttribute('cx',snapTo[0].toFixed(1)); snap.setAttribute('cy',snapTo[1].toFixed(1)); snap.style.display=''; }
+    else { const f=pts[0]; const near=pts.length>=3 && !_patClosed(cur) && Math.hypot(pt.x-f[0],pt.y-f[1])<7; if(near){ snap.setAttribute('cx',f[0].toFixed(1)); snap.setAttribute('cy',f[1].toFixed(1)); snap.style.display=''; } else snap.style.display='none'; } }
 }
 // لفّ تعبير بأقواس إن لم يكن رقماً بسيطاً (للحفاظ على صحّة المعادلة)
 function _patWrap(ex){ return /^[-+]?[0-9]+(\.[0-9]+)?$/.test(String(ex).trim())?String(ex).trim():('('+ex+')'); }
