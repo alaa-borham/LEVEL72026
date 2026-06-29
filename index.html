@@ -6023,7 +6023,7 @@ function patFillInserts(){
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
 let _patTool='sel', _patUndo=[];
-const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. 💡 اكتب قيمة (x/z) في الخانة أدناه فيصبح طول الضلع التالي = القيمة باتجاه نقرتك (ويبقى مرتبطاً بالقياس). انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. اكتب قيمة لطولٍ مضبوط من x/z باتجاه النقر.', del:'🗑️ انقر على أي نقطة لحذفها.' };
+const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. اضغط Shift لتقييد الخط أفقياً/رأسياً (90°/180°)، وكليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة باتجاه نقرتك ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. Shift للأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
   document.querySelectorAll('#pat-tools [data-tool]').forEach(b=>{ const on=b.dataset.tool===t; b.style.background=on?'#2e7d32':'#eef3ea'; b.style.color=on?'#fff':'#33691e'; b.style.fontWeight=on?'800':'600'; });
@@ -6138,7 +6138,11 @@ function patPreview(){
     const snap = (penMode && pts.length>=3 && !closed) ? `<circle id="pat-snap" cx="${pts[0][0].toFixed(1)}" cy="${pts[0][1].toFixed(1)}" r="4.5" fill="none" stroke="#e65100" stroke-width="1.2" style="display:none" pointer-events="none"/>` : '';
     poly=pathEl+lens+rubber+snap+handles;
   }
-  wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair;touch-action:none">${grid}${poly}</svg>`;
+  wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" oncontextmenu="patCanvasContext(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair;touch-action:none">${grid}${poly}</svg>`;
+}
+// كليك يمين أثناء الرسم = إنهاء الخط/المنحنى (دون قائمة المتصفّح)
+function patCanvasContext(e){
+  if(_patTool==='line'||_patTool==='curve'){ e.preventDefault(); patSetTool('sel'); patRender(); return false; }
 }
 function _distToSeg(px,py,a,b){
   const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1e-9;
@@ -6152,14 +6156,17 @@ function _svgPt(svg, cx, cy){
 }
 // النقر على خلفية اللوحة: وضع القلم يضيف نقطة تِلو الأخرى؛ وضع «نقطة» يُدرج عند أقرب ضلع
 function patCanvasDown(e){
+  if(e.button && e.button!==0) return; // الزر الأيمن يُدار في patCanvasContext (إنهاء الرسم)
   if(e.target && (e.target.tagName==='circle'||e.target.tagName==='rect')) return; // النقر على عقدة يُدار في patNodeDown
   if(_patTool!=='add'&&_patTool!=='line'&&_patTool!=='curve') return;
   const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,e.clientX,e.clientY);
-  const x=Math.round(pt.x), y=Math.round(pt.y);
+  let x=Math.round(pt.x), y=Math.round(pt.y);
   let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; }
   cur.verts=cur.verts||[];
   const scope=_scopeFor(_patTpl,_patSample);
   const pts=cur.verts.map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
+  // Shift: قيّد الاتجاه أفقياً/رأسياً (90°/180°) بالنسبة لآخر نقطة
+  if(e.shiftKey && pts.length>=1){ const lp=pts[pts.length-1]; if(Math.abs(x-lp[0])>=Math.abs(y-lp[1])) y=Math.round(lp[1]); else x=Math.round(lp[0]); }
   // وضع القلم (خط/منحنى): أضِف النقطة في النهاية، وأغلق الشكل إذا نقرت قرب أول نقطة
   if(_patTool==='line'||_patTool==='curve'){
     if(pts.length>=3){ const f=pts[0]; if(Math.hypot(x-f[0],y-f[1])<7){ patPushUndo(); cur.closed=true; patSetTool('sel'); patRender(); return; } }
@@ -6168,7 +6175,9 @@ function patCanvasDown(e){
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
     // إن كُتبت قيمة (x/z/رقم): ضع النقطة باتجاه النقر لكن بطولٍ = القيمة، وتبقى مرتبطة بالقياس
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
-      const last=pts[pts.length-1]; let dx=x-last[0], dy=y-last[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+      const last=pts[pts.length-1]; let dx=x-last[0], dy=y-last[1];
+      if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; }
+      const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
       const lv=cur.verts[cur.verts.length-1], v='('+penVal+')';
       cur.verts.push({x:_patWrap(lv.x)+' + '+v+'*'+dx.toFixed(4), y:_patWrap(lv.y)+' + '+v+'*'+dy.toFixed(4), c});
     } else {
@@ -6191,11 +6200,13 @@ function patHover(e){
   const scope=_scopeFor(_patTpl,_patSample);
   const last=cur.verts[cur.verts.length-1];
   const lx=_patEval(last.x,scope), ly=_patEval(last.y,scope);
+  let dx=pt.x-lx, dy=pt.y-ly;
+  if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift: أفقي/رأسي فقط
+  let ex=lx+dx, ey=ly+dy;
   // إن كُتبت قيمة طول: ثبّت طول الخيط المطّاطي على القيمة باتجاه المؤشّر
-  let ex=pt.x, ey=pt.y;
   const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
   const Lval=penVal?_patEval(penVal,scope):NaN;
-  if(isFinite(Lval) && isFinite(lx) && isFinite(ly)){ let dx=pt.x-lx, dy=pt.y-ly; const L=Math.hypot(dx,dy)||1; ex=lx+dx/L*Lval; ey=ly+dy/L*Lval; }
+  if(isFinite(Lval) && isFinite(lx) && isFinite(ly)){ const L=Math.hypot(dx,dy)||1; ex=lx+dx/L*Lval; ey=ly+dy/L*Lval; }
   const rub=document.getElementById('pat-rubber');
   if(rub && isFinite(lx) && isFinite(ly)){ rub.setAttribute('x1',lx.toFixed(1)); rub.setAttribute('y1',ly.toFixed(1)); rub.setAttribute('x2',ex.toFixed(1)); rub.setAttribute('y2',ey.toFixed(1)); rub.style.display=''; }
   const rl=document.getElementById('pat-rubber-len');
