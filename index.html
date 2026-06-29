@@ -1434,7 +1434,7 @@ const fbDB   = firebase.firestore();
         <div id="pat-legend" style="font-size:.64rem;color:#888;margin-top:6px;line-height:1.7;direction:ltr;text-align:left"></div>
       </div>
       <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
-        <div style="font-size:.74rem;color:#888;margin-bottom:6px">🛠️ أدوات: <b>اسحب</b> النقطة لتحريكها · <b>انقر</b> على فراغ لإضافة نقطة عند أقرب ضلع · <b>نقرتان</b> على نقطة لحذفها · أو حرّر المعادلة في الجدول لربطها بالقياس (مثل <code style="direction:ltr">fullChest/2+6</code>). الشبكة كل 10 سم.</div>
+        <div style="font-size:.74rem;color:#888;margin-bottom:6px">🛠️ أدوات: <b>اسحب</b> النقطة لتحريكها · <b>انقر</b> على فراغ لإضافة نقطة عند أقرب ضلع · <b>نقرتان</b> على نقطة لتبديلها بين زاوية ▪ ومنحنى ● · أو حرّر المعادلة في الجدول لربطها بالقياس (مثل <code style="direction:ltr">fullChest/2+6</code>). الشبكة كل 10 سم.</div>
         <div id="pat-preview" style="display:flex;justify-content:center"></div>
       </div>
     </div>
@@ -5716,10 +5716,41 @@ function _scopeFor(tpl, vals){
 // سطر المعادلة الكامل «zN = expr» (يدعم البيانات القديمة)
 function _zLine(z){ if(z&&z.f!=null) return z.f; if(z&&String(z.name||'').indexOf('=')>=0) return z.name; return (z&&z.name||'')+'='+(z&&z.expr!=null?z.expr:''); }
 function _zParse(z){ const line=String(_zLine(z)); const i=line.indexOf('='); if(i<0) return {name:'', expr:line.trim()}; return {name:line.slice(0,i).trim(), expr:line.slice(i+1).trim()}; }
+// مسار انسيابي (Bézier) عبر النقاط — العقد المنحنية تُنعَّم والزوايا تبقى حادّة (مثل أدوات التصميم)
+function _patPath(pts, flags, close){
+  const n=pts.length; if(n<2) return '';
+  const f2=(x,y)=>x.toFixed(2)+','+y.toFixed(2);
+  if(n===2) return 'M'+f2(pts[0][0],pts[0][1])+' L'+f2(pts[1][0],pts[1][1]);
+  const K=1/6, tan=i=>{ const a=pts[(i-1+n)%n], b=pts[(i+1)%n]; return [b[0]-a[0], b[1]-a[1]]; };
+  let d='M'+f2(pts[0][0],pts[0][1]); const segs=close?n:n-1;
+  for(let i=0;i<segs;i++){
+    const a=pts[i], b=pts[(i+1)%n], ta=tan(i), tb=tan((i+1)%n);
+    const sa=flags[i]?1:0, sb=flags[(i+1)%n]?1:0;
+    if(!sa&&!sb){ d+=' L'+f2(b[0],b[1]); continue; }
+    d+=' C'+f2(a[0]+ta[0]*K*sa,a[1]+ta[1]*K*sa)+' '+f2(b[0]-tb[0]*K*sb,b[1]-tb[1]*K*sb)+' '+f2(b[0],b[1]);
+  }
+  return d+(close?'Z':'');
+}
+function _bez(a,c1,c2,b,t){ const u=1-t; return [u*u*u*a[0]+3*u*u*t*c1[0]+3*u*t*t*c2[0]+t*t*t*b[0], u*u*u*a[1]+3*u*u*t*c1[1]+3*u*t*t*c2[1]+t*t*t*b[1]]; }
+// تفكيك المسار إلى مضلّع بنقاط كثيفة (لحساب المساحة/التعشيق بدقّة عند وجود منحنيات)
+function _patSamplePoly(pts, flags, per){
+  const n=pts.length; if(n<3) return pts.slice();
+  const K=1/6, out=[], tan=i=>{ const a=pts[(i-1+n)%n], b=pts[(i+1)%n]; return [b[0]-a[0], b[1]-a[1]]; };
+  for(let i=0;i<n;i++){
+    const a=pts[i], b=pts[(i+1)%n], ta=tan(i), tb=tan((i+1)%n);
+    const sa=flags[i]?1:0, sb=flags[(i+1)%n]?1:0;
+    if(!sa&&!sb){ out.push(a); continue; }
+    const c1=[a[0]+ta[0]*K*sa,a[1]+ta[1]*K*sa], c2=[b[0]-tb[0]*K*sb,b[1]-tb[1]*K*sb];
+    for(let s=0;s<per;s++) out.push(_bez(a,c1,c2,b,s/per));
+  }
+  return out;
+}
 // قطعة بترون مخصّصة: تقييم نقاطها وتطبيعها إلى صندوق حدّي + شكل نسبي (scope = X+Z)
 function _evalPatternPiece(pc, scope){
-  const pts=(pc.verts||[]).map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
+  let pts=(pc.verts||[]).map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
   if(pts.length<3) return null;
+  const flags=(pc.verts||[]).map(v=>v&&v.c?1:0);
+  if(flags.some(f=>f)) pts=_patSamplePoly(pts,flags,12);
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
   const minx=Math.min.apply(null,xs),maxx=Math.max.apply(null,xs),miny=Math.min.apply(null,ys),maxy=Math.max.apply(null,ys);
   const w=maxx-minx,h=maxy-miny; if(w<=0||h<=0) return null;
@@ -5941,7 +5972,8 @@ function patRender(){
       <span style="font-size:.7rem;color:#999;width:16px">${i+1}</span>
       <input value="${escHtml(v.x)}" data-i="${i}" data-axis="x" onfocus="_patFocusEl=this" oninput="patVert(${i},'x',this.value)" placeholder="x" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
       <input value="${escHtml(v.y)}" data-i="${i}" data-axis="y" onfocus="_patFocusEl=this" oninput="patVert(${i},'y',this.value)" placeholder="y" style="flex:1;min-width:0;padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
-      <span id="patv-${i}" title="القيمة بالسنتيمتر" style="font-size:.62rem;direction:ltr;color:${(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'};width:64px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmt(ex)},${fmt(ey)}</span>
+      <span id="patv-${i}" title="القيمة بالسنتيمتر" style="font-size:.62rem;direction:ltr;color:${(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'};width:54px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmt(ex)},${fmt(ey)}</span>
+      <button class="btn btn-sm" title="${v.c?'منحنى — اضغط لجعله زاوية':'زاوية — اضغط لجعله منحنى'}" onclick="patToggleCurve(${i})" style="background:${v.c?'#1565c0':'#eee'};color:${v.c?'#fff':'#777'};padding:3px 6px">${v.c?'∿':'∠'}</button>
       <button class="btn btn-danger btn-sm" onclick="patDelVert(${i})">×</button>
     </div>`;}).join('')||'<div style="color:#bbb;font-size:.78rem;padding:6px">لا نقاط — انقر اللوحة أو «＋ نقطة»</div>') : '<div style="color:#bbb;font-size:.78rem;padding:6px">أضِف قطعة أولاً</div>';
   patFillInserts();
@@ -5976,16 +6008,19 @@ function patDelPiece(){ const ps=_patPieces(); if(!ps.length)return; if(!confirm
 function patAddVert(){ let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; } cur.verts=cur.verts||[]; cur.verts.push({x:'0',y:'0'}); patRender(); }
 function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i][axis]=val; const sp=document.getElementById('patv-'+i); if(sp){ const scope=_scopeFor(_patTpl,_patSample); const ex=_patEval(cur.verts[i].x,scope), ey=_patEval(cur.verts[i].y,scope); const fmt=n=>isFinite(n)?(Math.round(n*10)/10):'—'; sp.textContent=fmt(ex)+','+fmt(ey); sp.style.color=(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'; } patPreview(); } }
 function patDelVert(i){ const cur=_patPieces()[_patIdx]; if(cur){ cur.verts.splice(i,1); patRender(); } }
+// تحويل النقطة بين زاوية حادّة ومنحنى انسيابي (مثل عقدة الناعمة في أدوات التصميم)
+function patToggleCurve(i){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i].c=cur.verts[i].c?0:1; patRender(); } }
 function patSave(){ lsSet('tmplPatterns', JSON.stringify(tmplPatterns)); alert('💾 حُفظ البترون لهذا القالب'); }
 function _builtinPatternDefs(tpl){
   const thobe=(tpl==='ثوب سعودي'||tpl==='ثوب أطفال');
   const bw=thobe?'(fullChest/2+6)':'(chest/2+6)', fl=thobe?'(frontLength+12)':'(length+12)', bl=thobe?'(backLength+12)':'(length+12)';
   const sw='(armhole+6)', slh=thobe?'(sleeveSada+12)':'(sleeve+12)';
-  const mk=(wE,hE,shape)=>MARKER_SHAPES[shape].map(p=>({x:wE+'*'+p[0], y:hE+'*'+p[1]}));
+  // curves: فهارس النقاط التي تُرسم كمنحنى انسيابي (فتحة الرقبة، حفرة الإبط، رأس الكم)
+  const mk=(wE,hE,shape,curves)=>MARKER_SHAPES[shape].map((p,idx)=>({x:wE+'*'+p[0], y:hE+'*'+p[1], c:(curves&&curves.indexOf(idx)>=0)?1:0}));
   return [
-    {name:'الأمام',count:1,verts:mk(bw,fl,'body')},
-    {name:'الخلف',count:1,verts:mk(bw,bl,'body')},
-    {name:'كم',count:2,verts:mk(sw,slh,'sleeve')},
+    {name:'الأمام',count:1,verts:mk(bw,fl,'body',[2,5,8])},
+    {name:'الخلف',count:1,verts:mk(bw,bl,'body',[2,5,8])},
+    {name:'كم',count:2,verts:mk(sw,slh,'sleeve',[0,1])},
     {name:'ياقة/جيوب',count:1,verts:mk('40','55','rect')},
   ];
 }
@@ -6031,9 +6066,14 @@ function patPreview(){
   const cur=_patPieces()[_patIdx]; let poly='';
   if(cur && (cur.verts||[]).length>=1){
     const pts=cur.verts.map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
-    const polyEl = pts.length>=2 ? '<polygon points="'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="rgba(46,125,50,.16)" stroke="#2e7d32" stroke-width="0.8"/>' : '';
-    const handles = pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6" fill="transparent" style="cursor:move" onpointerdown="patDragVert(event,${i})" ondblclick="patDelVert(${i})"/><circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.4" fill="#e65100" pointer-events="none"/><text x="${(p[0]+2.6).toFixed(1)}" y="${(p[1]-2).toFixed(1)}" font-size="5" fill="#555" pointer-events="none">${i+1}</text>`).join('');
-    poly=polyEl+handles;
+    const flags=cur.verts.map(v=>v&&v.c?1:0);
+    const pathEl = pts.length>=2 ? `<path d="${_patPath(pts,flags,pts.length>=3)}" fill="rgba(46,125,50,.16)" stroke="#2e7d32" stroke-width="0.8"/>` : '';
+    const handles = pts.map((p,i)=>{ const cu=flags[i], col=cu?'#1565c0':'#e65100';
+      const node = cu
+        ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${col}" pointer-events="none"/>`
+        : `<rect x="${(p[0]-2.2).toFixed(1)}" y="${(p[1]-2.2).toFixed(1)}" width="4.4" height="4.4" fill="${col}" pointer-events="none"/>`;
+      return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6" fill="transparent" style="cursor:move" onpointerdown="patDragVert(event,${i})" ondblclick="patToggleCurve(${i})"/>${node}<text x="${(p[0]+2.6).toFixed(1)}" y="${(p[1]-2).toFixed(1)}" font-size="5" fill="#555" pointer-events="none">${i+1}</text>`;}).join('');
+    poly=pathEl+handles;
   }
   wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onpointerdown="patCanvasDown(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair;touch-action:none">${grid}${poly}</svg>`;
 }
@@ -6067,7 +6107,7 @@ function patDragVert(e,i){
   let moved=false;
   const move=ev=>{ moved=true; const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,ev.clientX,ev.clientY);
     let x=Math.max(0,Math.min(VB,Math.round(pt.x))), y=Math.max(0,Math.min(VB,Math.round(pt.y)));
-    cur.verts[i]={x:String(x),y:String(y)}; patPreview();
+    cur.verts[i].x=String(x); cur.verts[i].y=String(y); patPreview();
   };
   const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(moved) patRender(); };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
