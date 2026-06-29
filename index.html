@@ -665,6 +665,10 @@ const fbDB   = firebase.firestore();
     <div class="dash-card" data-card="appts" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
     <div class="dash-card" data-card="messages" onclick="showMessaging()"><div class="icon">💬</div><h3>الرسائل</h3><p>إشعار العملاء عبر واتساب</p></div>
     <div class="dash-card" data-card="production" onclick="showProduction()" data-perm="production"><div class="icon">🏭</div><h3>الإنتاج</h3><p>أوامر العمل وتتبع المراحل</p></div>
+    <div class="dash-card" data-card="pattern" onclick="showPattern()" data-perm="production"><div class="icon">✏️</div><h3>محرّر البترون</h3><p>رسم القطع بارامترياً (CAD)</p></div>
+    <div class="dash-card" data-card="marker" onclick="showMarker()" data-perm="production"><div class="icon">🧮</div><h3>المركر</h3><p>تخطيط القص واستهلاك القماش</p></div>
+    <div class="dash-card" data-card="fabricuse" onclick="openFabricUse()" data-perm="production"><div class="icon">🧵</div><h3>استهلاك الأقمشة</h3><p>عرض القماش والبدلات</p></div>
+    <div class="dash-card" data-card="naseej" onclick="showNaseej()" data-perm="tailoring"><div class="icon">🧬</div><h3>تصدير نسيج</h3><p>تصدير XML للقص الآلي</p></div>
     <div class="dash-card" data-card="newinv" onclick="newInvoice()" data-perm="invoices"><div class="icon">➕</div><h3 data-i18n="newInvoice">فاتورة جديدة</h3><p data-i18n="newInvoiceSub">إنشاء فاتورة</p></div>
     <div class="dash-card" data-card="invoices" onclick="showScreen('invoice-list')" data-perm="invoices"><div class="icon">📋</div><h3 data-i18n="invoices">الفواتير</h3><p data-i18n="invoicesSub">قائمة الفواتير</p></div>
     <div class="dash-card" data-card="warehouse" onclick="showScreen('products-screen')" data-perm="products"><div class="icon">📦</div><h3 data-i18n="warehouse">المستودع</h3><p>الأصناف والمخزون والأقمشة</p></div>
@@ -3486,7 +3490,7 @@ function showScreen(id) {
 // ═══════════════ DASHBOARD
 function isSaleInv(i){ return i.type!=='فاتورة مرتجع' && i.type!=='فاتورة مشتريات' && i.type!=='مرتجع مشتريات'; }
 let cardHidden = {};
-const CARD_LABELS = { tailor:'✂️ التفصيل', appts:'📅 المواعيد', messages:'💬 الرسائل', production:'🏭 الإنتاج', newinv:'➕ فاتورة جديدة', invoices:'📋 الفواتير', warehouse:'📦 المستودع', accounts:'💰 الحسابات', vouchers:'📒 سجل السندات', members:'🧑‍💼 المستخدمون', branches:'🏬 الفروع', analytics:'📊 التحليلات', archive:'🗂️ الأرشيف', settings:'⚙️ الإعدادات' };
+const CARD_LABELS = { tailor:'✂️ التفصيل', appts:'📅 المواعيد', messages:'💬 الرسائل', production:'🏭 الإنتاج', pattern:'✏️ محرّر البترون', marker:'🧮 المركر', fabricuse:'🧵 استهلاك الأقمشة', naseej:'🧬 تصدير نسيج', newinv:'➕ فاتورة جديدة', invoices:'📋 الفواتير', warehouse:'📦 المستودع', accounts:'💰 الحسابات', vouchers:'📒 سجل السندات', members:'🧑‍💼 المستخدمون', branches:'🏬 الفروع', analytics:'📊 التحليلات', archive:'🗂️ الأرشيف', settings:'⚙️ الإعدادات' };
 function applyCardVisibility(){
   document.querySelectorAll('.dash-card[data-card]').forEach(c=>{
     if (cardHidden[c.dataset.card]) c.style.display='none';
