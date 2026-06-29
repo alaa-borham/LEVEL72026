@@ -1453,7 +1453,7 @@ const fbDB   = firebase.firestore();
       <div style="font-size:.76rem;color:#777;margin-bottom:8px">عرّف متغيّرات وسيطة بمعادلات تستعمل القياسات (X) أو متغيّرات Z سابقة، ثم استعملها في نقاط البترون. مثال: <code style="direction:ltr">z1 = fullChest/2 + 6</code></div>
       <div id="zvalues-rows"></div>
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="btn btn-success btn-sm" onclick="zAdd()">＋ متغيّر</button>
+        <button class="btn btn-success btn-sm" onclick="zAdd()">＋ معادلة</button>
         <button class="btn btn-success" style="flex:1" onclick="zSave()">💾 حفظ المعادلات</button>
       </div>
     </div>
@@ -5705,9 +5705,12 @@ function _evalExpr(expr, scope){
 // نطاق التقييم: كل القياسات (X، الافتراضي 0) + المتغيّرات المساعدة (Z) للقالب
 function _scopeFor(tpl, vals){
   const scope={}; Object.keys(MEAS_DICT).forEach(k=>{ const v=parseFloat((vals||{})[k])||0; scope[k]=v; if(MEAS_CODE[k]) scope[MEAS_CODE[k]]=v; });
-  (tmplZ[tpl]||[]).forEach(z=>{ if(z && z.name && /^[A-Za-z_]\w*$/.test(z.name)) scope[z.name]=_evalExpr(z.expr, scope); });
+  (tmplZ[tpl]||[]).forEach(z=>{ const pz=_zParse(z); if(pz.name && /^[A-Za-z_]\w*$/.test(pz.name)) scope[pz.name]=_evalExpr(pz.expr, scope); });
   return scope;
 }
+// سطر المعادلة الكامل «zN = expr» (يدعم البيانات القديمة)
+function _zLine(z){ if(z&&z.f!=null) return z.f; if(z&&String(z.name||'').indexOf('=')>=0) return z.name; return (z&&z.name||'')+'='+(z&&z.expr!=null?z.expr:''); }
+function _zParse(z){ const line=String(_zLine(z)); const i=line.indexOf('='); if(i<0) return {name:'', expr:line.trim()}; return {name:line.slice(0,i).trim(), expr:line.slice(i+1).trim()}; }
 // قطعة بترون مخصّصة: تقييم نقاطها وتطبيعها إلى صندوق حدّي + شكل نسبي (scope = X+Z)
 function _evalPatternPiece(pc, scope){
   const pts=(pc.verts||[]).map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
@@ -5968,19 +5971,25 @@ function openXValues(){
 // قائمة المعادلات المساعدة (Z) — قابلة للتحرير
 function _zList(){ tmplZ[_patTpl]=tmplZ[_patTpl]||[]; return tmplZ[_patTpl]; }
 function openZValues(){ zRender(); document.getElementById('zvalues-modal').classList.add('open'); }
+function _zValue(z,scope){ const pz=_zParse(z); try{ return _evalExpr(pz.expr||'0', scope); }catch(e){ return NaN; } }
 function zRender(){
-  const scope=_scopeFor(_patTpl,_patSample); const zs=_zList();
+  const zs=_zList();
   document.getElementById('zvalues-rows').innerHTML=
-    '<div style="display:grid;grid-template-columns:.7fr 1.5fr 1fr .5fr .4fr;gap:4px;font-weight:800;color:#7e57c2;font-size:.68rem;border-bottom:2px solid #d1c4e9;padding-bottom:3px"><span>الاسم</span><span>المعادلة</span><span>الوصف</span><span>القيمة</span><span></span></div>'+
-    (zs.length?zs.map((z,i)=>`<div style="display:grid;grid-template-columns:.7fr 1.5fr 1fr .5fr .4fr;gap:4px;align-items:center;padding:2px 0">
-      <input value="${escHtml(z.name||'')}" oninput="zEdit(${i},'name',this.value)" placeholder="z1" style="padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
-      <input value="${escHtml(z.expr||'')}" oninput="zEdit(${i},'expr',this.value)" placeholder="fullChest/2+6" style="padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.76rem">
+    '<div style="display:grid;grid-template-columns:1.7fr 1fr .55fr .4fr;gap:4px;font-weight:800;color:#7e57c2;font-size:.68rem;border-bottom:2px solid #d1c4e9;padding-bottom:3px"><span>المعادلة (الاسم = القيمة)</span><span>الوصف</span><span>القيمة</span><span></span></div>'+
+    (zs.length?zs.map((z,i)=>`<div style="display:grid;grid-template-columns:1.7fr 1fr .55fr .4fr;gap:4px;align-items:center;padding:2px 0">
+      <input value="${escHtml(_zLine(z))}" oninput="zEdit(${i},'f',this.value)" placeholder="z1 = fullChest/2+6" style="padding:4px;border:1px solid #ddd;border-radius:5px;direction:ltr;font-size:.78rem;font-family:monospace">
       <input value="${escHtml(z.text||'')}" oninput="zEdit(${i},'text',this.value)" placeholder="وصف" style="padding:4px;border:1px solid #ddd;border-radius:5px;font-size:.76rem">
-      <span style="direction:ltr;color:#1b5e20;font-weight:700;font-size:.78rem">${Math.round((scope[z.name]!=null?scope[z.name]:_evalExpr(z.expr,scope))*10)/10}</span>
-      <button class="btn btn-danger btn-sm" onclick="zDel(${i})">×</button></div>`).join(''):'<div style="color:#bbb;font-size:.78rem;padding:6px">لا متغيّرات بعد — اضغط «＋ متغيّر»</div>');
+      <span id="zval-${i}" style="direction:ltr;color:#1b5e20;font-weight:700;font-size:.78rem"></span>
+      <button class="btn btn-danger btn-sm" onclick="zDel(${i})">×</button></div>`).join(''):'<div style="color:#bbb;font-size:.78rem;padding:6px">لا معادلات بعد — اضغط «＋ معادلة»</div>');
+  zRefreshValues();
 }
-function zAdd(){ _zList().push({name:'z'+(_zList().length+1),expr:'0',text:''}); zRender(); }
-function zEdit(i,f,v){ const z=_zList()[i]; if(z){ z[f]=v; zRender(); } }
+// تحديث خانات القيمة فقط (دون إعادة بناء الحقول حتى لا يضيع مؤشر الكتابة)
+function zRefreshValues(){
+  const scope=_scopeFor(_patTpl,_patSample); const zs=_zList();
+  zs.forEach((z,i)=>{ const el=document.getElementById('zval-'+i); if(!el)return; const v=_zValue(z,scope); el.textContent=(isFinite(v)?(Math.round(v*10)/10):'—'); el.style.color=isFinite(v)?'#1b5e20':'#c62828'; });
+}
+function zAdd(){ _zList().push({f:'z'+(_zList().length+1)+' = 0',text:''}); zRender(); }
+function zEdit(i,f,v){ const z=_zList()[i]; if(z){ if(f==='f'){ z.f=v; delete z.name; delete z.expr; } else z[f]=v; zRefreshValues(); } }
 function zDel(i){ _zList().splice(i,1); zRender(); }
 function zSave(){ lsSet('tmplZ', JSON.stringify(tmplZ)); patPreview(); alert('💾 حُفظت المعادلات المساعدة'); }
 function patPreview(){
