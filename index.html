@@ -6096,7 +6096,7 @@ function _patClosed(cur){ return !!cur && cur.closed!==false; }
 function patToggleClosed(){ const cur=_patPieces()[_patIdx]; if(!cur)return; cur.closed=!_patClosed(cur); patRender(); }
 function patDelPiece(){ const ps=_patPieces(); if(!ps.length)return; if(!confirm('حذف هذه القطعة؟'))return; ps.splice(_patIdx,1); _patIdx=0; patRender(); }
 function patAddVert(){ let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; } cur.verts=cur.verts||[]; patPushUndo(); cur.verts.push({x:'0',y:'0'}); patRender(); }
-function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ cur.verts[i][axis]=val; const sp=document.getElementById('patv-'+i); if(sp){ const scope=_scopeFor(_patTpl,_patSample); const ex=_patEval(cur.verts[i].x,scope), ey=_patEval(cur.verts[i].y,scope); const fmt=n=>isFinite(n)?(Math.round(n*10)/10):'—'; sp.textContent=fmt(ex)+','+fmt(ey); sp.style.color=(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'; } patPreview(); } }
+function patVert(i,axis,val){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ delete cur.verts[i].rel; delete cur.verts[i].axis; delete cur.verts[i].len; cur.verts[i][axis]=val; const sp=document.getElementById('patv-'+i); if(sp){ const scope=_scopeFor(_patTpl,_patSample); const ex=_patEval(cur.verts[i].x,scope), ey=_patEval(cur.verts[i].y,scope); const fmt=n=>isFinite(n)?(Math.round(n*10)/10):'—'; sp.textContent=fmt(ex)+','+fmt(ey); sp.style.color=(isFinite(ex)&&isFinite(ey))?'#1b5e20':'#c62828'; } patPreview(); } }
 function patDelVert(i){ const cur=_patPieces()[_patIdx]; if(cur){ cur.verts.splice(i,1); patRender(); } }
 // تحويل النقطة بين زاوية حادّة ومنحنى انسيابي (مثل عقدة الناعمة في أدوات التصميم)
 function patToggleCurve(i){ const cur=_patPieces()[_patIdx]; if(cur&&cur.verts[i]){ patPushUndo(); cur.verts[i].c=cur.verts[i].c?0:1; patRender(); } }
@@ -6154,6 +6154,7 @@ function patPreview(){
   let grid=''; for(let g=0;g<=VB;g+=10){ const w=(g%50===0)?0.6:0.3; grid+=`<line x1="${g}" y1="0" x2="${g}" y2="${VB}" stroke="#eee" stroke-width="${w}"/><line x1="0" y1="${g}" x2="${VB}" y2="${g}" stroke="#eee" stroke-width="${w}"/>`; }
   const scope=_scopeFor(_patTpl,_patSample);
   const cur=_patPieces()[_patIdx]; let poly='';
+  if(cur) patReflow(cur); // حافظ على قيود الاستقامة/الطول قبل الرسم
   const penMode=(_patTool==='line'||_patTool==='curve');
   if(cur && (cur.verts||[]).length>=1){
     const pts=cur.verts.map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
@@ -6215,25 +6216,16 @@ function patCanvasDown(e){
     if(pts.length>=3){ const f=pts[0]; if(Math.hypot(x-f[0],y-f[1])<7){ patPushUndo(); cur.closed=true; patSetTool('sel'); patRender(); return; } }
     patPushUndo();
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
-    const lv=cur.verts[cur.verts.length-1], last=pts.length?pts[pts.length-1]:null;
-    // Shift = ضلع مستقيم: نربط الإحداثي المُقيَّد بالنقطة السابقة كي يبقى أفقياً/رأسياً دائماً
+    const last=pts.length?pts[pts.length-1]:null;
+    // Shift = ضلع مستقيم (أفقي/رأسي) يبقى مستقيماً دائماً
     const straight=e.shiftKey && last; const axis=straight?((Math.abs(x-last[0])>=Math.abs(y-last[1]))?'h':'v'):null;
+    const nv={c, x:String(x), y:String(y)};
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
-      const v='('+penVal+')';
-      if(straight){
-        if(axis==='h'){ const s=(x>=last[0])?'+':'-'; cur.verts.push({x:_patWrap(lv.x)+' '+s+' '+v, y:_patWrap(lv.y), c, len:penVal, axis}); }
-        else { const s=(y>=last[1])?'+':'-'; cur.verts.push({x:_patWrap(lv.x), y:_patWrap(lv.y)+' '+s+' '+v, c, len:penVal, axis}); }
-      } else {
-        let dx=x-last[0], dy=y-last[1]; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
-        cur.verts.push({x:_patWrap(lv.x)+' + '+v+'*'+dx.toFixed(4), y:_patWrap(lv.y)+' + '+v+'*'+dy.toFixed(4), c, len:penVal});
-      }
-    } else if(straight){
-      if(axis==='h') cur.verts.push({x:String(x), y:_patWrap(lv.y), c, axis});
-      else cur.verts.push({x:_patWrap(lv.x), y:String(y), c, axis});
-    } else {
-      cur.verts.push({x:String(x),y:String(y),c});
-    }
-    patRender(); return;
+      nv.len=penVal;
+      if(straight){ nv.axis=axis; nv.rel={axis, len:penVal, sign:(axis==='h'?(x>=last[0]?1:-1):(y>=last[1]?1:-1))}; }
+      else { let dx=x-last[0], dy=y-last[1]; const L=Math.hypot(dx,dy)||1; nv.rel={len:penVal, ux:+(dx/L).toFixed(4), uy:+(dy/L).toFixed(4)}; }
+    } else if(straight){ nv.axis=axis; nv.rel={axis, off:(axis==='v'?y:x)}; }
+    cur.verts.push(nv); patReflow(cur); patRender(); return;
   }
   // وضع «نقطة»: إدراج عند أقرب ضلع للحفاظ على ترتيب الشكل
   let at=cur.verts.length, bi=pts.length-1;
@@ -6252,6 +6244,17 @@ function patCanvasDown(e){
     cur.verts.splice(at,0,{x:fx,y:fy,c:0}); patRender(); return;
   }
   cur.verts.splice(at,0,{x:String(x),y:String(y),c:0}); patRender();
+}
+// إعادة اشتقاق النقاط المقيَّدة (rel) من النقطة السابقة — فيبقى الضلع المستقيم مستقيماً والطول ثابتاً مهما تحرّكت النقاط
+function patReflow(cur){
+  const vs=cur&&cur.verts; if(!vs) return;
+  for(let i=1;i<vs.length;i++){
+    const v=vs[i], r=v.rel; if(!r) continue;
+    const p=vs[i-1], px=_patWrap(p.x), py=_patWrap(p.y);
+    if(r.axis==='v'){ v.x=px; v.y=(r.len!=null)?(py+' '+(r.sign<0?'-':'+')+' ('+r.len+')'):String(r.off); }
+    else if(r.axis==='h'){ v.y=py; v.x=(r.len!=null)?(px+' '+(r.sign<0?'-':'+')+' ('+r.len+')'):String(r.off); }
+    else if(r.len!=null){ v.x=px+' + ('+r.len+')*'+r.ux; v.y=py+' + ('+r.len+')*'+r.uy; }
+  }
 }
 // رسم الخط المطّاطي الذي يتبع المؤشّر أثناء وضع القلم + إبراز أول نقطة عند اقتراب الإغلاق
 function patHover(e){
@@ -6291,36 +6294,26 @@ function patPenStep(dir){
   patPushUndo();
   const isCurve=(_patTool==='curve')?1:0;
   if(!cur.verts.length){ cur.verts.push({x:'0',y:'0',c:isCurve}); }
-  const last=cur.verts[cur.verts.length-1];
-  const lx=_patWrap(last.x), ly=_patWrap(last.y), v=_patWrap(val);
-  let nx=last.x, ny=last.y;
-  if(dir==='R') nx=lx+' + '+v; else if(dir==='L') nx=lx+' - '+v;
-  if(dir==='D') ny=ly+' + '+v; else if(dir==='U') ny=ly+' - '+v;
-  const axis=(dir==='R'||dir==='L')?'h':'v';
-  cur.verts.push({x:String(nx),y:String(ny),c:isCurve,len:val,axis});
-  patRender();
+  const axis=(dir==='R'||dir==='L')?'h':'v', sign=(dir==='R'||dir==='D')?1:-1;
+  cur.verts.push({x:'0',y:'0',c:isCurve,len:val,axis,rel:{axis,len:val,sign}});
+  patReflow(cur); patRender();
 }
 // سحب نقطة بالماوس (CAD). إن كان طول الضلع مرتبطاً بـ x/z يبقى الطول ثابتاً ويتغيّر الاتجاه فقط
 function patDragVert(e,i){
   e.preventDefault(); e.stopPropagation();
   const VB=240; const cur=_patPieces()[_patIdx]; if(!cur||!cur.verts[i])return;
-  const v=cur.verts[i]; const hasPrev=i>=1;
-  const lenLock=(v.len!=null && hasPrev), axisLock=(v.axis && hasPrev); // طول مرتبط بـ x/z و/أو ضلع مستقيم
+  const v=cur.verts[i]; const hasPrev=i>=1; const r=hasPrev?v.rel:null;
   let moved=false;
   const move=ev=>{ if(!moved){ patPushUndo(); } moved=true; const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,ev.clientX,ev.clientY);
     let x=Math.max(0,Math.min(VB,Math.round(pt.x))), y=Math.max(0,Math.min(VB,Math.round(pt.y)));
-    const scope=hasPrev?_scopeFor(_patTpl,_patSample):null; const prev=hasPrev?cur.verts[i-1]:null;
-    if(axisLock){ // ضلع مستقيم: يبقى أفقياً/رأسياً، الإحداثي المُقيَّد = السابق
+    if(r){ // نقطة مقيَّدة: نحدّث بارامترات العلاقة فقط ثم نعيد الاشتقاق (يبقى الضلع مستقيماً/الطول ثابتاً)
+      const scope=_scopeFor(_patTpl,_patSample); const prev=cur.verts[i-1];
       const px=_patEval(prev.x,scope), py=_patEval(prev.y,scope);
-      if(v.axis==='v'){ v.x=_patWrap(prev.x); v.y = (v.len!=null)? (_patWrap(prev.y)+' '+((y>=py)?'+':'-')+' ('+v.len+')') : String(y); }
-      else { v.y=_patWrap(prev.y); v.x = (v.len!=null)? (_patWrap(prev.x)+' '+((x>=px)?'+':'-')+' ('+v.len+')') : String(x); }
-    } else if(lenLock){ // طول ثابت، الاتجاه حر
-      const px=_patEval(prev.x,scope), py=_patEval(prev.y,scope);
-      let dx=x-px, dy=y-py; if(ev.shiftKey){ if(Math.abs(dx)>=Math.abs(dy))dy=0; else dx=0; } const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
-      v.x=_patWrap(prev.x)+' + ('+v.len+')*'+dx.toFixed(4);
-      v.y=_patWrap(prev.y)+' + ('+v.len+')*'+dy.toFixed(4);
+      if(r.axis==='v'){ if(r.len!=null) r.sign=(y>=py)?1:-1; else r.off=y; }
+      else if(r.axis==='h'){ if(r.len!=null) r.sign=(x>=px)?1:-1; else r.off=x; }
+      else if(r.len!=null){ let dx=x-px, dy=y-py; if(ev.shiftKey){ if(Math.abs(dx)>=Math.abs(dy))dy=0; else dx=0; } const L=Math.hypot(dx,dy)||1; r.ux=+(dx/L).toFixed(4); r.uy=+(dy/L).toFixed(4); }
     } else { v.x=String(x); v.y=String(y); }
-    patPreview();
+    patReflow(cur); patPreview();
   };
   const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(moved) patRender(); };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
