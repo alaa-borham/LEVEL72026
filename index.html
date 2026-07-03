@@ -6034,7 +6034,8 @@ function patFillInserts(){
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
 let _patTool='sel', _patUndo=[], _patRedo=[];
-const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. اضغط Shift لتقييد الخط أفقياً/رأسياً (90°/180°)، وكليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة باتجاه نقرتك ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. Shift للأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
+const _PAT_ORTHO=0.15; // عتبة الالتقاط التلقائي للمحور: إن كان الميل أقل من ~8.5° يُقوَّم الضلع أفقياً/رأسياً
+const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. الخط القريب من الأفقي/الرأسي يُقوَّم تلقائياً ويبقى مستقيماً (أو اضغط Shift لفرض ذلك). كليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. القريب من المحور يُقوَّم تلقائياً، Shift للفرض، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
   document.querySelectorAll('#pat-tools [data-tool]').forEach(b=>{ const on=b.dataset.tool===t; b.style.background=on?'#2e7d32':'#eef3ea'; b.style.color=on?'#fff':'#33691e'; b.style.fontWeight=on?'800':'600'; });
@@ -6217,8 +6218,10 @@ function patCanvasDown(e){
     patPushUndo();
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
     const last=pts.length?pts[pts.length-1]:null;
-    // Shift = ضلع مستقيم (أفقي/رأسي) يبقى مستقيماً دائماً
-    const straight=e.shiftKey && last; const axis=straight?((Math.abs(x-last[0])>=Math.abs(y-last[1]))?'h':'v'):null;
+    // ضلع مستقيم (أفقي/رأسي): إمّا بالضغط على Shift، أو تلقائياً إذا كان قريباً جداً من المحور
+    let axis=null;
+    if(last){ const dx=x-last[0], dy=y-last[1], mn=Math.min(Math.abs(dx),Math.abs(dy)), mx=Math.max(Math.abs(dx),Math.abs(dy))||1; if(e.shiftKey || mn<=_PAT_ORTHO*mx){ axis=(Math.abs(dx)>=Math.abs(dy))?'h':'v'; } }
+    const straight=!!axis;
     const nv={c, x:String(x), y:String(y)};
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
       nv.len=penVal;
@@ -6273,7 +6276,8 @@ function patHover(e){
   if(snapTo){ ex=snapTo[0]; ey=snapTo[1]; if(rl) rl.style.display='none'; }
   else {
     let dx=pt.x-lx, dy=pt.y-ly;
-    if(e.shiftKey){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift: أفقي/رأسي
+    const mn=Math.min(Math.abs(dx),Math.abs(dy)), mx=Math.max(Math.abs(dx),Math.abs(dy))||1;
+    if(e.shiftKey || mn<=_PAT_ORTHO*mx){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift أو قرب المحور: أفقي/رأسي
     ex=lx+dx; ey=ly+dy;
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
     const Lval=penVal?_patEval(penVal,scope):NaN;
