@@ -6206,7 +6206,7 @@ function patPreview(){
     poly=pathEl+lens+rubber+snap+handles;
   }
   const cur2=(_patTool==='pan')?'grab':(_patTool==='del'?'not-allowed':(_patTool==='sel'?'move':'crosshair'));
-  wrap.innerHTML=`<svg id="pat-svg" viewBox="${V.x.toFixed(2)} ${V.y.toFixed(2)} ${V.w.toFixed(2)} ${V.h.toFixed(2)}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" onwheel="patWheel(event)" oncontextmenu="patCanvasContext(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:${cur2};touch-action:none">${grid}${poly}</svg>`;
+  wrap.innerHTML=`<svg id="pat-svg" viewBox="${V.x.toFixed(2)} ${V.y.toFixed(2)} ${V.w.toFixed(2)} ${V.h.toFixed(2)}" preserveAspectRatio="xMidYMid meet" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" onwheel="patWheel(event)" oncontextmenu="patCanvasContext(event)" style="width:min(100%,78vh);aspect-ratio:1/1;display:block;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:${cur2};touch-action:none">${grid}${poly}</svg>`;
 }
 // كليك يمين أثناء الرسم = إنهاء الخط/المنحنى (دون قائمة المتصفّح)
 function patCanvasContext(e){
