@@ -1445,6 +1445,12 @@ const fbDB   = firebase.firestore();
           <button class="btn btn-sm" data-tool="curve" onclick="patSetTool('curve')" title="ارسم منحنيات انسيابية متتالية بالنقر (قلم)">✎ منحنى</button>
           <button class="btn btn-sm" data-tool="del" onclick="patSetTool('del')" title="انقر نقطة لحذفها">🗑️ حذف</button>
           <button class="btn btn-sm" id="pat-ortho-btn" onclick="patToggleOrtho()" title="وضع مستقيم فقط: كل خط أفقي أو رأسي (مثل ORTHO في الكاد)" style="background:#2e7d32;color:#fff">⊾ مستقيم فقط</button>
+          <button class="btn btn-sm" data-tool="pan" onclick="patSetTool('pan')" title="تحريك المنظور (اسحب) — أو استعمل زر الفأرة الأوسط">✋ تحريك</button>
+          <button class="btn btn-sm" id="pat-grid-btn" onclick="patToggleGrid()" title="التصاق النقاط بالشبكة (كل 5 سم)">▦ شبكة</button>
+          <button class="btn btn-sm btn-outline" onclick="patZoom(0.8)" title="تكبير">🔍+</button>
+          <button class="btn btn-sm btn-outline" onclick="patZoom(1.25)" title="تصغير">🔍−</button>
+          <button class="btn btn-sm btn-outline" onclick="patFitView()" title="ملء الشاشة بالرسم">⤢ ملء</button>
+          <span id="pat-coord" style="font-size:.7rem;color:#1565c0;font-weight:700;direction:ltr;padding:3px 6px;align-self:center;min-width:78px"></span>
           <span style="width:1px;background:#ddd;margin:2px 3px"></span>
           <button class="btn btn-sm btn-outline" id="pat-close-btn" onclick="patToggleClosed()" title="إغلاق الشكل (وصل آخر نقطة بأوّلها) أو فتحه">⭕ إغلاق</button>
           <button class="btn btn-sm btn-outline" id="pat-undo-btn" onclick="patUndo()" title="تراجع (Ctrl+Z)">↶ تراجع</button>
@@ -6037,6 +6043,20 @@ function patFillInserts(){
 let _patTool='sel', _patUndo=[], _patRedo=[], _patOrthoMode=true; // وضع «مستقيم فقط»: يُجبر كل ضلع على أفقي/رأسي
 const _PAT_ORTHO=0.15; // عتبة الالتقاط التلقائي للمحور: إن كان الميل أقل من ~8.5° يُقوَّم الضلع أفقياً/رأسياً
 function patToggleOrtho(){ _patOrthoMode=!_patOrthoMode; const b=document.getElementById('pat-ortho-btn'); if(b){ b.style.background=_patOrthoMode?'#2e7d32':'#eef3ea'; b.style.color=_patOrthoMode?'#fff':'#33691e'; } const h=document.getElementById('pat-toolhint'); if(h&&(_patTool==='line'||_patTool==='curve')) h.textContent=_PAT_TOOLHINT[_patTool]; }
+// ═══ منظور CAD: تكبير/تصغير، تحريك، التصاق بالشبكة ═══
+let _patView={x:0,y:0,w:240,h:240}, _patGridSnap=false, _patGridStep=5;
+function _patSnap(x,y){ return _patGridSnap? [Math.round(x/_patGridStep)*_patGridStep, Math.round(y/_patGridStep)*_patGridStep] : [x,y]; }
+function patToggleGrid(){ _patGridSnap=!_patGridSnap; const b=document.getElementById('pat-grid-btn'); if(b){ b.style.background=_patGridSnap?'#2e7d32':'#eef3ea'; b.style.color=_patGridSnap?'#fff':'#33691e'; } }
+function patWheel(e){ e.preventDefault(); const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,e.clientX,e.clientY); const V=_patView; const f=(e.deltaY<0)?0.85:1.18; let nw=Math.max(24,Math.min(960,V.w*f)); V.x=pt.x-(pt.x-V.x)*(nw/V.w); V.y=pt.y-(pt.y-V.y)*(nw/V.h); V.w=nw; V.h=nw; patPreview(); }
+function patZoom(f){ const V=_patView; const cx=V.x+V.w/2, cy=V.y+V.h/2; let nw=Math.max(24,Math.min(960,V.w*f)); V.x=cx-nw/2; V.y=cy-nw/2; V.w=nw; V.h=nw; patPreview(); }
+function _patStartPan(e){ e.preventDefault(); const svg=document.getElementById('pat-svg'); if(!svg)return; const rect=svg.getBoundingClientRect(); const V=_patView; const scale=V.w/rect.width; const sx=e.clientX, sy=e.clientY, ox=V.x, oy=V.y;
+  const mv=ev=>{ _patView.x=ox-(ev.clientX-sx)*scale; _patView.y=oy-(ev.clientY-sy)*scale; patPreview(); };
+  const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); };
+  window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); }
+function patFitView(){ const cur=_patPieces()[_patIdx]; const scope=_scopeFor(_patTpl,_patSample); const vs=(cur&&cur.verts)||[]; if(vs.length<1){ _patView={x:0,y:0,w:240,h:240}; patPreview(); return; }
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9; vs.forEach(v=>{ const x=_patEval(v.x,scope), y=_patEval(v.y,scope); if(isFinite(x)&&isFinite(y)){ minx=Math.min(minx,x);maxx=Math.max(maxx,x);miny=Math.min(miny,y);maxy=Math.max(maxy,y); } });
+  if(minx>maxx){ _patView={x:0,y:0,w:240,h:240}; patPreview(); return; }
+  const w=Math.max(maxx-minx,maxy-miny,20)*1.25, cx=(minx+maxx)/2, cy=(miny+maxy)/2; _patView={x:cx-w/2,y:cy-w/2,w,h:w}; patPreview(); }
 const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 «مستقيم فقط» مُفعّل: كل خط يخرج أفقياً/رأسياً تلقائياً. أطفئه من الزر ⊾ إن أردت خطوطاً مائلة. كليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. زر ⊾ «مستقيم فقط» يجبر الأضلاع على الأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
@@ -6047,7 +6067,7 @@ function patSetTool(t){
   const plabel=document.getElementById('pat-pen-label'); const pnote=document.getElementById('pat-pen-note');
   if(t==='add'){ if(plabel)plabel.textContent='مسافة على الضلع:'; if(pnote)pnote.textContent='اكتب المسافة ثم انقر على ضلع موجود لإضافة نقطة عليه عند تلك المسافة من أقرب طرف.'; }
   else { if(plabel)plabel.textContent='طول الضلع (x/z):'; if(pnote)pnote.textContent='اكتب القيمة فيصبح طول الضلع التالي = القيمة باتجاه نقرتك، ويبقى مرتبطاً بالقياس.'; }
-  const svg=document.getElementById('pat-svg'); if(svg) svg.style.cursor=(t==='del')?'not-allowed':(t==='sel'?'move':'crosshair');
+  const svg=document.getElementById('pat-svg'); if(svg) svg.style.cursor=(t==='pan')?'grab':(t==='del')?'not-allowed':(t==='sel'?'move':'crosshair');
 }
 function patPushUndo(){ const cur=_patPieces()[_patIdx]; if(!cur)return; _patUndo.push(JSON.stringify(cur.verts||[])); if(_patUndo.length>60)_patUndo.shift(); _patRedo=[]; }
 function patUndo(){ const cur=_patPieces()[_patIdx]; if(!cur||!_patUndo.length)return; _patRedo.push(JSON.stringify(cur.verts||[])); cur.verts=JSON.parse(_patUndo.pop()); patRender(); }
@@ -6153,31 +6173,35 @@ function zDel(i){ _zList().splice(i,1); zRender(); }
 function zSave(){ lsSet('tmplZ', JSON.stringify(tmplZ)); patPreview(); alert('💾 حُفظت المعادلات المساعدة'); }
 function patPreview(){
   const wrap=document.getElementById('pat-preview'); if(!wrap)return;
-  const VB=240;
-  let grid=''; for(let g=0;g<=VB;g+=10){ const w=(g%50===0)?0.6:0.3; grid+=`<line x1="${g}" y1="0" x2="${g}" y2="${VB}" stroke="#eee" stroke-width="${w}"/><line x1="0" y1="${g}" x2="${VB}" y2="${g}" stroke="#eee" stroke-width="${w}"/>`; }
+  const V=_patView, s=V.w/240; // s: عامل قياس ليبقى حجم المقابض/الخطوط ثابتاً على الشاشة مع التكبير
+  // شبكة تغطّي المنطقة المرئية فقط
+  const gx1=V.x+V.w, gy1=V.y+V.h; let grid='';
+  for(let g=Math.ceil(V.x/10)*10; g<=gx1; g+=10){ const w=((Math.round(g)%50===0)?0.6:0.3)*s; grid+=`<line x1="${g}" y1="${V.y.toFixed(1)}" x2="${g}" y2="${gy1.toFixed(1)}" stroke="#eee" stroke-width="${w.toFixed(2)}"/>`; }
+  for(let g=Math.ceil(V.y/10)*10; g<=gy1; g+=10){ const w=((Math.round(g)%50===0)?0.6:0.3)*s; grid+=`<line x1="${V.x.toFixed(1)}" y1="${g}" x2="${gx1.toFixed(1)}" y2="${g}" stroke="#eee" stroke-width="${w.toFixed(2)}"/>`; }
   const scope=_scopeFor(_patTpl,_patSample);
   const cur=_patPieces()[_patIdx]; let poly='';
   const penMode=(_patTool==='line'||_patTool==='curve');
   if(cur && (cur.verts||[]).length>=1){
     const pts=cur.verts.map(v=>[_evalExpr(v.x,scope),_evalExpr(v.y,scope)]);
     const flags=cur.verts.map(v=>v&&v.c?1:0);
-    const closed = pts.length>=3 && _patClosed(cur); // يُغلق فقط إذا اخترت إغلاق الشكل
-    const pathEl = pts.length>=2 ? `<path d="${_patPath(pts,flags,closed)}" fill="${closed?'rgba(46,125,50,.16)':'none'}" stroke="#2e7d32" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+    const closed = pts.length>=3 && _patClosed(cur);
+    const pathEl = pts.length>=2 ? `<path d="${_patPath(pts,flags,closed)}" fill="${closed?'rgba(46,125,50,.16)':'none'}" stroke="#2e7d32" stroke-width="${(0.8*s).toFixed(2)}" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+    const R=(6*s), half=(2.2*s), fs=(5*s);
     const handles = pts.map((p,i)=>{ const cu=flags[i], col=cu?'#1565c0':'#e65100';
       const node = cu
-        ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${col}" pointer-events="none"/>`
-        : `<rect x="${(p[0]-2.2).toFixed(1)}" y="${(p[1]-2.2).toFixed(1)}" width="4.4" height="4.4" fill="${col}" pointer-events="none"/>`;
-      return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6" fill="transparent" style="cursor:pointer" onpointerdown="patNodeDown(event,${i})" ondblclick="patToggleCurve(${i})"/>${node}<text x="${(p[0]+2.6).toFixed(1)}" y="${(p[1]-2).toFixed(1)}" font-size="5" fill="#555" pointer-events="none">${i+1}</text>`;}).join('');
-    // أطوال الأضلاع عند منتصف كل ضلع — يظهر اسم x/z إن رُسم الضلع بقيمة منه، وإلّا الطول بالسنتيمتر
+        ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${(2.6*s).toFixed(2)}" fill="${col}" pointer-events="none"/>`
+        : `<rect x="${(p[0]-half).toFixed(1)}" y="${(p[1]-half).toFixed(1)}" width="${(half*2).toFixed(2)}" height="${(half*2).toFixed(2)}" fill="${col}" pointer-events="none"/>`;
+      return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${R.toFixed(2)}" fill="transparent" style="cursor:pointer" onpointerdown="patNodeDown(event,${i})" ondblclick="patToggleCurve(${i})"/>${node}<text x="${(p[0]+2.6*s).toFixed(1)}" y="${(p[1]-2*s).toFixed(1)}" font-size="${fs.toFixed(2)}" fill="#555" pointer-events="none">${i+1}</text>`;}).join('');
     let lens=''; const nseg=pts.length-(closed?0:1);
     for(let i=0;i<nseg && pts.length>=2;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2; const len=Math.hypot(b[0]-a[0],b[1]-a[1]); if(len<3)continue;
       const ev=cur.verts[(i+1)%pts.length]; const named=ev&&ev.len!=null; const lbl=named?String(ev.len):String(Math.round(len)); const col=named?'#7e57c2':'#1565c0';
-      lens+=`<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="4.6" fill="${col}" font-weight="${named?'700':'400'}" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#fff" stroke-width="1.1">${escHtml(lbl)}</text>`; }
-    const rubber = penMode ? '<line id="pat-rubber" x1="0" y1="0" x2="0" y2="0" stroke="#1565c0" stroke-width="0.7" stroke-dasharray="3 2" style="display:none" pointer-events="none"/><text id="pat-rubber-len" x="0" y="0" font-size="5" fill="#1565c0" text-anchor="middle" pointer-events="none" style="display:none;paint-order:stroke" stroke="#fff" stroke-width="1.2"></text>' : '';
-    const snap = penMode ? '<circle id="pat-snap" cx="0" cy="0" r="4.5" fill="none" stroke="#e65100" stroke-width="1.2" style="display:none" pointer-events="none"/>' : '';
+      lens+=`<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" font-size="${(4.6*s).toFixed(2)}" fill="${col}" font-weight="${named?'700':'400'}" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#fff" stroke-width="${(1.1*s).toFixed(2)}">${escHtml(lbl)}</text>`; }
+    const rubber = penMode ? `<line id="pat-rubber" x1="0" y1="0" x2="0" y2="0" stroke="#1565c0" stroke-width="${(0.7*s).toFixed(2)}" stroke-dasharray="${(3*s).toFixed(2)} ${(2*s).toFixed(2)}" style="display:none" pointer-events="none"/><text id="pat-rubber-len" x="0" y="0" font-size="${(5*s).toFixed(2)}" fill="#1565c0" text-anchor="middle" pointer-events="none" style="display:none;paint-order:stroke" stroke="#fff" stroke-width="${(1.2*s).toFixed(2)}"></text>` : '';
+    const snap = penMode ? `<circle id="pat-snap" cx="0" cy="0" r="${(4.5*s).toFixed(2)}" fill="none" stroke="#e65100" stroke-width="${(1.2*s).toFixed(2)}" style="display:none" pointer-events="none"/>` : '';
     poly=pathEl+lens+rubber+snap+handles;
   }
-  wrap.innerHTML=`<svg id="pat-svg" viewBox="0 0 ${VB} ${VB}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" oncontextmenu="patCanvasContext(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:crosshair;touch-action:none">${grid}${poly}</svg>`;
+  const cur2=(_patTool==='pan')?'grab':(_patTool==='del'?'not-allowed':(_patTool==='sel'?'move':'crosshair'));
+  wrap.innerHTML=`<svg id="pat-svg" viewBox="${V.x.toFixed(2)} ${V.y.toFixed(2)} ${V.w.toFixed(2)} ${V.h.toFixed(2)}" onpointerdown="patCanvasDown(event)" onpointermove="patHover(event)" onwheel="patWheel(event)" oncontextmenu="patCanvasContext(event)" style="width:100%;max-height:74vh;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:${cur2};touch-action:none">${grid}${poly}</svg>`;
 }
 // كليك يمين أثناء الرسم = إنهاء الخط/المنحنى (دون قائمة المتصفّح)
 function patCanvasContext(e){
@@ -6195,11 +6219,12 @@ function _svgPt(svg, cx, cy){
 }
 // النقر على خلفية اللوحة: وضع القلم يضيف نقطة تِلو الأخرى؛ وضع «نقطة» يُدرج عند أقرب ضلع
 function patCanvasDown(e){
+  if(e.button===1 || _patTool==='pan'){ _patStartPan(e); return; } // تحريك المنظور
   if(e.button && e.button!==0) return; // الزر الأيمن يُدار في patCanvasContext (إنهاء الرسم)
   if(e.target && (e.target.tagName==='circle'||e.target.tagName==='rect')) return; // النقر على عقدة يُدار في patNodeDown
   if(_patTool!=='add'&&_patTool!=='line'&&_patTool!=='curve') return;
   const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,e.clientX,e.clientY);
-  let x=Math.round(pt.x), y=Math.round(pt.y);
+  let _sn=_patSnap(Math.round(pt.x),Math.round(pt.y)); let x=_sn[0], y=_sn[1];
   let cur=_patPieces()[_patIdx]; if(!cur){ patAddPiece(); cur=_patPieces()[_patIdx]; }
   cur.verts=cur.verts||[];
   const scope=_scopeFor(_patTpl,_patSample);
@@ -6264,8 +6289,10 @@ function _patApplyRel(vs, i){
 }
 // رسم الخط المطّاطي الذي يتبع المؤشّر أثناء وضع القلم + إبراز أول نقطة عند اقتراب الإغلاق
 function patHover(e){
+  const svg0=document.getElementById('pat-svg');
+  if(svg0){ const p0=_svgPt(svg0,e.clientX,e.clientY); const rd=document.getElementById('pat-coord'); if(rd) rd.textContent='X '+Math.round(p0.x)+' · Y '+Math.round(p0.y); }
   if(_patTool!=='line'&&_patTool!=='curve') return;
-  const svg=document.getElementById('pat-svg'); if(!svg)return;
+  const svg=svg0; if(!svg)return;
   const cur=_patPieces()[_patIdx]; if(!cur||!(cur.verts||[]).length) return;
   const pt=_svgPt(svg,e.clientX,e.clientY);
   const scope=_scopeFor(_patTpl,_patSample);
@@ -6312,7 +6339,7 @@ function patDragVert(e,i){
   const v=cur.verts[i]; const hasPrev=i>=1; const r=hasPrev?v.rel:null;
   let moved=false;
   const move=ev=>{ if(!moved){ patPushUndo(); } moved=true; const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,ev.clientX,ev.clientY);
-    let x=Math.max(0,Math.min(VB,Math.round(pt.x))), y=Math.max(0,Math.min(VB,Math.round(pt.y)));
+    let x=Math.round(pt.x), y=Math.round(pt.y); { const sn=_patSnap(x,y); x=sn[0]; y=sn[1]; }
     if(v.onLine && i>=1 && i+1<cur.verts.length){ // نقطة على خط: تنزلق على الخط بين جارَيها فيبقى مستقيماً
       const sc=_scopeFor(_patTpl,_patSample);
       const a=[_patEval(cur.verts[i-1].x,sc),_patEval(cur.verts[i-1].y,sc)], b=[_patEval(cur.verts[i+1].x,sc),_patEval(cur.verts[i+1].y,sc)];
