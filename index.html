@@ -1406,7 +1406,12 @@ const fbDB   = firebase.firestore();
       <h2>✏️ محرّر البترون (CAD بارامتري)</h2>
       <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
     </div>
-    <div style="display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start">
+    <style>
+      .pat-editor-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;align-items:start}
+      @media(max-width:860px){ .pat-editor-grid{grid-template-columns:1fr} .pat-editor-grid > div:last-child{order:-1} }
+      #pat-tools{position:sticky;top:0;z-index:5;background:#fff;padding-bottom:4px}
+    </style>
+    <div class="pat-editor-grid">
       <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
         <div class="fg"><label>القالب</label><select id="pat-tpl" onchange="patPick()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit"></select></div>
         <div style="display:flex;gap:6px;align-items:flex-end">
