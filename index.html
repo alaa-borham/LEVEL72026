@@ -6247,6 +6247,8 @@ function patCanvasDown(e){
     const fy=_patWrap(A.y)+' + ('+_patWrap(B.y)+' - '+_patWrap(A.y)+')*'+t;
     cur.verts.splice(at,0,{x:fx,y:fy,c:0,onLine:1}); patRender(); return;
   }
+  // أسقِط النقر على أقرب ضلع فتُضاف النقطة على الخط نفسه (تقسيمه) بدل سحب الضلع بعيداً وتشويه الشكل
+  if(pts.length>=2){ const A=pts[bi], B=pts[(bi+1)%pts.length]; const pr=_projToLine(x,y,A,B); x=Math.round(pr[0]); y=Math.round(pr[1]); }
   cur.verts.splice(at,0,{x:String(x),y:String(y),c:0,onLine:1}); patRender();
 }
 // إسقاط نقطة على الخط المارّ بجارَيها — لتبقى النقطة المضافة على الخط المستقيم فلا ينكسر
