@@ -6245,10 +6245,12 @@ function patCanvasDown(e){
     const t=Math.max(0,Math.min(1, fromA ? dval/len : 1-dval/len)).toFixed(4);
     const fx=_patWrap(A.x)+' + ('+_patWrap(B.x)+' - '+_patWrap(A.x)+')*'+t;
     const fy=_patWrap(A.y)+' + ('+_patWrap(B.y)+' - '+_patWrap(A.y)+')*'+t;
-    cur.verts.splice(at,0,{x:fx,y:fy,c:0}); patRender(); return;
+    cur.verts.splice(at,0,{x:fx,y:fy,c:0,onLine:1}); patRender(); return;
   }
-  cur.verts.splice(at,0,{x:String(x),y:String(y),c:0}); patRender();
+  cur.verts.splice(at,0,{x:String(x),y:String(y),c:0,onLine:1}); patRender();
 }
+// إسقاط نقطة على الخط المارّ بجارَيها — لتبقى النقطة المضافة على الخط المستقيم فلا ينكسر
+function _projToLine(px,py,a,b){ const dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy||1e-9; let t=((px-a[0])*dx+(py-a[1])*dy)/L2; t=Math.max(0,Math.min(1,t)); return [a[0]+t*dx, a[1]+t*dy]; }
 // إعادة اشتقاق النقاط المقيَّدة (rel) من النقطة السابقة — فيبقى الضلع المستقيم مستقيماً والطول ثابتاً مهما تحرّكت النقاط
 // تطبيق قيد نقطة واحدة فقط بالنسبة للنقطة السابقة — بلا انتشار لبقية النقاط (سحب نقطة يحرّكها وحدها)
 function _patApplyRel(vs, i){
@@ -6309,7 +6311,11 @@ function patDragVert(e,i){
   let moved=false;
   const move=ev=>{ if(!moved){ patPushUndo(); } moved=true; const svg=document.getElementById('pat-svg'); if(!svg)return; const pt=_svgPt(svg,ev.clientX,ev.clientY);
     let x=Math.max(0,Math.min(VB,Math.round(pt.x))), y=Math.max(0,Math.min(VB,Math.round(pt.y)));
-    if(r){ // نقطة مقيَّدة: نحدّث بارامترات العلاقة فقط ثم نعيد الاشتقاق (يبقى الضلع مستقيماً/الطول ثابتاً)
+    if(v.onLine && i>=1 && i+1<cur.verts.length){ // نقطة على خط: تنزلق على الخط بين جارَيها فيبقى مستقيماً
+      const sc=_scopeFor(_patTpl,_patSample);
+      const a=[_patEval(cur.verts[i-1].x,sc),_patEval(cur.verts[i-1].y,sc)], b=[_patEval(cur.verts[i+1].x,sc),_patEval(cur.verts[i+1].y,sc)];
+      const pr=_projToLine(x,y,a,b); v.x=String(Math.round(pr[0])); v.y=String(Math.round(pr[1])); delete v.rel;
+    } else if(r){ // نقطة مقيَّدة: نحدّث بارامترات العلاقة فقط ثم نعيد الاشتقاق (يبقى الضلع مستقيماً/الطول ثابتاً)
       const scope=_scopeFor(_patTpl,_patSample); const prev=cur.verts[i-1];
       const px=_patEval(prev.x,scope), py=_patEval(prev.y,scope);
       if(r.axis==='v'){ if(r.len!=null) r.sign=(y>=py)?1:-1; else r.off=y; }
