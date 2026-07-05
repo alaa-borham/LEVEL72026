@@ -1444,6 +1444,7 @@ const fbDB   = firebase.firestore();
           <button class="btn btn-sm" data-tool="line" onclick="patSetTool('line')" title="ارسم خطوطاً مستقيمة متتالية بالنقر (قلم)">✎ خط</button>
           <button class="btn btn-sm" data-tool="curve" onclick="patSetTool('curve')" title="ارسم منحنيات انسيابية متتالية بالنقر (قلم)">✎ منحنى</button>
           <button class="btn btn-sm" data-tool="del" onclick="patSetTool('del')" title="انقر نقطة لحذفها">🗑️ حذف</button>
+          <button class="btn btn-sm" id="pat-ortho-btn" onclick="patToggleOrtho()" title="وضع مستقيم فقط: كل خط أفقي أو رأسي (مثل ORTHO في الكاد)" style="background:#2e7d32;color:#fff">⊾ مستقيم فقط</button>
           <span style="width:1px;background:#ddd;margin:2px 3px"></span>
           <button class="btn btn-sm btn-outline" id="pat-close-btn" onclick="patToggleClosed()" title="إغلاق الشكل (وصل آخر نقطة بأوّلها) أو فتحه">⭕ إغلاق</button>
           <button class="btn btn-sm btn-outline" id="pat-undo-btn" onclick="patUndo()" title="تراجع (Ctrl+Z)">↶ تراجع</button>
@@ -6033,9 +6034,10 @@ function patFillInserts(){
   }
 }
 // ═══ أدوات الرسم (CAD) — وضع نشط يحدّد ماذا يفعل النقر/السحب على اللوحة
-let _patTool='sel', _patUndo=[], _patRedo=[];
+let _patTool='sel', _patUndo=[], _patRedo=[], _patOrthoMode=true; // وضع «مستقيم فقط»: يُجبر كل ضلع على أفقي/رأسي
 const _PAT_ORTHO=0.15; // عتبة الالتقاط التلقائي للمحور: إن كان الميل أقل من ~8.5° يُقوَّم الضلع أفقياً/رأسياً
-const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 انقر لبدء الخط ثم انقر لكل نقطة. الخط القريب من الأفقي/الرأسي يُقوَّم تلقائياً ويبقى مستقيماً (أو اضغط Shift لفرض ذلك). كليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة ويبقى مرتبطاً بالقياس. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. القريب من المحور يُقوَّم تلقائياً، Shift للفرض، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
+function patToggleOrtho(){ _patOrthoMode=!_patOrthoMode; const b=document.getElementById('pat-ortho-btn'); if(b){ b.style.background=_patOrthoMode?'#2e7d32':'#eef3ea'; b.style.color=_patOrthoMode?'#fff':'#33691e'; } const h=document.getElementById('pat-toolhint'); if(h&&(_patTool==='line'||_patTool==='curve')) h.textContent=_PAT_TOOLHINT[_patTool]; }
+const _PAT_TOOLHINT={ sel:'🖱️ اسحب أي نقطة لتحريكها.', add:'＋ انقر على اللوحة لإضافة نقطة عند أقرب ضلع. 💡 اكتب مسافة في الخانة ثم انقر على ضلع لتضع نقطة عليه عند تلك المسافة من أقرب طرف.', line:'📐 «مستقيم فقط» مُفعّل: كل خط يخرج أفقياً/رأسياً تلقائياً. أطفئه من الزر ⊾ إن أردت خطوطاً مائلة. كليك يمين لإنهاء الرسم. 💡 اكتب قيمة (x/z) فيصبح طول الضلع = القيمة. انقر أول نقطة للإغلاق.', curve:'∿ مثل الخط لكن العقد منحنيات. زر ⊾ «مستقيم فقط» يجبر الأضلاع على الأفقي/الرأسي، كليك يمين للإنهاء، واكتب قيمة لطولٍ مضبوط من x/z.', del:'🗑️ انقر على أي نقطة لحذفها.' };
 function patSetTool(t){
   _patTool=t;
   document.querySelectorAll('#pat-tools [data-tool]').forEach(b=>{ const on=b.dataset.tool===t; b.style.background=on?'#2e7d32':'#eef3ea'; b.style.color=on?'#fff':'#33691e'; b.style.fontWeight=on?'800':'600'; });
@@ -6219,7 +6221,7 @@ function patCanvasDown(e){
     const last=pts.length?pts[pts.length-1]:null;
     // ضلع مستقيم (أفقي/رأسي): إمّا بالضغط على Shift، أو تلقائياً إذا كان قريباً جداً من المحور
     let axis=null;
-    if(last){ const dx=x-last[0], dy=y-last[1], mn=Math.min(Math.abs(dx),Math.abs(dy)), mx=Math.max(Math.abs(dx),Math.abs(dy))||1; if(e.shiftKey || mn<=_PAT_ORTHO*mx){ axis=(Math.abs(dx)>=Math.abs(dy))?'h':'v'; } }
+    if(last){ const dx=x-last[0], dy=y-last[1], mn=Math.min(Math.abs(dx),Math.abs(dy)), mx=Math.max(Math.abs(dx),Math.abs(dy))||1; if(_patOrthoMode || e.shiftKey || mn<=_PAT_ORTHO*mx){ axis=(Math.abs(dx)>=Math.abs(dy))?'h':'v'; } }
     const straight=!!axis;
     const nv={c, x:String(x), y:String(y)};
     if(penVal && cur.verts.length>=1 && isFinite(_patEval(penVal,scope))){
@@ -6274,7 +6276,7 @@ function patHover(e){
   else {
     let dx=pt.x-lx, dy=pt.y-ly;
     const mn=Math.min(Math.abs(dx),Math.abs(dy)), mx=Math.max(Math.abs(dx),Math.abs(dy))||1;
-    if(e.shiftKey || mn<=_PAT_ORTHO*mx){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // Shift أو قرب المحور: أفقي/رأسي
+    if(_patOrthoMode || e.shiftKey || mn<=_PAT_ORTHO*mx){ if(Math.abs(dx)>=Math.abs(dy)) dy=0; else dx=0; } // مستقيم فقط / Shift / قرب المحور
     ex=lx+dx; ey=ly+dy;
     const penVal=((document.getElementById('pat-pen-val')||{}).value||'').trim();
     const Lval=penVal?_patEval(penVal,scope):NaN;
