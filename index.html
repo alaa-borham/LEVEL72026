@@ -3040,7 +3040,7 @@ function sendResetCode() {
   err.textContent='⏳ جارٍ الإرسال...';
   fbAuth.sendPasswordResetEmail(email).then(()=>{
     err.textContent='';
-    alert('📬 أرسلنا رابط إعادة تعيين كلمة المرور إلى '+email+'\nافتح بريدك (تحقق من Spam) واتبع الرابط، ثم سجّل الدخول بكلمتك الجديدة.');
+    alert('📬 أرسلنا رابط إعادة تعيين كلمة المرور إلى '+email+'\n\n⚠️ إن لم تجدها خلال دقائق:\n• افتح مجلد Spam/الرسائل غير المرغوبة\n• في Gmail افحص أيضاً تبويب «العروض/Promotions» و«كل البريد/All Mail»\n• ابحث في بريدك عن: noreply@level7tailor.firebaseapp.com\n• تأكد أن هذا هو نفس الإيميل المسجّل به حسابك بالضبط\n\nثم اتبع الرابط وسجّل الدخول بكلمتك الجديدة.');
     showAuthTab('login');
     document.getElementById('tab-login').classList.add('active');
   }).catch(e=>err.textContent=_fbErrMsg(e));
