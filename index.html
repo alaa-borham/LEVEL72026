@@ -487,9 +487,22 @@ const FB_CONFIG = {
   messagingSenderId: "478052463894",
   appId: "1:478052463894:web:7d7796c829b786c6a6cc37"
 };
-firebase.initializeApp(FB_CONFIG);
-const fbAuth = firebase.auth();
-const fbDB   = firebase.firestore();
+let fbAuth=null, fbDB=null;
+(function(){
+  if(typeof firebase==='undefined'){ _fbFail(); return; } // لم تُحمّل مكوّنات Firebase من الشبكة
+  try{
+    firebase.initializeApp(FB_CONFIG);
+    fbAuth = firebase.auth();
+    fbDB   = firebase.firestore();
+  }catch(err){ console.error('Firebase init failed', err); _fbFail(); }
+})();
+function _fbFail(){
+  const show=()=>{ if(document.getElementById('fb-fail'))return; const d=document.createElement('div'); d.id='fb-fail';
+    d.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,Tahoma,sans-serif;direction:rtl;text-align:center';
+    d.innerHTML='<div style="max-width:430px"><div style="font-size:48px">📡</div><h2 style="color:#c62828;margin:.4rem 0">تعذّر الاتصال بالخادم</h2><p style="color:#555;line-height:1.8">لم تُحمّل مكوّنات تسجيل الدخول. تحقّق من اتصال الإنترنت ثم أعد المحاولة.<br>إن استمرّ الأمر جرّب شبكة أخرى أو متصفّحاً آخر.</p><button onclick="location.reload()" style="margin-top:12px;padding:11px 28px;background:#2e7d32;color:#fff;border:0;border-radius:8px;font-size:1rem;cursor:pointer;font-family:inherit">🔄 إعادة المحاولة</button></div>';
+    (document.body||document.documentElement).appendChild(d); };
+  if(document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+}
 </script>
 </head>
 <body>
