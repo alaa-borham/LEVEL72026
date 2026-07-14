@@ -1551,6 +1551,7 @@ function _fbFail(){
       <button class="mset-tab" id="mset-tab-imgs" onclick="msetTab('imgs')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">🖼️ الصور</button>
       <button class="mset-tab" id="mset-tab-spots" onclick="msetTab('spots')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">🎯 أجزاء الموديل</button>
       <button class="mset-tab" id="mset-tab-mpos" onclick="msetTab('mpos')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">📍 مواضع القياس</button>
+      <button class="mset-tab" id="mset-tab-sizes" onclick="msetTab('sizes')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">📊 جدول المقاسات</button>
     </div>
     <div id="mset-pane-fields" class="mlist">
       <!-- القسم الأول: الجدول الأساسي — كل القياسات، اختر ما يخص هذا النوع -->
@@ -1595,6 +1596,23 @@ function _fbFail(){
         <div style="font-weight:800;color:#4527a0;font-size:.88rem;margin:18px 0 8px">🧩 صور خيارات الأجزاء القابلة للتغيير</div>
         <div style="font-size:.74rem;color:#999;margin-bottom:10px">ارفع صورة لكل خيار (مثلاً صور الياقات: ملكي/صيني/مربع...) لتظهر في قائمة الاختيار داخل الأوردر.</div>
         <div id="mset-parts"></div>
+      </div>
+    </div>
+    <div id="mset-pane-sizes" style="display:none" class="mlist">
+      <div style="padding:14px 16px">
+        <div style="font-weight:800;color:#6a1b9a;font-size:.9rem;margin-bottom:4px">📊 جدول المقاسات المرجعي — للقالب المختار أعلاه</div>
+        <div style="font-size:.74rem;color:#888;margin-bottom:10px">أدخل مقاسات جاهزة (58M، 60M...) وقيمها بالسنتيمتر. عند إدخال القياسات في الأوردر سيُقترح <b>أقرب مقاس</b> بنسبة المطابقة، وزر «استخدام» يستكمل الحقول الفارغة منه.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" onclick="scAddSize()">＋ مقاس جديد</button>
+          <button class="btn btn-primary btn-sm" onclick="scSave()">💾 حفظ الجدول</button>
+        </div>
+        <div id="mset-sizes-body" style="overflow:auto;max-height:46vh"></div>
+        <div style="margin-top:14px;border-top:1px dashed #ddd;padding-top:10px">
+          <div style="font-weight:800;color:#00695c;font-size:.82rem;margin-bottom:4px">📥 لصق من إكسل (اختياري)</div>
+          <div style="font-size:.72rem;color:#999;margin-bottom:6px">انسخ الجدول من إكسل والصقه هنا: الصف الأول أسماء المقاسات، وكل صف بعده: اسم القياس (عربي أو إنجليزي) ثم قيمه.</div>
+          <textarea id="sc-paste" rows="4" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:8px;font-size:.78rem;direction:ltr" placeholder="	58M	59M	60M&#10;shoulder	44	45	46&#10;collar	38	39	40"></textarea>
+          <button class="btn btn-info btn-sm" style="margin-top:6px" onclick="scImport()">📥 استيراد الملصق</button>
+        </div>
       </div>
     </div>
     <div id="mset-pane-mpos" style="display:none" class="mlist">
@@ -1678,6 +1696,7 @@ function _fbFail(){
             <button type="button" id="mstab-body" onclick="msMainTab('body')">📷 قياسات بدي</button>
           </div>
         </div>
+        <div id="ms-size-match" style="margin-bottom:6px"></div>
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
@@ -2765,7 +2784,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2826,6 +2845,7 @@ let measVisible = {};   // إعدادات إظهار/إخفاء حقول الق�
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
 let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
 let bodyGuideImgs = {};  // صور إرشادية لطريقة أخذ كل قياس جسم (بدي)
+let sizeCharts = {};     // جدول المقاسات المرجعي لكل قالب: {tpl:{sizes:[{name,values:{مفتاح:قيمة سم}}]}}
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
@@ -2880,6 +2900,7 @@ function loadAccountData() {
   if (!qcDefects.length) qcDefects = ['اختلاف قياس','عيب خياطة','عيب قماش','عيب كي','لون غير مطابق','زر/كبك ناقص'];
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   bodyGuideImgs   = JSON.parse(lsGet('bodyGuideImgs','{}'));
+  sizeCharts      = JSON.parse(lsGet('sizeCharts','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
@@ -5375,6 +5396,7 @@ function msMainTab(which) {
   _measView = (which==='model') ? 'diagram' : 'grid'; // تبويب الموديل = صناديق القياس على المانيكان مباشرة
   const el=id=>document.getElementById(id);
   if(el('ms-fields'))       el('ms-fields').style.display       = which==='table' ? '' : 'none';
+  if(el('ms-size-match'))   el('ms-size-match').style.display   = which==='table' ? '' : 'none';
   if(el('ms-warnings'))     el('ms-warnings').style.display     = which==='table' ? '' : 'none';
   if(el('ms-diagram'))      el('ms-diagram').style.display      = 'none';
   if(el('ms-diagram-hint')) el('ms-diagram-hint').style.display = which==='model' ? 'block' : 'none';
@@ -6666,7 +6688,8 @@ function msetTab(which) {
   document.getElementById('mset-pane-imgs').style.display   = which==='imgs'   ? '' : 'none';
   document.getElementById('mset-pane-spots').style.display  = which==='spots'  ? '' : 'none';
   document.getElementById('mset-pane-mpos').style.display   = which==='mpos'   ? '' : 'none';
-  const tabs = { fields:'mset-tab-fields', imgs:'mset-tab-imgs', spots:'mset-tab-spots', mpos:'mset-tab-mpos' };
+  document.getElementById('mset-pane-sizes').style.display  = which==='sizes'  ? '' : 'none';
+  const tabs = { fields:'mset-tab-fields', imgs:'mset-tab-imgs', spots:'mset-tab-spots', mpos:'mset-tab-mpos', sizes:'mset-tab-sizes' };
   Object.entries(tabs).forEach(([k,id])=>{
     const on = k===which;
     document.getElementById(id).style.background = on ? '#f3f7f0' : 'white';
@@ -6675,6 +6698,94 @@ function msetTab(which) {
   if (which==='imgs') renderTmplImages();
   if (which==='spots') renderHotspotEditor();
   if (which==='mpos') renderMeasPosEditor();
+  if (which==='sizes') renderSizeChartEditor();
+}
+// ═══════════════ جدول المقاسات المرجعي: تحرير واستيراد ومطابقة تلقائية
+function _scChart(tpl){ sizeCharts[tpl]=sizeCharts[tpl]||{sizes:[]}; sizeCharts[tpl].sizes=sizeCharts[tpl].sizes||[]; return sizeCharts[tpl]; }
+function renderSizeChartEditor(){
+  const tpl=document.getElementById('mset-template').value;
+  const chart=_scChart(tpl), keys=getTemplateKeys(tpl);
+  const box=document.getElementById('mset-sizes-body'); if(!box) return;
+  if(!chart.sizes.length){ box.innerHTML='<div style="color:#999;font-size:.8rem;text-align:center;padding:16px">لا مقاسات بعد — اضغط «＋ مقاس جديد» أو الصق جدولاً من إكسل بالأسفل</div>'; return; }
+  box.innerHTML = '<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
+    + '<thead><tr><th style="padding:5px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0">القياس</th>'
+    + chart.sizes.map((sz,i)=>`<th style="padding:4px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0"><input value="${escHtml(sz.name)}" id="scn-${i}" style="width:64px;text-align:center;border:1px solid #ddd;border-radius:5px;padding:2px;font-weight:800"><button onclick="scDelSize(${i})" style="border:none;background:none;color:#c62828;cursor:pointer" title="حذف المقاس">✕</button></th>`).join('')
+    + '</tr></thead><tbody>'
+    + keys.map(k=>'<tr><td style="padding:4px 7px;border:1px solid #f0f0f0;white-space:nowrap">'+escHtml(MEAS_DICT[k]||k)+'</td>'
+      + chart.sizes.map((sz,i)=>`<td style="padding:2px;border:1px solid #f0f0f0"><input type="number" step="0.5" id="scv-${i}-${k}" value="${sz.values[k]!=null?sz.values[k]:''}" style="width:62px;text-align:center;border:1px solid #eee;border-radius:5px;padding:3px;direction:ltr"></td>`).join('')+'</tr>').join('')
+    + '</tbody></table>';
+}
+function scAddSize(){ const tpl=document.getElementById('mset-template').value; scReadEditor(); _scChart(tpl).sizes.push({name:'مقاس'+(_scChart(tpl).sizes.length+1), values:{}}); renderSizeChartEditor(); }
+function scDelSize(i){ if(!confirm('حذف هذا المقاس من الجدول؟'))return; const tpl=document.getElementById('mset-template').value; scReadEditor(); _scChart(tpl).sizes.splice(i,1); scPersist(tpl); renderSizeChartEditor(); }
+function scReadEditor(){
+  const tpl=document.getElementById('mset-template').value; const chart=_scChart(tpl), keys=getTemplateKeys(tpl);
+  chart.sizes.forEach((sz,i)=>{
+    const n=document.getElementById('scn-'+i); if(n&&n.value.trim()) sz.name=n.value.trim();
+    keys.forEach(k=>{ const el=document.getElementById('scv-'+i+'-'+k); if(!el)return; const v=el.value.trim(); if(v==='') delete sz.values[k]; else sz.values[k]=parseFloat(v); });
+  });
+}
+function scPersist(tpl){ lsSet('sizeCharts', JSON.stringify(sizeCharts)); }
+function scSave(){ const tpl=document.getElementById('mset-template').value; scReadEditor(); scPersist(tpl); alert('✔ حُفظ جدول مقاسات '+(L(tpl)||tpl)); }
+function _scNorm(t){ return String(t||'').trim().toLowerCase().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي'); }
+function scImport(){
+  const tpl=document.getElementById('mset-template').value; const keys=getTemplateKeys(tpl);
+  const raw=(document.getElementById('sc-paste').value||'').trim(); if(!raw){ alert('الصق الجدول أولاً'); return; }
+  const rows=raw.split(/\r?\n/).map(r=>r.split(/\t|,|;/).map(c=>c.trim())).filter(r=>r.length>1);
+  if(rows.length<2){ alert('الصيغة غير مفهومة — الصف الأول أسماء المقاسات ثم صف لكل قياس'); return; }
+  // خريطة تسمية→مفتاح (عربي/إنجليزي/الرمز)
+  const map={}; keys.forEach(k=>{ [MEAS_DICT[k], MEAS_EN[k], MEAS_CODE[k], k].forEach(n=>{ if(n) map[_scNorm(n)]=k; }); });
+  const head=rows[0]; const start=head[0]===''||_scNorm(head[0]).length<2||map[_scNorm(head[0])]?1:( _scNorm(head[0]).match(/^[0-9]/)?0:1 );
+  const names=head.slice(start).filter(n=>n!=='');
+  const sizes=names.map(n=>({name:n, values:{}}));
+  const missed=[];
+  rows.slice(1).forEach(r=>{
+    const k=map[_scNorm(r[0])];
+    if(!k){ if(r[0]) missed.push(r[0]); return; }
+    names.forEach((_,i)=>{ const v=parseFloat(r[start+i]); if(isFinite(v)) sizes[i].values[k]=v; });
+  });
+  if(!sizes.some(sz=>Object.keys(sz.values).length)){ alert('لم تُفهم أي قيمة — تأكد أن أسماء القياسات تطابق أسماء الحقول (عربي أو إنجليزي)'); return; }
+  _scChart(tpl).sizes=sizes; scPersist(tpl); renderSizeChartEditor();
+  document.getElementById('sc-paste').value='';
+  alert('✔ استُورد '+sizes.length+' مقاس'+(missed.length?'\n⚠️ أسطر لم تُطابق أي قياس: '+missed.join('، '):''));
+}
+// المطابقة الحية: تُحسب مع كل إدخال وتُعرض أعلى شبكة القياسات
+function msComputeSizeMatches(){
+  const tpl=document.getElementById('ms-template').value;
+  const chart=(sizeCharts[tpl]&&sizeCharts[tpl].sizes)||[]; if(!chart.length) return [];
+  const mv=_readMeasValues(); const ents=Object.entries(mv).map(([k,v])=>[k,parseFloat(v)]).filter(e=>isFinite(e[1])&&e[1]>0);
+  if(ents.length<3) return [];
+  const inch=_orderUnit==='inch';
+  return chart.map((sz,idx)=>{
+    let comp=0, match=0, closeSum=0;
+    ents.forEach(([k,v])=>{ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; comp++;
+      const d=Math.abs(v-ref); if(d<=(inch?0.4:1)) match++;
+      closeSum+=Math.max(0, 1-(ref? d/ref : 1)); });
+    return comp>=3 ? {idx, name:sz.name, comp, match, score:closeSum/comp*100} : null;
+  }).filter(Boolean).sort((a,b)=> (b.match/b.comp)-(a.match/a.comp) || b.score-a.score).slice(0,3);
+}
+function msRenderSizeMatch(){
+  const box=document.getElementById('ms-size-match'); if(!box) return;
+  const ms=msComputeSizeMatches();
+  if(!ms.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f3e5f5;border:1px solid #e1bee7;border-radius:10px;padding:6px 9px">'
+    +'<span style="font-size:.73rem;font-weight:800;color:#6a1b9a">📊 أقرب مقاس مرجعي:</span>'
+    +ms.map((m,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;background:${i===0?'#6a1b9a':'#fff'};color:${i===0?'#fff':'#333'};border:1px solid #ce93d8;border-radius:18px;padding:3px 9px;font-size:.75rem;font-weight:800">
+      ${escHtml(m.name)} · ${m.score.toFixed(1)}% · ${m.match}/${m.comp}
+      <button onclick="msUseSize(${m.idx})" style="border:none;border-radius:12px;background:${i===0?'#fff':'#6a1b9a'};color:${i===0?'#6a1b9a':'#fff'};padding:2px 9px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.7rem" title="استكمال الحقول الفارغة من هذا المقاس">استخدام</button></span>`).join('')
+    +'</div>';
+}
+function msUseSize(idx){
+  const tpl=document.getElementById('ms-template').value;
+  const sz=((sizeCharts[tpl]&&sizeCharts[tpl].sizes)||[])[idx]; if(!sz) return;
+  const inch=_orderUnit==='inch'; let filled=0;
+  getTemplateKeys(tpl).forEach(k=>{
+    const el=document.getElementById('msf-'+k); if(!el) return;
+    const cur=parseFloat(el.value);
+    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.style.background='#f3e5f5'; setTimeout(()=>{el.style.background='';},1200); filled++; }
+  });
+  validateMeasLive();
+  if(filled) alert('✔ استُكمل '+filled+' قياساً من مقاس '+sz.name+' — المدخل يدوياً لم يُمَس');
+  else alert('لا حقول فارغة للاستكمال');
 }
 // محرّر مواضع صناديق القياس (إعدادات القالب) — اسحب لترتيبها، تُحفظ وتبقى ثابتة في الأوردر
 function renderMeasPosEditor(){
@@ -6833,6 +6944,7 @@ function validateMeasLive() {
   const warns = measWarnings(_readMeasValues());
   document.getElementById('ms-warnings').innerHTML = warns.map(w=>
     `<div style="background:#fff3e0;border:1.5px solid #ffb300;color:#e65100;border-radius:8px;padding:6px 10px;font-size:.8rem;margin-bottom:4px">⚠️ ${w}</div>`).join('');
+  try{ msRenderSizeMatch(); }catch(_){}
 }
 // لقطة الأجزاء المختارة مع مسمياتها للحفظ والطباعة
 function _orderPartsSnapshot() {
