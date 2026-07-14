@@ -449,6 +449,7 @@ body.ltr .dash-card::after{content:'›'}
 .ms-view-tabs{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:9px;overflow:hidden;margin-bottom:8px}
 .ms-view-tabs button{border:none;background:#fff;padding:7px 16px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.84rem;color:#666}
 .ms-view-tabs button.active{background:#2e7d32;color:#fff}
+.msf-filled{background:#e8f5e9 !important;border-color:#43a047 !important;box-shadow:0 0 0 2px rgba(67,160,71,.14)}
 .ms-diagram{position:relative;aspect-ratio:520/640;max-width:540px;width:100%;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;touch-action:none;container-type:size}
 .ms-diagram>svg,.ms-diagram>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .dgm-box{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:move;touch-action:none;z-index:2}
@@ -5377,8 +5378,8 @@ function renderMeasFields(values) {
   document.getElementById('ms-fields').innerHTML = keys.map(k=>`
     <div class="fg" style="margin:0">
       <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
-      <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center"
-        value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="validateMeasLive()">
+      <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center" class="${values && parseFloat(values[k])>0 ? 'msf-filled' : ''}"
+        value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="this.classList.toggle('msf-filled',parseFloat(this.value)>0);validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
   if (document.getElementById('ms-fields')) msMainTab(_msMainTab);
@@ -5414,8 +5415,8 @@ function renderBodyFields(vals) {
     <div class="fg" style="margin:0;text-align:center">
       <label>${f.l}</label>
       ${img?`<img src="${img}" alt="${f.l}" style="width:100%;height:78px;object-fit:contain;border:1px solid #c8e6c9;border-radius:8px;background:#fafafa;cursor:zoom-in;margin-bottom:3px" onclick="bodyImgView('${f.k}')">`:''}
-      <input type="number" id="msb-${f.k}" min="0" step="0.5" style="direction:ltr;text-align:center"
-        value="${vals && vals[f.k]!=null && vals[f.k]!=='' ? vals[f.k] : ''}" onfocus="this.select()" placeholder="—">
+      <input type="number" id="msb-${f.k}" min="0" step="0.5" style="direction:ltr;text-align:center" class="${vals && parseFloat(vals[f.k])>0 ? 'msf-filled' : ''}"
+        value="${vals && vals[f.k]!=null && vals[f.k]!=='' ? vals[f.k] : ''}" onfocus="this.select()" placeholder="—" oninput="this.classList.toggle('msf-filled',parseFloat(this.value)>0)">
       ${canEdit?`<div style="display:flex;gap:4px;justify-content:center;margin-top:3px">
         <label class="btn btn-sm" style="background:#e8f5e9;color:#1b5e20;cursor:pointer;padding:2px 9px;font-size:.68rem" title="صورة إرشادية لطريقة أخذ هذا القياس">📷 صورة<input type="file" accept="image/*" style="display:none" onchange="bodyImgUpload('${f.k}',this)"></label>
         ${img?`<button type="button" class="btn btn-sm" style="background:#ffebee;color:#c62828;padding:2px 8px;font-size:.68rem" onclick="bodyImgRemove('${f.k}')">✕</button>`:''}
@@ -6773,9 +6774,18 @@ function renderSizeChartEditor(){
     + '<thead><tr><th style="padding:5px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0">القياس</th>'
     + chart.sizes.map((sz,i)=>`<th style="padding:4px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0"><input value="${escHtml(sz.name)}" id="scn-${i}" style="width:64px;text-align:center;border:1px solid #ddd;border-radius:5px;padding:2px;font-weight:800"><button onclick="scDelSize(${i})" style="border:none;background:none;color:#c62828;cursor:pointer" title="حذف المقاس">✕</button></th>`).join('')
     + '</tr></thead><tbody>'
-    + keys.map(k=>'<tr><td style="padding:4px 7px;border:1px solid #f0f0f0;white-space:nowrap">'+escHtml(MEAS_DICT[k]||k)+'</td>'
+    + keys.map(k=>'<tr><td style="padding:4px 7px;border:1px solid #f0f0f0;white-space:nowrap"><button onclick="scDelRow(\''+k+'\')" style="border:none;background:none;color:#c62828;cursor:pointer;font-size:.72rem" title="حذف هذا القياس من الجدول (كل المقاسات)">✕</button> '+escHtml(MEAS_DICT[k]||k)+'</td>'
       + chart.sizes.map((sz,i)=>`<td style="padding:2px;border:1px solid #f0f0f0"><input type="number" step="0.5" id="scv-${i}-${k}" value="${sz.values[k]!=null?sz.values[k]:''}" style="width:62px;text-align:center;border:1px solid #eee;border-radius:5px;padding:3px;direction:ltr"></td>`).join('')+'</tr>').join('')
     + '</tbody></table>';
+}
+// حذف قياس (سطر) من الجدول المفتوح: تُمسح قيمه من كل المقاسات ويُفك ربطه من خريطة المطابقة
+function scDelRow(k){
+  const tpl=document.getElementById('mset-template').value; const chart=_scChart(tpl);
+  if(!confirm('حذف قياس «'+(MEAS_DICT[k]||k)+'» من هذا الجدول بكل قيمه؟')) return;
+  scReadEditor();
+  chart.sizes.forEach(sz=>{ delete sz.values[k]; });
+  if(chart.map) Object.keys(chart.map).forEach(n=>{ if(chart.map[n]===k) delete chart.map[n]; });
+  scPersist(tpl); renderSizeChartEditor();
 }
 function scAddSize(){ const tpl=document.getElementById('mset-template').value; scReadEditor(); _scChart(tpl).sizes.push({name:'مقاس'+(_scChart(tpl).sizes.length+1), values:{}}); renderSizeChartEditor(); }
 function scDelSize(i){ if(!confirm('حذف هذا المقاس من الجدول؟'))return; const tpl=document.getElementById('mset-template').value; scReadEditor(); _scChart(tpl).sizes.splice(i,1); scPersist(tpl); renderSizeChartEditor(); }
@@ -6920,8 +6930,8 @@ function msRenderSizeMatch(){
   if(!ms.length){ box.innerHTML=''; return; }
   box.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f3e5f5;border:1px solid #e1bee7;border-radius:10px;padding:6px 9px">'
     +'<span style="font-size:.73rem;font-weight:800;color:#6a1b9a">📊 أقرب مقاس (⭐ '+escHtml((_scActive(tpl)||{}).name||'المرجعي')+'):</span>'
-    +ms.map((m,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;background:${i===0?'#6a1b9a':'#fff'};color:${i===0?'#fff':'#333'};border:1px solid #ce93d8;border-radius:18px;padding:3px 9px;font-size:.75rem;font-weight:800">
-      ${escHtml(m.name)} · ${m.score.toFixed(1)}% · ${m.match}/${m.comp}
+    +ms.map((m,i)=>`<span title="المقاس: ${escHtml(m.name)}" style="display:inline-flex;align-items:center;gap:5px;background:${i===0?'#6a1b9a':'#fff'};color:${i===0?'#fff':'#333'};border:1px solid #ce93d8;border-radius:18px;padding:3px 9px;font-size:.75rem;font-weight:800">
+      اخترنا لك ${i+1} · ${m.score.toFixed(1)}% · ${m.match}/${m.comp}
       <button onclick="msUseSize(${m.idx})" style="border:none;border-radius:12px;background:${i===0?'#fff':'#6a1b9a'};color:${i===0?'#6a1b9a':'#fff'};padding:2px 9px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.7rem" title="استكمال الحقول الفارغة من هذا المقاس">استخدام</button></span>`).join('')
     +'</div>';
 }
@@ -6932,7 +6942,7 @@ function msUseSize(idx){
   getTemplateKeys(tpl).forEach(k=>{
     const el=document.getElementById('msf-'+k); if(!el) return;
     const cur=parseFloat(el.value);
-    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.style.background='#f3e5f5'; setTimeout(()=>{el.style.background='';},1200); filled++; }
+    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.classList.add('msf-filled'); el.style.background='#f3e5f5'; setTimeout(()=>{el.style.background='';},1200); filled++; }
   });
   validateMeasLive();
   if(filled) alert('✔ استُكمل '+filled+' قياساً من مقاس '+sz.name+' — المدخل يدوياً لم يُمَس');
