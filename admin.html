@@ -98,6 +98,12 @@ const fbAuth = firebase.auth();
       </div>
     </div>
 
+    <div class="an-card" style="margin-bottom:14px">
+      <h3>👥 مراجعة المستخدمين على النظام</h3>
+      <div id="admin-users" style="font-size:.85rem">⏳ ...</div>
+      <div style="font-size:.72rem;color:#888;margin-top:8px">💡 حسابات الدخول غير المرتبطة بأي منشأة (اليتيمة) لا تظهر هنا — تُراجع من Firebase Console ← Authentication ← Users.</div>
+    </div>
+
     <div class="data-table-wrap">
       <table>
         <thead><tr>
@@ -184,18 +190,18 @@ function adminChangePass(){
 }
 
 // ─── جلب وإدارة المنشآت من Firestore
-let membersByTenant = {};
+let membersByTenant = {}, membersFull = [], loginNames = [];
 function adminLoadAccounts(){
   Promise.all([
     fbDB.collection('accounts').get(),
     fbDB.collection('members').get().catch(()=>({ docs: [] })),
-  ]).then(([q, mq])=>{
+    fbDB.collection('usernames').get().catch(()=>({ docs: [] })),
+  ]).then(([q, mq, uq])=>{
     accounts = q.docs.map(d=>({ id:d.id, ...d.data() }));
     membersByTenant = {};
-    mq.docs.forEach(d=>{
-      const t = d.data().tenantId;
-      membersByTenant[t] = (membersByTenant[t]||0) + 1;
-    });
+    membersFull = mq.docs.map(d=>({ uid:d.id, ...d.data() }));
+    membersFull.forEach(m=>{ membersByTenant[m.tenantId] = (membersByTenant[m.tenantId]||0) + 1; });
+    loginNames = uq.docs.map(d=>({ username:d.id, ...d.data() }));
     renderAdminPanel();
   }).catch(e=>{
     document.getElementById('admin-tbody').innerHTML =
@@ -218,7 +224,56 @@ function _sizeBadge(a){
   const warn  = pct >= 80 ? ' ⚠' : '';
   return `<span class="pbadge" style="background:${bg};color:${color}" title="من أصل 1024 KB">${kb} KB (${pct}%)${warn}</span>`;
 }
+// مراجعة المستخدمين: المالكون وموظفوهم وأسماء الدخول وحالة كل حساب
+function renderUsersReview(){
+  const box = document.getElementById('admin-users'); if(!box) return;
+  const unameOf = uid => { const u = loginNames.find(x=>x.uid===uid); return u ? u.username : ''; };
+  const today = new Date();
+  let html = '';
+  accounts.forEach(a=>{
+    const exp = a.subEnd && new Date(a.subEnd+'T23:59:59') < today;
+    const st = a.suspended ? '⛔ موقوفة' : exp ? '⏰ اشتراك منتهٍ' : '✅ نشطة';
+    const emps = membersFull.filter(m=>m.tenantId===a.id);
+    html += `<div style="border:1px solid #e6ece0;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <b>🏢 ${escHtml(a.biz||'-')}</b>
+        <span class="pbadge" style="background:#e8f5e9;color:#1b5e20">${st}</span>
+        <span style="color:#666">اشتراك حتى: <b>${a.subEnd?fmtDate(a.subEnd):'-'}</b></span>
+      </div>
+      <div style="margin-top:6px;padding:6px 9px;background:#f9fbe7;border-radius:8px">
+        👑 <b>المالك:</b> ${escHtml(a.user||unameOf(a.id)||'-')} · <span dir="ltr">${escHtml(a.email||'-')}</span>
+        <span style="color:#999;font-size:.72rem" dir="ltr" title="UID">(${escHtml(a.id.slice(0,8))}…)</span>
+      </div>` +
+      (emps.length ? `<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:.8rem">
+        <thead><tr>
+          <th style="text-align:start;padding:4px;border-bottom:1px solid #eee">الموظف</th>
+          <th style="text-align:start;padding:4px;border-bottom:1px solid #eee">اسم الدخول</th>
+          <th style="text-align:start;padding:4px;border-bottom:1px solid #eee">الإيميل</th>
+          <th style="text-align:start;padding:4px;border-bottom:1px solid #eee">الفرع</th>
+          <th style="text-align:start;padding:4px;border-bottom:1px solid #eee">الصلاحيات المفعّلة</th>
+        </tr></thead><tbody>` +
+        emps.map(m=>{
+          const perms = m.perms ? Object.keys(m.perms).filter(k=>m.perms[k]).length : 0;
+          return `<tr>
+            <td style="padding:4px;border-bottom:1px solid #f5f5f5">🧑‍💼 ${escHtml(m.name||'-')}</td>
+            <td style="padding:4px;border-bottom:1px solid #f5f5f5">${escHtml(m.username||unameOf(m.uid)||'-')}</td>
+            <td style="padding:4px;border-bottom:1px solid #f5f5f5" dir="ltr">${escHtml(m.email||'-')}</td>
+            <td style="padding:4px;border-bottom:1px solid #f5f5f5">${escHtml(m.branchName||'—')}</td>
+            <td style="padding:4px;border-bottom:1px solid #f5f5f5">${perms} صلاحية</td>
+          </tr>`;
+        }).join('') + '</tbody></table>'
+      : '<div style="color:#999;font-size:.76rem;margin-top:5px">لا يوجد موظفون في هذه المنشأة</div>') +
+    '</div>';
+  });
+  // أسماء دخول غير مرتبطة بأي منشأة أو موظف (بقايا حسابات محذوفة)
+  const known = new Set([...accounts.map(a=>a.id), ...membersFull.map(m=>m.uid)]);
+  const orphans = loginNames.filter(u=>!known.has(u.uid));
+  if (orphans.length) html += `<div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:9px 12px">
+    ⚠️ <b>أسماء دخول يتيمة</b> (صاحبها لم يعد موجوداً): ${orphans.map(u=>escHtml(u.username)+' <span dir="ltr" style="color:#888">('+escHtml(u.email||'')+')</span>').join('، ')}</div>`;
+  box.innerHTML = html || '<div style="color:#999">لا توجد بيانات</div>';
+}
 function renderAdminPanel(){
+  renderUsersReview();
   const tb = document.getElementById('admin-tbody');
   const today = new Date();
   const active = accounts.filter(a=>!a.suspended && (!a.subEnd || new Date(a.subEnd+'T23:59:59')>=today)).length;
