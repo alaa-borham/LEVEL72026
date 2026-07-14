@@ -685,7 +685,7 @@ function _fbFail(){
     <div class="dash-card" data-card="tailor" onclick="showTailorMenu(event)"><div class="icon">✂️</div><h3>التفصيل ▾</h3><p>العملاء، القياسات، التطريز، التعديل، التسليم...</p></div>
     <div class="dash-card" data-card="appts" onclick="showAppointments()" data-perm="appointments"><div class="icon">📅</div><h3>المواعيد</h3><p>قياس، بروفة، استلام</p></div>
     <div class="dash-card" data-card="messages" onclick="showMessaging()"><div class="icon">💬</div><h3>الرسائل</h3><p>إشعار العملاء عبر واتساب</p></div>
-    <div class="dash-card" data-card="production" onclick="showProduction()" data-perm="production"><div class="icon">🏭</div><h3>الإنتاج</h3><p>أوامر العمل وتتبع المراحل</p></div>
+    <div class="dash-card" data-card="production" onclick="showProdMenu(event)" data-perm="production"><div class="icon">🏭</div><h3>إعداد وإدارة الإنتاج ▾</h3><p>الإنتاج، الباترون، الماركر، الاستديو...</p></div>
     <div class="dash-card" data-card="pattern" onclick="showPattern()" data-perm="production"><div class="icon">✏️</div><h3>محرّر البترون</h3><p>رسم القطع بارامترياً (CAD)</p></div>
     <div class="dash-card" data-card="marker" onclick="showMarker()" data-perm="production"><div class="icon">🧮</div><h3>المركر</h3><p>تخطيط القص واستهلاك القماش</p></div>
     <div class="dash-card" data-card="fabricuse" onclick="openFabricUse()" data-perm="production"><div class="icon">🧵</div><h3>استهلاك الأقمشة</h3><p>عرض القماش والبدلات</p></div>
@@ -712,6 +712,16 @@ function _fbFail(){
     <div class="sep"></div>
     <a onclick="tailorMenuGo('messages')">💬 الرسائل</a>
     <a onclick="tailorMenuGo('newinv')">➕ فاتورة جديدة</a>
+  </div>
+  <!-- قائمة إعداد وإدارة الإنتاج المنسدلة -->
+  <div id="prod-menu" class="tailor-menu">
+    <a onclick="prodMenuGo('production')">🏭 الإنتاج</a>
+    <a onclick="prodMenuGo('studio')">🎨 استديو الموديل</a>
+    <a onclick="prodMenuGo('pattern')">✏️ محرر الباترون</a>
+    <a onclick="prodMenuGo('marker')">🧮 الماركر</a>
+    <a onclick="prodMenuGo('naseej')">🧬 تصدير النسيج</a>
+    <div class="sep"></div>
+    <a onclick="prodMenuGo('qr')">📷 مسح QR</a>
   </div>
   <div class="dash-analytics" id="dash-analytics"></div>
 </div>
@@ -7911,6 +7921,25 @@ function tailorMenuGo(what){
     case 'newinv':       newInvoice(); break;
   }
 }
+function showProdMenu(e){
+  e.stopPropagation();
+  const m=document.getElementById('prod-menu'); if(!m) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  m.style.top=Math.min(r.bottom+6, window.innerHeight-320)+'px';
+  m.style.left=Math.max(8, Math.min(r.left, window.innerWidth-230))+'px';
+  m.classList.toggle('open');
+}
+function prodMenuGo(what){
+  document.getElementById('prod-menu').classList.remove('open');
+  switch(what){
+    case 'production': showProduction(); break;
+    case 'studio':     showModelStudio(); break;
+    case 'pattern':    showPattern(); break;
+    case 'marker':     showMarker(); break;
+    case 'naseej':     showNaseej(); break;
+    case 'qr':         showQRScan(); break;
+  }
+}
 function showTailorHub() {
   _closeAllOverlays();
   document.getElementById('tailor-modal').classList.add('open');
@@ -10179,6 +10208,9 @@ document.addEventListener('click', e => {
     document.getElementById('lang-menu').classList.remove('open');
   if (!e.target.closest('#tailor-menu') && !e.target.closest('[data-card=\"tailor\"]')){
     const tm=document.getElementById('tailor-menu'); if(tm) tm.classList.remove('open');
+  }
+  if (!e.target.closest('#prod-menu') && !e.target.closest('[data-card=\"production\"]')){
+    const pm=document.getElementById('prod-menu'); if(pm) pm.classList.remove('open');
   }
 });
 
