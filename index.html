@@ -98,7 +98,7 @@ html[data-theme="light"] .da-donut::after,html[data-theme="gray"] .da-donut::aft
 html[data-theme="light"] .da-donut .dc,html[data-theme="gray"] .da-donut .dc{color:var(--text)}
 html[data-theme="light"] #sb-toggle,html[data-theme="gray"] #sb-toggle{background:#1b5e20}
 html[data-theme="dark"]{--bg:#101114;--panel:#1a1c20;--panel2:#22252b;--text:#e7e7e7;--muted:#9aa0a6;--border:#3a3f47}
-html[data-theme="gray"]{--bg:#d5d9dd;--panel:#e9ebee;--panel2:#f3f4f6;--text:#23282d;--muted:#59616b;--border:#bfc6cd}
+html[data-theme="gray"]{--bg:#bfc5cb;--panel:#d7dbdf;--panel2:#e4e7ea;--text:#1f2429;--muted:#4d545e;--border:#a8b0b8}
 html[data-theme] body{background:var(--bg);color:var(--text)}
 html[data-theme] .an-card,html[data-theme] .dash-card,html[data-theme] .data-table-wrap,html[data-theme] .mbox,html[data-theme] .ord-details,html[data-theme] .part-menu,html[data-theme] .tailor-menu,html[data-theme] .auth-card,html[data-theme] .ord-model,html[data-theme] .ord-idbox{background:var(--panel);border-color:var(--border);color:var(--text)}
 html[data-theme] input:not(.msf-filled):not(.msf-auto),html[data-theme] select,html[data-theme] textarea{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--border)!important}
@@ -119,8 +119,8 @@ html[data-theme="dark"] .moverlay{background:rgba(0,0,0,.72)}
 /* خلفيات الرئيسية وشاشة الدخول تتبع الثيم (كانت خضراء ثابتة) */
 html[data-theme="dark"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(67,160,71,.14) 0%,transparent 55%),linear-gradient(135deg,#0f1013,#15171c 60%,#111318)}
 html[data-theme="dark"] #auth-screen{background:linear-gradient(135deg,#101114,#181b20)}
-html[data-theme="gray"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(96,125,139,.10) 0%,transparent 55%),linear-gradient(135deg,#d3d7db,#e2e5e8 60%,#d8dce0)}
-html[data-theme="gray"] #auth-screen{background:linear-gradient(135deg,#d5d9dd,#e6e9ec)}
+html[data-theme="gray"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(69,90,100,.12) 0%,transparent 55%),linear-gradient(135deg,#b9bfc6,#ccd1d6 60%,#c1c7cd)}
+html[data-theme="gray"] #auth-screen{background:linear-gradient(135deg,#bfc5cb,#d2d7db)}
 @media print{ html[data-theme]{--bg:#fff;--panel:#fff;--panel2:#fff;--text:#000;--muted:#444;--border:#ddd} html[data-theme] body{background:#fff;color:#000} }
 .thm-group{display:inline-flex;border:1px solid rgba(255,255,255,.25);border-radius:20px;overflow:hidden;margin-inline-end:10px;vertical-align:middle}
 .thm-group button{border:none;background:transparent;color:rgba(255,255,255,.65);padding:5px 11px;font-size:.72rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s}
@@ -584,7 +584,6 @@ function _fbFail(){
 <!-- ═══════════════ SIDEBAR -->
 <div id="sidebar">
   <div class="sb-brand" onclick="showScreen('dashboard');closeSb()" style="cursor:pointer" title="العودة إلى الرئيسية">✂️ LEVEL7 Tailor<small>نظام إدارة الخياطة والتفصيل</small></div>
-  <a onclick="showScreen('dashboard');closeSb()">🏠 الرئيسية</a>
   <div class="sb-sec">✂️ التفصيل</div>
   <a data-perm="customers" onclick="showCustomers();closeSb()">👥 العملاء</a>
   <a data-perm="tailoring" onclick="showMeasurements();closeSb()">📐 القياسات</a>
@@ -616,6 +615,7 @@ function _fbFail(){
   <a data-perm="archive" onclick="showScreen('archive-screen');closeSb()">🗂️ الأرشيف</a>
   <a onclick="showAIInsights();closeSb()">🤖 الرؤى الذكية</a>
   <a id="sb-audit" onclick="showAudit();closeSb()">📜 سجل العمليات</a>
+  <a id="sb-monitor" onclick="openLoginMonitor();closeSb()">🕵️ متابعة الدخول</a>
   <a id="sb-terms" onclick="showTerms();closeSb()">🏷️ المسميات</a>
   <a data-perm="settings" onclick="showScreen('settings-screen');closeSb()">⚙️ الإعدادات</a>
 </div>
@@ -777,6 +777,20 @@ function _fbFail(){
 </div>
 
 <!-- ═══════════════ MODAL: CARD SETTINGS (تخصيص الأيقونات) -->
+<div class="moverlay" id="monitor-modal" style="z-index:388">
+  <div class="mbox" style="max-width:720px">
+    <div class="mhdr"><h3>🕵️ متابعة دخول المستخدمين</h3><button class="mcls" onclick="closeModal('monitor-modal')">✕</button></div>
+    <div style="padding:10px 16px">
+      <div style="display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap">
+        <button class="btn btn-info btn-sm" onclick="renderLoginMonitor()">🔄 تحديث</button>
+        <button class="btn btn-outline btn-sm" style="color:#333;border-color:#bbb" onclick="monChangePass()">🔑 تغيير كلمة مرور الصفحة</button>
+      </div>
+      <div id="mon-body" style="max-height:60vh;overflow:auto"></div>
+      <div style="font-size:.7rem;color:#888;margin-top:8px">تُسجَّل كل جلسة تلقائياً: الوقت والمدة (تُحدَّث كل 4 دقائق أثناء الاستخدام) والموقع التقريبي عبر عنوان الشبكة. آخر 200 جلسة.</div>
+    </div>
+  </div>
+</div>
+
 <div class="moverlay" id="match-detail-modal" style="z-index:385">
   <div class="mbox" style="max-width:520px">
     <div class="mhdr"><h3 id="mmd-title">تفاصيل المطابقة</h3><button class="mcls" onclick="closeModal('match-detail-modal')">✕</button></div>
@@ -819,7 +833,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>⚙️ <span data-i18n="settingsTitle">إعدادات النظام</span></h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')" data-i18n="backHome">← الرئيسية</button>
     </div>
     <div class="form-card" style="max-width:640px">
       <div class="fb">
@@ -898,7 +911,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>📊 <span data-i18n="analyticsTitle">لوحة التحليلات</span></h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')" data-i18n="backHome">← الرئيسية</button>
     </div>
     <div class="an-stat-row" id="an-top-stats"></div>
     <div class="an-grid" id="an-charts"></div>
@@ -912,7 +924,6 @@ function _fbFail(){
       <h2>📋 <span data-i18n="invoiceListTitle">قائمة الفواتير</span></h2>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn btn-outline" onclick="newInvoice()" data-i18n="btnNew">+ جديدة</button>
-        <button class="btn btn-outline" onclick="showScreen('dashboard')" data-i18n="backHome">← الرئيسية</button>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
@@ -939,7 +950,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>🗂️ <span data-i18n="archiveTitle">أرشيف الفواتير</span></h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')" data-i18n="backHome">← الرئيسية</button>
     </div>
     <div class="data-table-wrap">
       <table>
@@ -959,7 +969,6 @@ function _fbFail(){
       <div style="display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn btn-outline" onclick="openProductPanel()" data-i18n="btnAddProduct">+ إضافة صنف</button>
         <button class="btn btn-outline" onclick="showFabrics()" data-perm="fabrics">🧵 الأقمشة</button>
-        <button class="btn btn-outline" onclick="showScreen('dashboard')" data-i18n="backHome">← الرئيسية</button>
       </div>
     </div>
     <div class="sbar"><input type="text" id="prod-search" data-i18n-ph="searchProd" placeholder="🔍 بحث..." oninput="renderProducts()"><select id="prod-branch-filter" onchange="renderProducts()" style="display:none;padding:8px 11px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;background:white"></select><select id="prod-wh-filter" onchange="renderProducts()" style="padding:8px 11px;border:1.5px solid #ddd;border-radius:7px;font-family:inherit;background:white">
@@ -1457,7 +1466,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>🧬 تصدير نسيج XML</h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
     </div>
     <div style="background:#fff;border:1px solid #e6ece0;border-radius:14px;padding:16px;max-width:900px;margin:auto">
       <div style="background:#eef4ff;border:1px solid #b3d1f5;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:.85rem">🏢 إعدادات هذه المنشأة: <b id="nz-company" style="color:#1b3a6b"></b> <span style="color:#777;font-size:.78rem">— مستقلة تماماً عن أي منشأة أخرى</span></div>
@@ -1491,7 +1499,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>🧮 المركر — تخطيط القص</h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
     </div>
     <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
       <div style="background:#fff;border:1px solid #e6ece0;border-radius:12px;padding:14px">
@@ -1519,7 +1526,6 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>✏️ محرّر البترون (CAD بارامتري)</h2>
-      <button class="btn btn-outline" onclick="showScreen('dashboard')">← الرئيسية</button>
     </div>
     <style>
       .pat-editor-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;align-items:start}
@@ -1802,8 +1808,7 @@ function _fbFail(){
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
-        <div id="ms-body-fields" class="ms-fields-grid" style="display:none"></div>
-        <div id="ms-body-fit" style="display:none"></div>
+        <div id="ms-body-fields" style="display:none"></div>
         <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
@@ -2887,7 +2892,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts','fitSettings'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts','fitSettings','loginLog','monPass'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -3240,6 +3245,7 @@ function _afterFirebaseLogin(user) {
     currentMember = member;
     currentAccProfile = profile;
     try{ logAction("تسجيل دخول", _actor()); }catch(_){}
+    try{ _sessionStart(member); }catch(_){}
     loadAccountData();
     if (!settings.coName || settings.coName===DEF_SETTINGS.coName) {
       settings.coName = profile.biz;
@@ -5507,26 +5513,91 @@ function msMainTab(which) {
   if(el('ms-diagram'))      el('ms-diagram').style.display      = 'none';
   if(el('ms-diagram-hint')) el('ms-diagram-hint').style.display = which==='model' ? 'block' : 'none';
   if(el('ms-body-fields'))  el('ms-body-fields').style.display  = which==='body' ? '' : 'none';
-  if(el('ms-body-fit')){ el('ms-body-fit').style.display = which==='body' ? '' : 'none'; if(which==='body') msRenderBodyFit(); }
+  if(which==='body') try{ msBodyRecalc(); }catch(_){}
   renderOrderVisual();
 }
-// صور إرشادية لكل قياس جسم (يرفعها صاحب المنشأة مرة وتُزامن سحابياً وتظهر للجميع)
+// تبويب «قياسات بدي»: جدول مدمج — قياس الموديل | البدي (إدخال) | الزيادة (حسب النمط) | المقترح
+let _bodyVals={};
 function renderBodyFields(vals) {
-  const canEdit = !currentMember; // الرفع/الحذف لصاحب المنشأة
-  document.getElementById('ms-body-fields').innerHTML = BODY_FIELDS.map(f=>{
-    const img = bodyGuideImgs[f.k];
-    return `
-    <div class="fg" style="margin:0;text-align:center">
-      <label>${f.l}</label>
-      ${img?`<img src="${img}" alt="${f.l}" style="width:100%;height:78px;object-fit:contain;border:1px solid #c8e6c9;border-radius:8px;background:#fafafa;cursor:zoom-in;margin-bottom:3px" onclick="bodyImgView('${f.k}')">`:''}
-      <input type="number" id="msb-${f.k}" min="0" step="0.5" style="direction:ltr;text-align:center" class="${vals && parseFloat(vals[f.k])>0 ? 'msf-filled' : ''}"
-        value="${vals && vals[f.k]!=null && vals[f.k]!=='' ? vals[f.k] : ''}" onfocus="this.select()" placeholder="—" onkeydown="msEnterNext(event,this)" oninput="this.classList.toggle('msf-filled',parseFloat(this.value)>0)">
-      ${canEdit?`<div style="display:flex;gap:4px;justify-content:center;margin-top:3px">
-        <label class="btn btn-sm" style="background:#e8f5e9;color:#1b5e20;cursor:pointer;padding:2px 9px;font-size:.68rem" title="صورة إرشادية لطريقة أخذ هذا القياس">📷 صورة<input type="file" accept="image/*" style="display:none" onchange="bodyImgUpload('${f.k}',this)"></label>
-        ${img?`<button type="button" class="btn btn-sm" style="background:#ffebee;color:#c62828;padding:2px 8px;font-size:.68rem" onclick="bodyImgRemove('${f.k}')">✕</button>`:''}
-      </div>`:''}
-    </div>`;
-  }).join('');
+  _bodyVals = Object.assign({}, vals||{});
+  const box=document.getElementById('ms-body-fields'); if(!box) return;
+  box.style.display=''; box.classList.remove('ms-fields-grid');
+  const tpl=document.getElementById('ms-template').value;
+  const fit=fitSettings[tpl]||{}; const src=fit.src||{};
+  const rows=getTemplateKeys(tpl).filter(k=>src[k]);
+  if(!rows.length){
+    box.innerHTML='<div style="font-size:.78rem;color:#b26a00;background:#fff8e1;border:1.5px dashed #ffd54f;border-radius:10px;padding:12px;text-align:center">'
+      +'لتفعيل جدول البدي: اضبط «🧍 مصدر البدي» والزيادات لكل قياس من <b>⚙️ إعدادات الحقول ← ⚖️ الفيت</b>'
+      +'<br><button class="btn btn-sm" style="background:#e65100;color:#fff;margin-top:8px" onclick="openMeasSettings();setTimeout(()=>msetTab(\'fit\'),80)">فتح إعدادات الفيت</button></div>';
+    if(_msMainTab==='body') box.style.display='';
+    return;
+  }
+  const bl=bk=>{ const f=BODY_FIELDS.find(x=>x.k===bk); return f?f.l:bk; };
+  box.innerHTML =
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 10px;margin-bottom:8px">'
+      +'<span style="font-size:.76rem;font-weight:800;color:#e65100">⚖️ نمط الجسم:</span>'
+      +'<select id="ms-bodyfit-shape" onchange="msBodyRecalc()" style="padding:4px 9px;border:1.5px solid #ffb74d;border-radius:6px;font-family:inherit;font-size:.8rem;font-weight:800">'
+      +FIT_SHAPES.map(sh=>`<option value="${sh.id}">${sh.ic} ${sh.ar}</option>`).join('')
+      +'</select><span style="font-size:.68rem;color:#8d6e63">أدخل قياسات البدي في العمود الأخضر — المقترح يُحسب لحظياً</span></div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+    +'<thead><tr>'
+      +'<th style="padding:7px;border:1px solid #e0e0e0;background:#f5f5f5;text-align:start">قياس الموديل</th>'
+      +'<th style="padding:7px;border:1px solid #c8e6c9;background:#e8f5e9;color:#1b5e20">🧍 البدي</th>'
+      +'<th style="padding:7px;border:1px solid #ffe0b2;background:#fff3e0;color:#e65100">الزيادة</th>'
+      +'<th style="padding:7px;border:1px solid #e1bee7;background:#f3e5f5;color:#6a1b9a">✨ المقترح</th>'
+    +'</tr></thead><tbody>'
+    +rows.map(k=>{
+      const bk=src[k]; const img=bodyGuideImgs[bk];
+      return `<tr>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:start"><b>${escHtml(MEAS_DICT[k]||k)}</b><div style="font-size:.62rem;color:#999">${escHtml(bl(bk))}</div></td>
+        <td style="padding:4px;border:1px solid #eee;background:#f7fcf7;text-align:center;white-space:nowrap">
+          <input type="number" step="0.5" id="msbt-${k}" data-bk="${bk}" value="${_bodyVals[bk]!=null?_bodyVals[bk]:''}" placeholder="—"
+            onfocus="this.select()" onkeydown="msEnterNext(event,this)" oninput="msBodyInput(this)"
+            style="width:76px;text-align:center;direction:ltr;border:1.5px solid #a5d6a7;border-radius:7px;padding:6px 4px;font-weight:800">
+          ${img?`<button type="button" onclick="bodyImgView('${bk}')" style="border:none;background:none;cursor:pointer;font-size:.85rem" title="صورة إرشادية">📷</button>`:''}
+        </td>
+        <td style="padding:6px;border:1px solid #eee;text-align:center;direction:ltr;color:#e65100;font-weight:700" id="msbe-${k}">—</td>
+        <td style="padding:6px;border:1px solid #eee;text-align:center;direction:ltr;color:#6a1b9a;font-weight:900;background:#faf5fc" id="msbs-${k}">—</td>
+      </tr>`;
+    }).join('')
+    +'</tbody></table>'
+    +'<button class="btn" style="background:#6a1b9a;color:#fff;margin-top:9px" onclick="msBodyFitApply()">⬇ اعتماد المقترحات في قياسات الموديل</button>';
+  msBodyRecalc();
+}
+// إدخال قيمة بدي: مزامنة الصفوف المشتركة بنفس المصدر ثم إعادة الحساب
+function msBodyInput(el){
+  const bk=el.getAttribute('data-bk');
+  _bodyVals[bk]=el.value;
+  document.querySelectorAll('#ms-body-fields input[data-bk="'+bk+'"]').forEach(x=>{ if(x!==el) x.value=el.value; });
+  msBodyRecalc();
+}
+// حساب الزيادة والمقترح لكل صف حسب النمط المختار
+function msBodyRecalc(){
+  const tpl=document.getElementById('ms-template').value;
+  const fit=fitSettings[tpl]||{}; const src=fit.src||{};
+  const shId=(document.getElementById('ms-bodyfit-shape')||{}).value||FIT_SHAPES[0].id;
+  const eases=fit[shId]||{};
+  const inch=_orderUnit==='inch';
+  window._msBodyFitRows=[];
+  getTemplateKeys(tpl).forEach(k=>{
+    const bk=src[k]; if(!bk) return;
+    const eEl=document.getElementById('msbe-'+k), sEl=document.getElementById('msbs-'+k);
+    if(!eEl||!sEl) return;
+    let e=eases[k]!=null&&eases[k]!==''?+eases[k]:0;
+    let v=parseFloat(_bodyVals[bk]);
+    eEl.textContent=(e>=0?'+':'')+e;
+    if(isFinite(v)&&v>0){
+      if(inch){ v=+(v/2.54).toFixed(1); e=+(e/2.54).toFixed(2); }
+      const sug=+(v+e).toFixed(1);
+      sEl.textContent=sug;
+      window._msBodyFitRows.push({k, sug});
+    } else sEl.textContent='—';
+  });
+}
+function _readBodyValues() {
+  const out={};
+  Object.keys(_bodyVals).forEach(bk=>{ const v=parseFloat(_bodyVals[bk]); if(isFinite(v)&&v>0) out[bk]=_bodyVals[bk]; });
+  return out;
 }
 function bodyImgUpload(k, input) {
   const file=input.files[0]; if(!file) return;
@@ -6895,52 +6966,12 @@ function msRenderFitBar(){
     +'<button class="btn btn-sm" style="background:#e65100;color:#fff" onclick="msApplyFit()">تطبيق الفيت</button>'
     +'<span style="font-size:.68rem;color:#8d6e63">يضيف زيادات القصّة للقياسات المدخلة حسب النمط</span></div>';
 }
-// حساب المقترح من قياسات البدي: تعويض قياس البدي + زيادة النمط — وعرض الاثنين جنباً لجنب
-function msRenderBodyFit(){
-  const box=document.getElementById('ms-body-fit'); if(!box) return;
-  const tpl=document.getElementById('ms-template').value;
-  const fit=fitSettings[tpl]||{}; const src=fit.src||{};
-  const hasSrc=Object.keys(src).length>0;
-  if(!hasSrc){ box.innerHTML='<div style="font-size:.72rem;color:#999;text-align:center;padding:8px">لحساب المقترح من البدي: اضبط «مصدر البدي» والزيادات في «⚙️ إعدادات الحقول ← ⚖️ الفيت»</div>'; return; }
-  box.innerHTML='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 9px;margin:8px 0 6px">'
-    +'<span style="font-size:.73rem;font-weight:800;color:#e65100">⚖️ نمط الجسم:</span>'
-    +'<select id="ms-bodyfit-shape" onchange="msBodyFitCalc()" style="padding:4px 8px;border:1.5px solid #ffb74d;border-radius:6px;font-family:inherit;font-size:.78rem;font-weight:800">'
-    +FIT_SHAPES.map(sh=>`<option value="${sh.id}">${sh.ic} ${sh.ar}</option>`).join('')
-    +'</select>'
-    +'<button class="btn btn-sm" style="background:#e65100;color:#fff" onclick="msBodyFitCalc()">Σ حساب المقترح</button></div>'
-    +'<div id="ms-bodyfit-out"></div>';
-}
-function msBodyFitCalc(){
-  const tpl=document.getElementById('ms-template').value;
-  const shId=(document.getElementById('ms-bodyfit-shape')||{}).value; if(!shId) return;
-  const fit=fitSettings[tpl]||{}; const src=fit.src||{}; const eases=fit[shId]||{};
-  const bv=_readBodyValues();
-  const inch=_orderUnit==='inch';
-  const rows=[];
-  getTemplateKeys(tpl).forEach(k=>{
-    const bk=src[k]; if(!bk) return;
-    let v=parseFloat(bv[bk]); if(!isFinite(v)||v<=0) return;
-    if(inch) v=+(v/2.54).toFixed(1); // البدي يُدخل سم
-    let e=eases[k]!=null?+eases[k]:0; if(inch) e=+(e/2.54).toFixed(2);
-    rows.push({k, bk, v, e, sug:+(v+e).toFixed(1)});
-  });
-  const out=document.getElementById('ms-bodyfit-out'); if(!out) return;
-  if(!rows.length){ out.innerHTML='<div style="font-size:.74rem;color:#b26a00;background:#fff8e1;border:1px dashed #ffd54f;border-radius:8px;padding:8px;text-align:center">أدخل قياسات البدي أعلاه أولاً (الحقول المرتبطة بمصدر بدي في إعدادات الفيت)</div>'; return; }
-  window._msBodyFitRows=rows;
-  const bl=k=>{ const f=BODY_FIELDS.find(x=>x.k===k); return f?f.l:k; };
-  out.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
-    +'<thead><tr><th style="padding:5px;border:1px solid #eee;background:#fff3e0">قياس الموديل</th><th style="padding:5px;border:1px solid #eee;background:#e8f5e9">🧍 البدي</th><th style="padding:5px;border:1px solid #eee;background:#fff3e0">الزيادة</th><th style="padding:5px;border:1px solid #eee;background:#f3e5f5">✨ المقترح</th></tr></thead><tbody>'
-    +rows.map(r=>`<tr>
-      <td style="padding:5px 8px;border:1px solid #f0f0f0;text-align:start">${escHtml(MEAS_DICT[r.k]||r.k)}<div style="font-size:.6rem;color:#999">${escHtml(bl(r.bk))}</div></td>
-      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#1b5e20;font-weight:800">${r.v}</td>
-      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#e65100">${r.e>=0?'+':''}${r.e}</td>
-      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#6a1b9a;font-weight:800;background:#faf5fc">${r.sug}</td></tr>`).join('')
-    +'</tbody></table>'
-    +'<button class="btn btn-sm" style="background:#6a1b9a;color:#fff;margin-top:7px" onclick="msBodyFitApply()">⬇ اعتماد المقترحات في قياسات الموديل</button>';
-}
+// اعتماد مقترحات جدول البدي في قياسات الموديل (تلوَّن بنفسجياً)
 function msBodyFitApply(){
-  const rows=window._msBodyFitRows||[]; if(!rows.length) return;
-  if(!confirm('اعتماد '+rows.length+' قياساً مقترحاً في جدول قياسات الموديل؟ (تُلوَّن بنفسجياً)')) return;
+  msBodyRecalc();
+  const rows=window._msBodyFitRows||[];
+  if(!rows.length){ alert('أدخل قياسات البدي أولاً في العمود الأخضر'); return; }
+  if(!confirm('اعتماد '+rows.length+' قياساً مقترحاً في «جدول القياسات»؟')) return;
   let n=0;
   rows.forEach(r=>{ const el=document.getElementById('msf-'+r.k); if(!el) return; el.value=r.sug; el.classList.remove('msf-filled'); el.classList.add('msf-auto'); n++; });
   validateMeasLive();
@@ -7991,6 +8022,83 @@ function sbInitSecs(){
     h.onclick=()=>sbToggleSec(h);
     _sbSetSec(h, true); // مصغّرة افتراضياً دائماً
   });
+}
+// ═══ تتبّع جلسات الدخول: البداية، نبض المدة كل 4 دقائق، والموقع الجغرافي (أفضل جهد)
+let _sessId=null;
+function _sessLog(){ try{ return JSON.parse(lsGet('loginLog','[]')); }catch(_){ return []; } }
+function _sessSave(list){ lsSet('loginLog', JSON.stringify(list.slice(-200))); }
+function _sessionStart(member){
+  const now=new Date().toISOString();
+  _sessId = now+'_'+Math.floor(Math.random()*1e6);
+  const list=_sessLog();
+  list.push({ id:_sessId, who: member?('🧑‍💼 '+member.name):'👑 المالك',
+    at: now, last: now, ua: (navigator.userAgent.match(/(Android|iPhone|iPad|Windows|Mac|Linux)/)||[''])[0]||'جهاز', loc:'' });
+  _sessSave(list);
+  // الموقع الجغرافي عبر خدمة عامة — إن تعذر يبقى فارغاً
+  fetch('https://ipapi.co/json/').then(r=>r.json()).then(g=>{
+    if(!g||!g.country_name) return;
+    const list2=_sessLog(); const e=list2.find(x=>x.id===_sessId);
+    if(e){ e.loc=(g.city?g.city+'، ':'')+g.country_name; e.ip=g.ip||''; _sessSave(list2); }
+  }).catch(()=>{});
+  // نبض المدة كل 4 دقائق ما دام التطبيق مفتوحاً
+  setInterval(()=>{ try{
+    if(!_sessId||!currentAccId) return;
+    const l=_sessLog(); const e=l.find(x=>x.id===_sessId);
+    if(e){ e.last=new Date().toISOString(); _sessSave(l); }
+  }catch(_){} }, 240000);
+}
+function _sessDur(a,b){
+  const mins=Math.max(1, Math.round((new Date(b)-new Date(a))/60000));
+  if(mins<60) return mins+' دقيقة';
+  const h=Math.floor(mins/60), m=mins%60;
+  return h+' ساعة'+(m?(' و'+m+' دقيقة'):'');
+}
+// ═══ صفحة متابعة الدخول — محمية بكلمة مرور مستقلة (للمالك فقط)
+function _monHash(t){ let h=5381; for(const c of String(t)) h=((h*33)^c.charCodeAt(0))>>>0; return 'h'+h.toString(36); }
+function openLoginMonitor(){
+  if(currentMember){ alert('هذه الصفحة لصاحب المنشأة فقط'); return; }
+  const saved=lsGet('monPass','');
+  if(!saved){
+    const p1=prompt('🔐 أول استخدام: عيّن كلمة مرور مستقلة لصفحة متابعة الدخول (4 أحرف على الأقل):');
+    if(!p1||p1.length<4){ if(p1!==null) alert('4 أحرف على الأقل'); return; }
+    lsSet('monPass', _monHash(p1));
+  } else {
+    const p=prompt('🔐 كلمة مرور صفحة المتابعة:');
+    if(p===null) return;
+    if(_monHash(p)!==saved){ alert('كلمة المرور غير صحيحة'); return; }
+  }
+  renderLoginMonitor();
+  document.getElementById('monitor-modal').classList.add('open');
+}
+function monChangePass(){
+  const p=prompt('كلمة المرور الجديدة لصفحة المتابعة (4 أحرف على الأقل):');
+  if(!p||p.length<4){ if(p!==null) alert('4 أحرف على الأقل'); return; }
+  lsSet('monPass', _monHash(p)); alert('تم التغيير ✔');
+}
+function renderLoginMonitor(){
+  const list=_sessLog().slice().reverse();
+  const now=new Date().toISOString();
+  document.getElementById('mon-body').innerHTML = list.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead><tr>
+        <th style="padding:6px;border:1px solid #eee;background:#e8eaf6;text-align:start">المستخدم</th>
+        <th style="padding:6px;border:1px solid #eee;background:#e8eaf6">وقت الدخول</th>
+        <th style="padding:6px;border:1px solid #eee;background:#e8eaf6">المدة</th>
+        <th style="padding:6px;border:1px solid #eee;background:#e8eaf6">الموقع</th>
+        <th style="padding:6px;border:1px solid #eee;background:#e8eaf6">الجهاز</th>
+      </tr></thead><tbody>` +
+    list.map(e=>{
+      const active=(new Date(now)-new Date(e.last))<6*60000;
+      const d=new Date(e.at);
+      return `<tr>
+        <td style="padding:6px 9px;border:1px solid #f0f0f0;text-align:start">${escHtml(e.who||'-')} ${active?'<span style="color:#2e7d32;font-size:.68rem">● متصل</span>':''}</td>
+        <td style="padding:6px;border:1px solid #f0f0f0;text-align:center;direction:ltr">${d.toLocaleDateString('en-GB')} ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</td>
+        <td style="padding:6px;border:1px solid #f0f0f0;text-align:center">${_sessDur(e.at, active?now:e.last)}</td>
+        <td style="padding:6px;border:1px solid #f0f0f0;text-align:center">${escHtml(e.loc||'—')}${e.ip?`<div style="font-size:.62rem;color:#999" dir="ltr">${escHtml(e.ip)}</div>`:''}</td>
+        <td style="padding:6px;border:1px solid #f0f0f0;text-align:center">${escHtml(e.ua||'—')}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>'
+    : '<div style="color:#999;text-align:center;padding:22px">لا سجلات دخول بعد — تُسجَّل تلقائياً من الآن</div>';
 }
 function showTailorHub() {
   _closeAllOverlays();
