@@ -7439,7 +7439,7 @@ function measWarnings(v){ return MEAS_RULES.map(r=>r(v)).filter(Boolean); }
 function msEnterNext(ev, el){
   if(ev.key!=='Enter') return;
   ev.preventDefault();
-  const grid=el.closest('.ms-fields-grid'); if(!grid) return;
+  const grid=el.closest('.ms-fields-grid, #ms-body-fields'); if(!grid) return;
   const inputs=Array.prototype.slice.call(grid.querySelectorAll('input[type=number]'));
   const i=inputs.indexOf(el);
   if(i>=0 && i+1<inputs.length){ inputs[i+1].focus(); if(inputs[i+1].select) inputs[i+1].select(); }
