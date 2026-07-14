@@ -1612,6 +1612,7 @@ function _fbFail(){
           <div style="font-size:.72rem;color:#999;margin-bottom:6px">انسخ الجدول من إكسل والصقه هنا: الصف الأول أسماء المقاسات، وكل صف بعده: اسم القياس (عربي أو إنجليزي) ثم قيمه.</div>
           <textarea id="sc-paste" rows="4" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:8px;font-size:.78rem;direction:ltr" placeholder="	58M	59M	60M&#10;shoulder	44	45	46&#10;collar	38	39	40"></textarea>
           <button class="btn btn-info btn-sm" style="margin-top:6px" onclick="scImport()">📥 استيراد الملصق</button>
+          <div id="sc-map"></div>
         </div>
       </div>
     </div>
@@ -6727,26 +6728,84 @@ function scReadEditor(){
 function scPersist(tpl){ lsSet('sizeCharts', JSON.stringify(sizeCharts)); }
 function scSave(){ const tpl=document.getElementById('mset-template').value; scReadEditor(); scPersist(tpl); alert('✔ حُفظ جدول مقاسات '+(L(tpl)||tpl)); }
 function _scNorm(t){ return String(t||'').trim().toLowerCase().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي'); }
+// تطبيع الأرقام: أرقام عربية ٠-٩ وفواصل عربية → إنجليزية
+function _scNum(t){ t=String(t||'').trim().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[٫,]/g,'.'); const v=parseFloat(t); return isFinite(v)?v:null; }
+// مطابقة تقريبية: تطابق تام → احتواء → تقاطع كلمات — ترجع أفضل مفتاح ودرجته
+function _scFuzzy(label, keys){
+  const q=_scNorm(label); if(!q) return null;
+  let best=null, bestScore=0;
+  keys.forEach(k=>{
+    [MEAS_DICT[k], MEAS_EN[k], MEAS_CODE[k], k].forEach(n=>{
+      if(!n) return; const c=_scNorm(n); if(!c) return;
+      let sc=0;
+      if(c===q) sc=100;
+      else if(c.includes(q)||q.includes(c)) sc=80*Math.min(c.length,q.length)/Math.max(c.length,q.length)+15;
+      else{
+        const qa=String(label).toLowerCase().split(/[^a-z\u0600-\u06ff0-9]+/).filter(Boolean);
+        const ca=String(n).toLowerCase().split(/[^a-z\u0600-\u06ff0-9]+/).filter(Boolean);
+        const inter=qa.filter(w=>ca.some(x=>x===w||x.includes(w)||w.includes(x))).length;
+        if(inter) sc=60*inter/Math.max(qa.length,ca.length);
+      }
+      if(sc>bestScore){ bestScore=sc; best=k; }
+    });
+  });
+  return bestScore>=45 ? {key:best, score:bestScore} : null;
+}
+let _scPending=null;
 function scImport(){
   const tpl=document.getElementById('mset-template').value; const keys=getTemplateKeys(tpl);
-  const raw=(document.getElementById('sc-paste').value||'').trim(); if(!raw){ alert('الصق الجدول أولاً'); return; }
-  const rows=raw.split(/\r?\n/).map(r=>r.split(/\t|,|;/).map(c=>c.trim())).filter(r=>r.length>1);
+  const raw=(document.getElementById('sc-paste').value||''); if(!raw.trim()){ alert('الصق الجدول أولاً'); return; }
+  // لا نقص بداية النص: التاب الأول في رأس الجدول يعني خلية فارغة قبل أسماء المقاسات
+  const rows=raw.split(/\r?\n/).map(r=>r.split(/\t|,|;/).map(c=>c.trim())).filter(r=>r.join('')!=='').filter(r=>r.length>1);
   if(rows.length<2){ alert('الصيغة غير مفهومة — الصف الأول أسماء المقاسات ثم صف لكل قياس'); return; }
-  // خريطة تسمية→مفتاح (عربي/إنجليزي/الرمز)
   const map={}; keys.forEach(k=>{ [MEAS_DICT[k], MEAS_EN[k], MEAS_CODE[k], k].forEach(n=>{ if(n) map[_scNorm(n)]=k; }); });
-  const head=rows[0]; const start=head[0]===''||_scNorm(head[0]).length<2||map[_scNorm(head[0])]?1:( _scNorm(head[0]).match(/^[0-9]/)?0:1 );
-  const names=head.slice(start).filter(n=>n!=='');
+  // عمود التسمية دائماً أول أعمدة صفوف البيانات؛ رأس الجدول قد يملك خلية أولى فارغة أو لا
+  const dataLen=Math.max.apply(null, rows.slice(1).map(r=>r.length));
+  const head=rows[0];
+  const names=(head.length>=dataLen ? head.slice(1) : head).filter(n=>n!=='');
   const sizes=names.map(n=>({name:n, values:{}}));
-  const missed=[];
+  const pend=[];
   rows.slice(1).forEach(r=>{
-    const k=map[_scNorm(r[0])];
-    if(!k){ if(r[0]) missed.push(r[0]); return; }
-    names.forEach((_,i)=>{ const v=parseFloat(r[start+i]); if(isFinite(v)) sizes[i].values[k]=v; });
+    if(!r[0]) return;
+    const vals=names.map((_,i)=>_scNum(r[1+i]));
+    if(!vals.some(v=>v!==null)) return;
+    const exact=map[_scNorm(r[0])];
+    if(exact){ names.forEach((_,i)=>{ if(vals[i]!==null) sizes[i].values[exact]=vals[i]; }); }
+    else pend.push({label:r[0], vals, guess:_scFuzzy(r[0], keys)});
   });
-  if(!sizes.some(sz=>Object.keys(sz.values).length)){ alert('لم تُفهم أي قيمة — تأكد أن أسماء القياسات تطابق أسماء الحقول (عربي أو إنجليزي)'); return; }
+  if(!sizes.some(sz=>Object.keys(sz.values).length) && !pend.length){ alert('لم تُفهم أي قيمة — تأكد من الصيغة'); return; }
   _scChart(tpl).sizes=sizes; scPersist(tpl); renderSizeChartEditor();
-  document.getElementById('sc-paste').value='';
-  alert('✔ استُورد '+sizes.length+' مقاس'+(missed.length?'\n⚠️ أسطر لم تُطابق أي قياس: '+missed.join('، '):''));
+  if(pend.length){ _scPending={tpl, pend}; scRenderMap(); }
+  else{ document.getElementById('sc-paste').value=''; document.getElementById('sc-map').innerHTML=''; alert('✔ استُورد '+sizes.length+' مقاس بكل قياساته'); }
+}
+// شاشة مراجعة الأسطر غير المطابقة: اختر الحقل المقصود لكل سطر (مقترح تلقائياً)
+function scRenderMap(){
+  const box=document.getElementById('sc-map'); if(!box||!_scPending) return;
+  const tpl=_scPending.tpl, keys=getTemplateKeys(tpl);
+  box.innerHTML='<div style="background:#fff8e1;border:1.5px solid #ffd54f;border-radius:10px;padding:10px;margin-top:10px">'
+    +'<div style="font-weight:800;color:#b26a00;font-size:.8rem;margin-bottom:7px">🔎 أسطر تحتاج تأكيد المطابقة — اختر الحقل المقصود لكل سطر (اقترحنا الأقرب):</div>'
+    +_scPending.pend.map((r,i)=>`<div style="display:flex;gap:7px;align-items:center;margin-bottom:5px;flex-wrap:wrap">
+      <b style="min-width:130px;font-size:.78rem" dir="auto">${escHtml(r.label)}</b>
+      <select id="scmap-${i}" style="padding:4px 8px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit;font-size:.78rem">
+        <option value="">— تجاهل هذا السطر —</option>
+        ${keys.map(k=>`<option value="${k}" ${r.guess&&r.guess.key===k?'selected':''}>${escHtml(MEAS_DICT[k]||k)}${MEAS_EN[k]?' — '+escHtml(MEAS_EN[k]):''}</option>`).join('')}
+      </select>
+      ${r.guess?`<span style="font-size:.68rem;color:#888">اقتراح ${Math.round(r.guess.score)}%</span>`:''}
+    </div>`).join('')
+    +'<button class="btn btn-success btn-sm" style="margin-top:5px" onclick="scApplyMap()">✔ تطبيق المطابقة</button></div>';
+}
+function scApplyMap(){
+  if(!_scPending) return;
+  const tpl=_scPending.tpl; const chart=_scChart(tpl);
+  let applied=0;
+  _scPending.pend.forEach((r,i)=>{
+    const sel=document.getElementById('scmap-'+i); const k=sel&&sel.value; if(!k) return;
+    chart.sizes.forEach((sz,si)=>{ if(r.vals[si]!==null) sz.values[k]=r.vals[si]; });
+    applied++;
+  });
+  scPersist(tpl); renderSizeChartEditor();
+  _scPending=null; document.getElementById('sc-map').innerHTML=''; document.getElementById('sc-paste').value='';
+  alert('✔ طُبّقت مطابقة '+applied+' سطراً — الجدول اكتمل');
 }
 // المطابقة الحية: تُحسب مع كل إدخال وتُعرض أعلى شبكة القياسات
 function msComputeSizeMatches(){
