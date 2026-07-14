@@ -4735,7 +4735,7 @@ function permDenied(area) {
   alert('🚫 ليس لديك صلاحية الوصول إلى: ' + lbl + '\nتواصل مع صاحب المنشأة');
 }
 function toggleSb(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sb-overlay').classList.toggle('open'); }
-function closeSb(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('open'); }
+function closeSb(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('open');  sbCollapseAll(); }
 
 // إخفاء بطاقات وأزرار الأقسام غير المصرح بها للموظف
 function applyMemberPerms() {
@@ -7903,24 +7903,25 @@ function tailorMenuGo(what){
     case 'newinv':       newInvoice(); break;
   }
 }
-// أقسام القائمة الجانبية المنسدلة: العنوان يطوي/يفتح بنوده، والحالة تُحفظ على الجهاز
-function sbToggleSec(h, skipSave){
-  h.classList.toggle('closed');
-  const closed=h.classList.contains('closed');
+// أقسام القائمة الجانبية المنسدلة: مصغّرة دائماً — الضغط على قسم يفتح خياراته ويطوي البقية (أكورديون)
+function _sbSetSec(h, closed){
+  h.classList.toggle('closed', closed);
   let el=h.nextElementSibling;
   while(el && !el.classList.contains('sb-sec')){ if(el.tagName==='A') el.style.display=closed?'none':''; el=el.nextElementSibling; }
-  if(!skipSave){ try{ const st=JSON.parse(localStorage.getItem('sbSecState')||'{}'); st[h.dataset.key]=closed?1:0; localStorage.setItem('sbSecState',JSON.stringify(st)); }catch(_){} }
 }
+function sbToggleSec(h){
+  const wasClosed=h.classList.contains('closed');
+  document.querySelectorAll('#sidebar .sb-sec').forEach(x=>_sbSetSec(x, true)); // اطوِ الكل
+  if(wasClosed) _sbSetSec(h, false); // افتح المطلوب فقط
+}
+function sbCollapseAll(){ document.querySelectorAll('#sidebar .sb-sec').forEach(x=>_sbSetSec(x, true)); }
 function sbInitSecs(){
-  let st={}; try{ st=JSON.parse(localStorage.getItem('sbSecState')||'{}'); }catch(_){}
   document.querySelectorAll('#sidebar .sb-sec').forEach(h=>{
-    if(h.dataset.key) return; // مهيأ مسبقاً
+    if(h.dataset.key) return;
     h.dataset.key=h.textContent.trim();
     const sp=document.createElement('span'); sp.className='sb-arrow'; sp.textContent='▾'; h.appendChild(sp);
     h.onclick=()=>sbToggleSec(h);
-    // افتراضياً مطوية — إلا ما فتحه المستخدم سابقاً
-    const saved=st[h.dataset.key];
-    if(saved===undefined ? true : saved===1) sbToggleSec(h, true);
+    _sbSetSec(h, true); // مصغّرة افتراضياً دائماً
   });
 }
 function showTailorHub() {
