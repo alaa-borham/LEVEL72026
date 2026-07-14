@@ -1605,6 +1605,7 @@ function _fbFail(){
         <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
           <button class="btn btn-success btn-sm" onclick="scAddSize()">＋ مقاس جديد</button>
           <button class="btn btn-primary btn-sm" onclick="scSave()">💾 حفظ الجدول</button>
+          <button class="btn btn-warning btn-sm" onclick="scEditMap()" title="راجع وعدّل ربط كل سطر من جدولك بحقول النظام">🔁 مطابقة الأسماء</button>
         </div>
         <div id="mset-sizes-body" style="overflow:auto;max-height:46vh"></div>
         <div style="margin-top:14px;border-top:1px dashed #ddd;padding-top:10px">
@@ -6752,31 +6753,50 @@ function _scFuzzy(label, keys){
   return bestScore>=45 ? {key:best, score:bestScore} : null;
 }
 let _scPending=null;
-function scImport(){
-  const tpl=document.getElementById('mset-template').value; const keys=getTemplateKeys(tpl);
-  const raw=(document.getElementById('sc-paste').value||''); if(!raw.trim()){ alert('الصق الجدول أولاً'); return; }
-  // لا نقص بداية النص: التاب الأول في رأس الجدول يعني خلية فارغة قبل أسماء المقاسات
+// تفكيك جدول ملصق: أسماء المقاسات + صفوف (تسمية، قيم)
+function _scParse(raw){
   const rows=raw.split(/\r?\n/).map(r=>r.split(/\t|,|;/).map(c=>c.trim())).filter(r=>r.join('')!=='').filter(r=>r.length>1);
-  if(rows.length<2){ alert('الصيغة غير مفهومة — الصف الأول أسماء المقاسات ثم صف لكل قياس'); return; }
-  const map={}; keys.forEach(k=>{ [MEAS_DICT[k], MEAS_EN[k], MEAS_CODE[k], k].forEach(n=>{ if(n) map[_scNorm(n)]=k; }); });
-  // عمود التسمية دائماً أول أعمدة صفوف البيانات؛ رأس الجدول قد يملك خلية أولى فارغة أو لا
+  if(rows.length<2) return null;
   const dataLen=Math.max.apply(null, rows.slice(1).map(r=>r.length));
   const head=rows[0];
   const names=(head.length>=dataLen ? head.slice(1) : head).filter(n=>n!=='');
-  const sizes=names.map(n=>({name:n, values:{}}));
-  const pend=[];
+  const drows=[];
   rows.slice(1).forEach(r=>{
     if(!r[0]) return;
     const vals=names.map((_,i)=>_scNum(r[1+i]));
-    if(!vals.some(v=>v!==null)) return;
-    const exact=map[_scNorm(r[0])];
-    if(exact){ names.forEach((_,i)=>{ if(vals[i]!==null) sizes[i].values[exact]=vals[i]; }); }
-    else pend.push({label:r[0], vals, guess:_scFuzzy(r[0], keys)});
+    if(vals.some(v=>v!==null)) drows.push({label:r[0], vals});
   });
-  if(!sizes.some(sz=>Object.keys(sz.values).length) && !pend.length){ alert('لم تُفهم أي قيمة — تأكد من الصيغة'); return; }
-  _scChart(tpl).sizes=sizes; scPersist(tpl); renderSizeChartEditor();
+  return (names.length&&drows.length) ? {names, rows:drows} : null;
+}
+function _scExactMap(keys){ const m={}; keys.forEach(k=>{ [MEAS_DICT[k], MEAS_EN[k], MEAS_CODE[k], k].forEach(n=>{ if(n) m[_scNorm(n)]=k; }); }); return m; }
+function scImport(){
+  const tpl=document.getElementById('mset-template').value; const keys=getTemplateKeys(tpl);
+  const raw=(document.getElementById('sc-paste').value||''); if(!raw.trim()){ alert('الصق الجدول أولاً'); return; }
+  const parsed=_scParse(raw); if(!parsed){ alert('الصيغة غير مفهومة — الصف الأول أسماء المقاسات ثم صف لكل قياس'); return; }
+  const chart=_scChart(tpl); chart.lastPaste=raw; chart.map=chart.map||{};
+  const exact=_scExactMap(keys);
+  const sizes=parsed.names.map(n=>({name:n, values:{}}));
+  const pend=[];
+  parsed.rows.forEach(r=>{
+    const k=chart.map[_scNorm(r.label)]||exact[_scNorm(r.label)];
+    if(k){ chart.map[_scNorm(r.label)]=k; parsed.names.forEach((_,i)=>{ if(r.vals[i]!==null) sizes[i].values[k]=r.vals[i]; }); }
+    else pend.push({label:r.label, vals:r.vals, guess:_scFuzzy(r.label, keys)});
+  });
+  chart.sizes=sizes; scPersist(tpl); renderSizeChartEditor();
   if(pend.length){ _scPending={tpl, pend}; scRenderMap(); }
   else{ document.getElementById('sc-paste').value=''; document.getElementById('sc-map').innerHTML=''; alert('✔ استُورد '+sizes.length+' مقاس بكل قياساته'); }
+}
+// محرر مطابقة الأسماء الكامل: كل أسطر آخر جدول ملصق مع اختيار الحقل المقابل — يعمل في أي وقت
+function scEditMap(){
+  const tpl=document.getElementById('mset-template').value; const chart=_scChart(tpl); const keys=getTemplateKeys(tpl);
+  if(!chart.lastPaste){ alert('لا يوجد جدول ملصق بعد — الصق جدولك واستورده أولاً ثم عدّل المطابقة من هنا'); return; }
+  const parsed=_scParse(chart.lastPaste); if(!parsed){ alert('تعذر قراءة آخر جدول ملصق'); return; }
+  const exact=_scExactMap(keys); chart.map=chart.map||{};
+  _scPending={ tpl, full:true, pend: parsed.rows.map(r=>{
+    const cur=chart.map[_scNorm(r.label)]||exact[_scNorm(r.label)];
+    return {label:r.label, vals:r.vals, guess: cur?{key:cur,score:100}:_scFuzzy(r.label, keys)};
+  })};
+  scRenderMap();
 }
 // شاشة مراجعة الأسطر غير المطابقة: اختر الحقل المقصود لكل سطر (مقترح تلقائياً)
 function scRenderMap(){
@@ -6796,16 +6816,19 @@ function scRenderMap(){
 }
 function scApplyMap(){
   if(!_scPending) return;
-  const tpl=_scPending.tpl; const chart=_scChart(tpl);
+  const tpl=_scPending.tpl; const chart=_scChart(tpl); chart.map=chart.map||{};
+  if(_scPending.full) chart.sizes.forEach(sz=>sz.values={}); // إعادة بناء كاملة من آخر جدول ملصق
   let applied=0;
   _scPending.pend.forEach((r,i)=>{
-    const sel=document.getElementById('scmap-'+i); const k=sel&&sel.value; if(!k) return;
+    const sel=document.getElementById('scmap-'+i); const k=sel&&sel.value;
+    if(!k){ delete chart.map[_scNorm(r.label)]; return; }
+    chart.map[_scNorm(r.label)]=k;
     chart.sizes.forEach((sz,si)=>{ if(r.vals[si]!==null) sz.values[k]=r.vals[si]; });
     applied++;
   });
   scPersist(tpl); renderSizeChartEditor();
   _scPending=null; document.getElementById('sc-map').innerHTML=''; document.getElementById('sc-paste').value='';
-  alert('✔ طُبّقت مطابقة '+applied+' سطراً — الجدول اكتمل');
+  alert('✔ طُبّقت مطابقة '+applied+' سطراً');
 }
 // المطابقة الحية: تُحسب مع كل إدخال وتُعرض أعلى شبكة القياسات
 function msComputeSizeMatches(){
