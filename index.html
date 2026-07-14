@@ -697,6 +697,13 @@ function _fbFail(){
 </div>
 
 <!-- ═══════════════ MODAL: CARD SETTINGS (تخصيص الأيقونات) -->
+<div class="moverlay" id="body-img-modal" style="z-index:380">
+  <div class="mbox" style="max-width:480px">
+    <div class="mhdr"><h3 id="bimg-title">طريقة أخذ القياس</h3><button class="mcls" onclick="closeModal('body-img-modal')">✕</button></div>
+    <div style="padding:12px;text-align:center"><img id="bimg-view" src="" alt="" style="max-width:100%;max-height:64vh;border-radius:10px"></div>
+  </div>
+</div>
+
 <div class="moverlay" id="cloud-backups-modal">
   <div class="mbox" style="max-width:640px">
     <div class="mhdr"><h3>☁️ النسخ السحابية اليومية</h3><button class="mcls" onclick="closeModal('cloud-backups-modal')">✕</button></div>
@@ -1663,22 +1670,17 @@ function _fbFail(){
           </div>
           <div class="fg" style="margin:0;grid-column:1/-1"><label>ملاحظات إضافية</label><input type="text" id="ms-notes"></div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 6px">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 6px">
           <div class="ms-view-tabs" style="margin-bottom:0">
-            <button type="button" id="mstab-model" class="active" onclick="msMainTab('model')">📐 قياسات الموديل</button>
-            <button type="button" id="mstab-body" onclick="msMainTab('body')">🧍 قياسات بدي</button>
-            <button type="button" id="mstab-table" onclick="msMainTab('table')">📋 جدول القياسات</button>
-          </div>
-          <div class="ms-view-tabs" id="ms-view-tabs" style="margin-bottom:0">
-            <button type="button" id="msv-grid" class="active" onclick="msMeasView('grid')">▦ شبكة</button>
-            <button type="button" id="msv-diagram" onclick="msMeasView('diagram')">🧍 مخطط</button>
+            <button type="button" id="mstab-table" class="active" onclick="msMainTab('table')">📋 جدول القياسات</button>
+            <button type="button" id="mstab-model" onclick="msMainTab('model')">🧍 قياسات الموديل</button>
+            <button type="button" id="mstab-body" onclick="msMainTab('body')">📷 قياسات بدي</button>
           </div>
         </div>
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
         <div id="ms-body-fields" class="ms-fields-grid" style="display:none"></div>
-        <div id="ms-summary" style="display:none"></div>
         <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
@@ -2763,7 +2765,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2823,6 +2825,7 @@ let prodAssignees = {}; // المنفذ الافتراضي لكل مرحلة —
 let measVisible = {};   // إعدادات إظهار/إخفاء حقول القياس لكل قالب
 let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
 let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
+let bodyGuideImgs = {};  // صور إرشادية لطريقة أخذ كل قياس جسم (بدي)
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
@@ -2876,6 +2879,7 @@ function loadAccountData() {
   qcDefects       = JSON.parse(lsGet('qcDefects','[]'));
   if (!qcDefects.length) qcDefects = ['اختلاف قياس','عيب خياطة','عيب قماش','عيب كي','لون غير مطابق','زر/كبك ناقص'];
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
+  bodyGuideImgs   = JSON.parse(lsGet('bodyGuideImgs','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
@@ -5335,7 +5339,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   toggleProofa(); if(mod.proofa) renderProofaPieces(mod.proofaPieces||[]);
   _orderUnit = (src && src.unit) || 'cm';
   renderMeasFields(src ? src.values : null);
-  renderBodyFields(src ? src.body : null); msMainTab('model');
+  renderBodyFields(src ? src.body : null); msMainTab('table');
   _refreshUnitUI();
   renderOrderVisual();
   _orderBasket = []; renderOrderBasket();
@@ -5354,60 +5358,75 @@ function renderMeasFields(values) {
         value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" oninput="validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
-  if (document.getElementById('ms-diagram')) msMeasView(_measView);
+  if (document.getElementById('ms-fields')) msMainTab(_msMainTab);
 }
-// ═══════════════ تبويبات القياسات: قياسات الموديل / قياسات بدي (الجسم) / جدول القياسات
+// ═══════════════ تبويبات القياسات: جدول القياسات (شبكة) / قياسات الموديل (مخطط على المانيكان) / قياسات بدي (الجسم + صور إرشادية)
 const BODY_FIELDS = [
   {k:'neck',l:'محيط الرقبة'},{k:'shoulderW',l:'عرض الكتف'},{k:'chestC',l:'محيط الصدر'},
   {k:'waistC',l:'محيط الخصر'},{k:'hipsC',l:'محيط الأرداف'},{k:'armLen',l:'طول الذراع'},
   {k:'wristC',l:'محيط المعصم'},{k:'heightT',l:'الطول الكلي (القامة)'},{k:'weightKg',l:'الوزن (كجم)'}
 ];
-let _msMainTab = 'model';
+let _msMainTab = 'table';
 function msMainTab(which) {
   _msMainTab = which;
-  ['model','body','table'].forEach(t=>{
+  ['table','model','body'].forEach(t=>{
     const b=document.getElementById('mstab-'+t); if(b) b.classList.toggle('active', t===which);
   });
-  const onModel = which==='model';
-  const gridView = document.getElementById('msv-grid').classList.contains('active');
-  document.getElementById('ms-fields').style.display        = (onModel && gridView) ? '' : 'none';
-  document.getElementById('ms-diagram').style.display       = (onModel && !gridView) ? '' : 'none';
-  document.getElementById('ms-diagram-hint').style.display  = (onModel && !gridView) ? '' : 'none';
-  document.getElementById('ms-view-tabs').style.display     = onModel ? '' : 'none';
-  document.getElementById('ms-warnings').style.display      = onModel ? '' : 'none';
-  document.getElementById('ms-body-fields').style.display   = which==='body' ? '' : 'none';
-  const sum=document.getElementById('ms-summary');
-  sum.style.display = which==='table' ? '' : 'none';
-  if (which==='table') buildMeasSummary();
+  _measView = (which==='model') ? 'diagram' : 'grid'; // تبويب الموديل = صناديق القياس على المانيكان مباشرة
+  const el=id=>document.getElementById(id);
+  if(el('ms-fields'))       el('ms-fields').style.display       = which==='table' ? '' : 'none';
+  if(el('ms-warnings'))     el('ms-warnings').style.display     = which==='table' ? '' : 'none';
+  if(el('ms-diagram'))      el('ms-diagram').style.display      = 'none';
+  if(el('ms-diagram-hint')) el('ms-diagram-hint').style.display = which==='model' ? 'block' : 'none';
+  if(el('ms-body-fields'))  el('ms-body-fields').style.display  = which==='body' ? '' : 'none';
+  renderOrderVisual();
 }
+// صور إرشادية لكل قياس جسم (يرفعها صاحب المنشأة مرة وتُزامن سحابياً وتظهر للجميع)
 function renderBodyFields(vals) {
-  document.getElementById('ms-body-fields').innerHTML = BODY_FIELDS.map(f=>`
-    <div class="fg" style="margin:0">
+  const canEdit = !currentMember; // الرفع/الحذف لصاحب المنشأة
+  document.getElementById('ms-body-fields').innerHTML = BODY_FIELDS.map(f=>{
+    const img = bodyGuideImgs[f.k];
+    return `
+    <div class="fg" style="margin:0;text-align:center">
       <label>${f.l}</label>
+      ${img?`<img src="${img}" alt="${f.l}" style="width:100%;height:78px;object-fit:contain;border:1px solid #c8e6c9;border-radius:8px;background:#fafafa;cursor:zoom-in;margin-bottom:3px" onclick="bodyImgView('${f.k}')">`:''}
       <input type="number" id="msb-${f.k}" min="0" step="0.5" style="direction:ltr;text-align:center"
         value="${vals && vals[f.k]!=null && vals[f.k]!=='' ? vals[f.k] : ''}" onfocus="this.select()" placeholder="—">
-    </div>`).join('');
+      ${canEdit?`<div style="display:flex;gap:4px;justify-content:center;margin-top:3px">
+        <label class="btn btn-sm" style="background:#e8f5e9;color:#1b5e20;cursor:pointer;padding:2px 9px;font-size:.68rem" title="صورة إرشادية لطريقة أخذ هذا القياس">📷 صورة<input type="file" accept="image/*" style="display:none" onchange="bodyImgUpload('${f.k}',this)"></label>
+        ${img?`<button type="button" class="btn btn-sm" style="background:#ffebee;color:#c62828;padding:2px 8px;font-size:.68rem" onclick="bodyImgRemove('${f.k}')">✕</button>`:''}
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+function bodyImgUpload(k, input) {
+  const file=input.files[0]; if(!file) return;
+  _readImage(file, 420, 0.68, dataURL=>{
+    bodyGuideImgs[k]=dataURL;
+    const total=JSON.stringify(bodyGuideImgs).length;
+    if(total>550000){ alert('⚠️ مجموع الصور الإرشادية كبير وقد لا يُزامن سحابياً — استخدم صوراً أصغر'); }
+    lsSet('bodyGuideImgs', JSON.stringify(bodyGuideImgs));
+    renderBodyFields(_readBodyValues());
+  });
+  input.value='';
+}
+function bodyImgRemove(k) {
+  if(!confirm('حذف الصورة الإرشادية لهذا القياس؟')) return;
+  delete bodyGuideImgs[k];
+  lsSet('bodyGuideImgs', JSON.stringify(bodyGuideImgs));
+  renderBodyFields(_readBodyValues());
+}
+function bodyImgView(k) {
+  const img=bodyGuideImgs[k]; if(!img) return;
+  const f=BODY_FIELDS.find(x=>x.k===k);
+  document.getElementById('bimg-title').textContent = (f?f.l:'') + ' — طريقة أخذ القياس';
+  document.getElementById('bimg-view').src = img;
+  document.getElementById('body-img-modal').classList.add('open');
 }
 function _readBodyValues() {
   const out={};
   BODY_FIELDS.forEach(f=>{ const el=document.getElementById('msb-'+f.k); const v=el&&el.value.trim(); if(v!==''&&v!=null&&parseFloat(v)>0) out[f.k]=v; });
   return out;
-}
-// جدول مراجعة يجمع قياسات الموديل والجسم المدخلة حالياً
-function buildMeasSummary() {
-  const unit = _orderUnit==='inch'?'إنش':'سم';
-  const mv = _readMeasValues(), bv = _readBodyValues();
-  const row = (l,v)=>`<tr><td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:start">${l}</td><td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:center;font-weight:800;color:#1b5e20;direction:ltr">${v}</td></tr>`;
-  let html='';
-  const mkeys=Object.keys(mv);
-  if (mkeys.length) html += `<tr><th colspan="2" style="background:#e8f5e9;color:#1b5e20;padding:6px;border:1px solid #c8e6c9">📐 قياسات الموديل (${unit})</th></tr>`
-    + mkeys.map(k=>row(MEAS_DICT[k]||k, mv[k])).join('');
-  const bkeys=Object.keys(bv);
-  if (bkeys.length) html += `<tr><th colspan="2" style="background:#e3f2fd;color:#0d47a1;padding:6px;border:1px solid #bbdefb">🧍 قياسات بدي — الجسم (سم)</th></tr>`
-    + BODY_FIELDS.filter(f=>bv[f.k]!=null).map(f=>row(f.l, bv[f.k])).join('');
-  document.getElementById('ms-summary').innerHTML = html
-    ? `<table style="width:100%;border-collapse:collapse;font-size:.85rem">${html}</table>`
-    : '<div style="text-align:center;color:#999;padding:22px">لا توجد قياسات مدخلة بعد — عبّئ «قياسات الموديل» أو «قياسات بدي» أولاً</div>';
 }
 // ═══════════════ مخطط القياس: إدخال القياسات في مواضعها على رسم الثوب (طريقة بصرية)
 // مواضع افتراضية لصناديق القياس (٪ من اللوحة) — قابلة للسحب وتُحفظ لكل قالب
@@ -5468,19 +5487,6 @@ function dgmDrag(ev,k){
     tmplMeasPos[tpl][k]={x,y}; box.style.left=x+'%'; box.style.top=y+'%'; };
   const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(moved) lsSet('tmplMeasPos',JSON.stringify(tmplMeasPos)); };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
-}
-function msMeasView(mode){
-  _measView=mode;
-  const grid=document.getElementById('ms-fields'), diag=document.getElementById('ms-diagram'), hint=document.getElementById('ms-diagram-hint');
-  const bg=document.getElementById('msv-grid'), bd=document.getElementById('msv-diagram');
-  if(bg) bg.classList.toggle('active',mode==='grid');
-  if(bd) bd.classList.toggle('active',mode==='diagram');
-  // المخطط يظهر على الموديل الكامل (لوحة الطلب) لا في صندوق صغير
-  if(diag) diag.style.display='none';
-  const onModel = (typeof _msMainTab==='undefined') || _msMainTab==='model'; // لا تُظهر حقول الموديل فوق تبويب آخر
-  if(grid) grid.style.display = (onModel && mode!=='diagram') ? '' : 'none';
-  if(hint) hint.style.display = (onModel && mode==='diagram') ? 'block' : 'none';
-  renderOrderVisual();
 }
 // ═══════════════ محرّك النقاط التفاعلية لأوردر التفصيل
 // النقاط الافتراضية للثوب (تُستخدم عند عدم تخصيص نقاط للقالب)
