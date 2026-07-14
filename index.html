@@ -1561,6 +1561,7 @@ function _fbFail(){
       <button class="mset-tab" id="mset-tab-spots" onclick="msetTab('spots')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">🎯 أجزاء الموديل</button>
       <button class="mset-tab" id="mset-tab-mpos" onclick="msetTab('mpos')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">📍 مواضع القياس</button>
       <button class="mset-tab" id="mset-tab-sizes" onclick="msetTab('sizes')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">📊 جدول المقاسات</button>
+      <button class="mset-tab" id="mset-tab-fit" onclick="msetTab('fit')" style="flex:1;padding:10px;border:none;background:white;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;color:#999">⚖️ الفيت</button>
     </div>
     <div id="mset-pane-fields" class="mlist">
       <!-- القسم الأول: الجدول الأساسي — كل القياسات، اختر ما يخص هذا النوع -->
@@ -1605,6 +1606,18 @@ function _fbFail(){
         <div style="font-weight:800;color:#4527a0;font-size:.88rem;margin:18px 0 8px">🧩 صور خيارات الأجزاء القابلة للتغيير</div>
         <div style="font-size:.74rem;color:#999;margin-bottom:10px">ارفع صورة لكل خيار (مثلاً صور الياقات: ملكي/صيني/مربع...) لتظهر في قائمة الاختيار داخل الأوردر.</div>
         <div id="mset-parts"></div>
+      </div>
+    </div>
+    <div id="mset-pane-fit" style="display:none" class="mlist">
+      <div style="padding:14px 16px">
+        <div style="font-weight:800;color:#e65100;font-size:.9rem;margin-bottom:4px">⚖️ إعدادات الفيت — نسب الزيادة عن قياسات البدي حسب نمط الجسم</div>
+        <div style="font-size:.74rem;color:#888;margin-bottom:10px">لكل قياس، حدد كم <b>يُزاد (أو يُنقص بالسالب)</b> على القياس المُدخل حسب نمط جسم العميل. في الأوردر: اختر النمط واضغط «تطبيق الفيت» فتتعدل القياسات بالمعادلات.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="fitSave()">💾 حفظ الفيت</button>
+          <button class="btn btn-sm" style="background:#6a1b9a;color:#fff" onclick="fitSuggest()">Σ المعادلات المقترحة</button>
+          <button class="btn btn-warning btn-sm" onclick="fitClear()">🧹 تفريغ الكل</button>
+        </div>
+        <div id="mset-fit-body" style="overflow:auto;max-height:52vh"></div>
       </div>
     </div>
     <div id="mset-pane-sizes" style="display:none" class="mlist">
@@ -1708,10 +1721,12 @@ function _fbFail(){
           </div>
         </div>
         <div id="ms-size-match" style="margin-bottom:6px"></div>
+        <div id="ms-fit-bar" style="margin-bottom:6px"></div>
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
         <div id="ms-body-fields" class="ms-fields-grid" style="display:none"></div>
+        <div id="ms-body-fit" style="display:none"></div>
         <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
@@ -2795,7 +2810,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts','fitSettings'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -2857,6 +2872,7 @@ let qcDefects = [];     // مكتبة العيوب القابلة للتخصيص
 let tmplImages = {};    // صور الموديل وخيارات الأجزاء لكل قالب
 let bodyGuideImgs = {};  // صور إرشادية لطريقة أخذ كل قياس جسم (بدي)
 let sizeCharts = {};     // جدول المقاسات المرجعي لكل قالب: {tpl:{sizes:[{name,values:{مفتاح:قيمة سم}}]}}
+let fitSettings = {};    // إعدادات الفيت لكل قالب: {tpl:{shape:{مفتاح:زيادة سم}}} — زيادات القَصّة حسب نمط الجسم
 let tmplHotspots = {};  // نقاط الأجزاء المخصصة لكل قالب: [{id,label,x,y,options}]
 let tmplLayers = {};    // الموديل التفاعلي: صورة أساس + طبقات صور الخيارات بمواضعها
 let naseejVarMap = {};  // ربط اختيارات الأجزاء العربية بأسماء Variations في نسيج (key: partId::value)
@@ -2912,6 +2928,7 @@ function loadAccountData() {
   tmplImages      = JSON.parse(lsGet('tmplImages','{}'));
   bodyGuideImgs   = JSON.parse(lsGet('bodyGuideImgs','{}'));
   sizeCharts      = JSON.parse(lsGet('sizeCharts','{}'));
+  fitSettings     = JSON.parse(lsGet('fitSettings','{}'));
   tmplHotspots    = JSON.parse(lsGet('tmplHotspots','{}'));
   tmplLayers      = JSON.parse(lsGet('tmplLayers','{}'));
   naseejVarMap    = JSON.parse(lsGet('naseejVarMap','{}'));
@@ -5408,10 +5425,12 @@ function msMainTab(which) {
   const el=id=>document.getElementById(id);
   if(el('ms-fields'))       el('ms-fields').style.display       = which==='table' ? '' : 'none';
   if(el('ms-size-match'))   el('ms-size-match').style.display   = which==='table' ? '' : 'none';
+  if(el('ms-fit-bar')){ el('ms-fit-bar').style.display = which==='table' ? '' : 'none'; if(which==='table') msRenderFitBar(); }
   if(el('ms-warnings'))     el('ms-warnings').style.display     = which==='table' ? '' : 'none';
   if(el('ms-diagram'))      el('ms-diagram').style.display      = 'none';
   if(el('ms-diagram-hint')) el('ms-diagram-hint').style.display = which==='model' ? 'block' : 'none';
   if(el('ms-body-fields'))  el('ms-body-fields').style.display  = which==='body' ? '' : 'none';
+  if(el('ms-body-fit')){ el('ms-body-fit').style.display = which==='body' ? '' : 'none'; if(which==='body') msRenderBodyFit(); }
   renderOrderVisual();
 }
 // صور إرشادية لكل قياس جسم (يرفعها صاحب المنشأة مرة وتُزامن سحابياً وتظهر للجميع)
@@ -6700,7 +6719,8 @@ function msetTab(which) {
   document.getElementById('mset-pane-spots').style.display  = which==='spots'  ? '' : 'none';
   document.getElementById('mset-pane-mpos').style.display   = which==='mpos'   ? '' : 'none';
   document.getElementById('mset-pane-sizes').style.display  = which==='sizes'  ? '' : 'none';
-  const tabs = { fields:'mset-tab-fields', imgs:'mset-tab-imgs', spots:'mset-tab-spots', mpos:'mset-tab-mpos', sizes:'mset-tab-sizes' };
+  document.getElementById('mset-pane-fit').style.display    = which==='fit'    ? '' : 'none';
+  const tabs = { fields:'mset-tab-fields', imgs:'mset-tab-imgs', spots:'mset-tab-spots', mpos:'mset-tab-mpos', sizes:'mset-tab-sizes', fit:'mset-tab-fit' };
   Object.entries(tabs).forEach(([k,id])=>{
     const on = k===which;
     document.getElementById(id).style.background = on ? '#f3f7f0' : 'white';
@@ -6710,6 +6730,164 @@ function msetTab(which) {
   if (which==='spots') renderHotspotEditor();
   if (which==='mpos') renderMeasPosEditor();
   if (which==='sizes') renderSizeChartEditor();
+  if (which==='fit') renderFitEditor();
+}
+// ═══════════════ إعدادات الفيت: زيادات القصّة حسب نمط الجسم + تطبيقها على قياسات الأوردر
+const FIT_SHAPES=[
+  {id:'oval',      ar:'بيضاوي',       en:'Oval',              ic:'⬭'},
+  {id:'trapezoid', ar:'شبه منحرف',    en:'Trapezoid',         ic:'⏢'},
+  {id:'rectangle', ar:'مستطيل',       en:'Rectangle',         ic:'▭'},
+  {id:'invtri',    ar:'مثلث مقلوب',   en:'Inverted Triangle', ic:'🔻'},
+  {id:'tri',       ar:'مثلث',         en:'Triangle',          ic:'🔺'}
+];
+function _fitOf(tpl){ fitSettings[tpl]=fitSettings[tpl]||{}; FIT_SHAPES.forEach(sh=>{ fitSettings[tpl][sh.id]=fitSettings[tpl][sh.id]||{}; }); fitSettings[tpl].src=fitSettings[tpl].src||{}; return fitSettings[tpl]; }
+function renderFitEditor(){
+  const tpl=document.getElementById('mset-template').value;
+  const fit=_fitOf(tpl), keys=getTemplateKeys(tpl);
+  const box=document.getElementById('mset-fit-body'); if(!box) return;
+  box.innerHTML='<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
+    +'<thead><tr><th style="padding:5px 8px;border:1px solid #eee;background:#fff3e0;position:sticky;top:0">المسميات</th>'
+    +'<th style="padding:4px 6px;border:1px solid #eee;background:#e8f5e9;position:sticky;top:0;text-align:center"><div style="font-size:.7rem;font-weight:800;color:#1b5e20">🧍 مصدر البدي</div><div style="font-size:.58rem;color:#999">التعويض من قياس</div></th>'
+    +FIT_SHAPES.map(sh=>`<th style="padding:4px 6px;border:1px solid #eee;background:#fff3e0;position:sticky;top:0;text-align:center"><div style="font-size:1.3rem;line-height:1">${sh.ic}</div><div style="font-size:.66rem;font-weight:800">${sh.ar}</div><div style="font-size:.6rem;color:#999;direction:ltr">${sh.en}</div></th>`).join('')
+    +'</tr></thead><tbody>'
+    +keys.map(k=>'<tr><td style="padding:4px 8px;border:1px solid #f5f5f5;white-space:nowrap">'+escHtml(MEAS_DICT[k]||k)+(MEAS_EN[k]?'<div style="font-size:.62rem;color:#c62828;direction:ltr">'+escHtml(MEAS_EN[k])+'</div>':'')+'</td>'
+      +'<td style="padding:2px;border:1px solid #f5f5f5"><select id="fitsrc-'+k+'" style="max-width:110px;padding:3px;border:1px solid #c8e6c9;border-radius:5px;font-family:inherit;font-size:.68rem">'
+        +'<option value="">—</option>'+BODY_FIELDS.map(f=>`<option value="${f.k}" ${fit.src[k]===f.k?'selected':''}>${f.l}</option>`).join('')+'</select></td>'
+      +FIT_SHAPES.map(sh=>`<td style="padding:2px;border:1px solid #f5f5f5"><input type="number" step="0.5" id="fitv-${sh.id}-${k}" value="${fit[sh.id][k]!=null?fit[sh.id][k]:''}" style="width:58px;text-align:center;border:1px solid #eee;border-radius:5px;padding:3px;direction:ltr" placeholder="—"></td>`).join('')+'</tr>').join('')
+    +'</tbody></table>';
+}
+function fitSave(){
+  const tpl=document.getElementById('mset-template').value;
+  const fit=_fitOf(tpl), keys=getTemplateKeys(tpl);
+  FIT_SHAPES.forEach(sh=>{ keys.forEach(k=>{
+    const el=document.getElementById('fitv-'+sh.id+'-'+k); if(!el) return;
+    const v=el.value.trim();
+    if(v==='') delete fit[sh.id][k]; else fit[sh.id][k]=parseFloat(v);
+  }); });
+  keys.forEach(k=>{ const el=document.getElementById('fitsrc-'+k); if(!el) return; if(el.value) fit.src[k]=el.value; else delete fit.src[k]; });
+  lsSet('fitSettings', JSON.stringify(fitSettings));
+  alert('✔ حُفظت إعدادات الفيت لقالب '+(L(tpl)||tpl));
+}
+function fitClear(){
+  if(!confirm('تفريغ كل قيم الفيت لهذا القالب؟')) return;
+  const tpl=document.getElementById('mset-template').value;
+  fitSettings[tpl]={}; _fitOf(tpl);
+  lsSet('fitSettings', JSON.stringify(fitSettings)); renderFitEditor();
+}
+// معادلات مقترحة (قابلة للتعديل) — زيادات شائعة للثوب حسب نمط الجسم
+function fitSuggest(){
+  const tpl=document.getElementById('mset-template').value; const keys=getTemplateKeys(tpl);
+  const SUG={ 'Full Chest':{oval:5,trapezoid:7,rectangle:5,invtri:6,tri:5},
+    'Waist':{oval:6,trapezoid:6,rectangle:5,invtri:-5,tri:4},
+    'Hips':{oval:4,trapezoid:6,rectangle:5,invtri:7,tri:5},
+    'Bottom':{oval:25,trapezoid:35,rectangle:30,invtri:35,tri:30},
+    'Elbow Width':{oval:-4,trapezoid:-3,rectangle:-3,invtri:-2,tri:-3},
+    'Sada Round':{oval:-5,trapezoid:-4,rectangle:-4,invtri:-4,tri:-4},
+    'Arm Hole':{oval:2,trapezoid:2,rectangle:1.5,invtri:2.5,tri:1.5} };
+  const SRC={ 'Full Chest':'chestC', 'Waist':'waistC', 'Hips':'hipsC', 'Collar Sadaa':'neck', 'Thobe Shoulder':'shoulderW', 'Front Length':'heightT', 'Back Length':'heightT', 'S Sada Length':'armLen', 'Kabak Round':'wristC' };
+  let n=0;
+  keys.forEach(k=>{
+    const en=_scNorm(MEAS_EN[k]||'');
+    Object.keys(SUG).forEach(name=>{
+      if(_scNorm(name)!==en) return;
+      FIT_SHAPES.forEach(sh=>{
+        const el=document.getElementById('fitv-'+sh.id+'-'+k);
+        if(el && el.value.trim()==='' && SUG[name][sh.id]!=null){ el.value=SUG[name][sh.id]; n++; }
+      });
+    });
+    Object.keys(SRC).forEach(name=>{
+      if(_scNorm(name)!==en) return;
+      const sel=document.getElementById('fitsrc-'+k);
+      if(sel && !sel.value){ sel.value=SRC[name]; n++; }
+    });
+  });
+  alert(n? '✔ اقتُرح '+n+' قيمة — راجعها وعدّلها ثم اضغط «حفظ الفيت»' : 'لا اقتراحات جديدة (القيم معبأة أو لا حقول مطابقة)');
+}
+// شريط الفيت في الأوردر: اختيار نمط الجسم وتطبيق المعادلات على القياسات المدخلة
+function msRenderFitBar(){
+  const box=document.getElementById('ms-fit-bar'); if(!box) return;
+  const tpl=document.getElementById('ms-template').value;
+  const fit=fitSettings[tpl]||{};
+  const has=FIT_SHAPES.some(sh=>fit[sh.id]&&Object.keys(fit[sh.id]).length);
+  if(!has){ box.innerHTML=''; return; }
+  box.innerHTML='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 9px">'
+    +'<span style="font-size:.73rem;font-weight:800;color:#e65100">⚖️ الفيت — نمط الجسم:</span>'
+    +'<select id="ms-fit-shape" style="padding:4px 8px;border:1.5px solid #ffb74d;border-radius:6px;font-family:inherit;font-size:.78rem;font-weight:800">'
+    +FIT_SHAPES.map(sh=>`<option value="${sh.id}">${sh.ic} ${sh.ar}</option>`).join('')
+    +'</select>'
+    +'<button class="btn btn-sm" style="background:#e65100;color:#fff" onclick="msApplyFit()">تطبيق الفيت</button>'
+    +'<span style="font-size:.68rem;color:#8d6e63">يضيف زيادات القصّة للقياسات المدخلة حسب النمط</span></div>';
+}
+// حساب المقترح من قياسات البدي: تعويض قياس البدي + زيادة النمط — وعرض الاثنين جنباً لجنب
+function msRenderBodyFit(){
+  const box=document.getElementById('ms-body-fit'); if(!box) return;
+  const tpl=document.getElementById('ms-template').value;
+  const fit=fitSettings[tpl]||{}; const src=fit.src||{};
+  const hasSrc=Object.keys(src).length>0;
+  if(!hasSrc){ box.innerHTML='<div style="font-size:.72rem;color:#999;text-align:center;padding:8px">لحساب المقترح من البدي: اضبط «مصدر البدي» والزيادات في «⚙️ إعدادات الحقول ← ⚖️ الفيت»</div>'; return; }
+  box.innerHTML='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 9px;margin:8px 0 6px">'
+    +'<span style="font-size:.73rem;font-weight:800;color:#e65100">⚖️ نمط الجسم:</span>'
+    +'<select id="ms-bodyfit-shape" onchange="msBodyFitCalc()" style="padding:4px 8px;border:1.5px solid #ffb74d;border-radius:6px;font-family:inherit;font-size:.78rem;font-weight:800">'
+    +FIT_SHAPES.map(sh=>`<option value="${sh.id}">${sh.ic} ${sh.ar}</option>`).join('')
+    +'</select>'
+    +'<button class="btn btn-sm" style="background:#e65100;color:#fff" onclick="msBodyFitCalc()">Σ حساب المقترح</button></div>'
+    +'<div id="ms-bodyfit-out"></div>';
+}
+function msBodyFitCalc(){
+  const tpl=document.getElementById('ms-template').value;
+  const shId=(document.getElementById('ms-bodyfit-shape')||{}).value; if(!shId) return;
+  const fit=fitSettings[tpl]||{}; const src=fit.src||{}; const eases=fit[shId]||{};
+  const bv=_readBodyValues();
+  const inch=_orderUnit==='inch';
+  const rows=[];
+  getTemplateKeys(tpl).forEach(k=>{
+    const bk=src[k]; if(!bk) return;
+    let v=parseFloat(bv[bk]); if(!isFinite(v)||v<=0) return;
+    if(inch) v=+(v/2.54).toFixed(1); // البدي يُدخل سم
+    let e=eases[k]!=null?+eases[k]:0; if(inch) e=+(e/2.54).toFixed(2);
+    rows.push({k, bk, v, e, sug:+(v+e).toFixed(1)});
+  });
+  const out=document.getElementById('ms-bodyfit-out'); if(!out) return;
+  if(!rows.length){ out.innerHTML='<div style="font-size:.74rem;color:#b26a00;background:#fff8e1;border:1px dashed #ffd54f;border-radius:8px;padding:8px;text-align:center">أدخل قياسات البدي أعلاه أولاً (الحقول المرتبطة بمصدر بدي في إعدادات الفيت)</div>'; return; }
+  window._msBodyFitRows=rows;
+  const bl=k=>{ const f=BODY_FIELDS.find(x=>x.k===k); return f?f.l:k; };
+  out.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+    +'<thead><tr><th style="padding:5px;border:1px solid #eee;background:#fff3e0">قياس الموديل</th><th style="padding:5px;border:1px solid #eee;background:#e8f5e9">🧍 البدي</th><th style="padding:5px;border:1px solid #eee;background:#fff3e0">الزيادة</th><th style="padding:5px;border:1px solid #eee;background:#f3e5f5">✨ المقترح</th></tr></thead><tbody>'
+    +rows.map(r=>`<tr>
+      <td style="padding:5px 8px;border:1px solid #f0f0f0;text-align:start">${escHtml(MEAS_DICT[r.k]||r.k)}<div style="font-size:.6rem;color:#999">${escHtml(bl(r.bk))}</div></td>
+      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#1b5e20;font-weight:800">${r.v}</td>
+      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#e65100">${r.e>=0?'+':''}${r.e}</td>
+      <td style="padding:5px;border:1px solid #f0f0f0;text-align:center;direction:ltr;color:#6a1b9a;font-weight:800;background:#faf5fc">${r.sug}</td></tr>`).join('')
+    +'</tbody></table>'
+    +'<button class="btn btn-sm" style="background:#6a1b9a;color:#fff;margin-top:7px" onclick="msBodyFitApply()">⬇ اعتماد المقترحات في قياسات الموديل</button>';
+}
+function msBodyFitApply(){
+  const rows=window._msBodyFitRows||[]; if(!rows.length) return;
+  if(!confirm('اعتماد '+rows.length+' قياساً مقترحاً في جدول قياسات الموديل؟ (تُلوَّن بنفسجياً)')) return;
+  let n=0;
+  rows.forEach(r=>{ const el=document.getElementById('msf-'+r.k); if(!el) return; el.value=r.sug; el.classList.remove('msf-filled'); el.classList.add('msf-auto'); n++; });
+  validateMeasLive();
+  alert('✔ اعتُمد '+n+' قياساً — تجدها في تبويب «جدول القياسات» ملونة بنفسجياً');
+}
+function msApplyFit(){
+  const tpl=document.getElementById('ms-template').value;
+  const shId=(document.getElementById('ms-fit-shape')||{}).value; if(!shId) return;
+  const sh=FIT_SHAPES.find(x=>x.id===shId);
+  const eases=(fitSettings[tpl]||{})[shId]||{};
+  const inch=_orderUnit==='inch';
+  const changes=[];
+  getTemplateKeys(tpl).forEach(k=>{
+    const el=document.getElementById('msf-'+k); if(!el) return;
+    const cur=parseFloat(el.value); let e=eases[k];
+    if(!isFinite(cur)||cur<=0||e==null||e==='') return;
+    e=+e; if(inch) e=+(e/2.54).toFixed(2);
+    changes.push({el, k, cur, nv:+(cur+e).toFixed(1), e});
+  });
+  if(!changes.length){ alert('لا قياسات مدخلة تنطبق عليها معادلات هذا النمط'); return; }
+  if(!confirm('⚖️ تطبيق فيت «'+sh.ic+' '+sh.ar+'» على '+changes.length+' قياساً:\n\n'+changes.map(c=>'• '+(MEAS_DICT[c.k]||c.k)+': '+c.cur+' '+(c.e>=0?'+':'')+c.e+' = '+c.nv).join('\n')+'\n\nمتابعة؟')) return;
+  changes.forEach(c=>{ c.el.value=c.nv; c.el.classList.remove('msf-filled'); c.el.classList.add('msf-auto'); });
+  validateMeasLive();
+  alert('✔ طُبق الفيت على '+changes.length+' قياساً');
 }
 // ═══════════════ جدول المقاسات المرجعي: تحرير واستيراد ومطابقة تلقائية
 let _scSelByTpl={}; // الجدول المفتوح للتحرير في هذه الجلسة (لكل قالب)
