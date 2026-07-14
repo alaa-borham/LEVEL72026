@@ -1664,8 +1664,12 @@ function _fbFail(){
           <div class="fg" style="margin:0;grid-column:1/-1"><label>ملاحظات إضافية</label><input type="text" id="ms-notes"></div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 6px">
-          <div style="font-weight:800;color:#2e7d32;font-size:.84rem">📐 القياسات</div>
-          <div class="ms-view-tabs">
+          <div class="ms-view-tabs" style="margin-bottom:0">
+            <button type="button" id="mstab-model" class="active" onclick="msMainTab('model')">📐 قياسات الموديل</button>
+            <button type="button" id="mstab-body" onclick="msMainTab('body')">🧍 قياسات بدي</button>
+            <button type="button" id="mstab-table" onclick="msMainTab('table')">📋 جدول القياسات</button>
+          </div>
+          <div class="ms-view-tabs" id="ms-view-tabs" style="margin-bottom:0">
             <button type="button" id="msv-grid" class="active" onclick="msMeasView('grid')">▦ شبكة</button>
             <button type="button" id="msv-diagram" onclick="msMeasView('diagram')">🧍 مخطط</button>
           </div>
@@ -1673,6 +1677,8 @@ function _fbFail(){
         <div id="ms-fields" class="ms-fields-grid"></div>
         <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
+        <div id="ms-body-fields" class="ms-fields-grid" style="display:none"></div>
+        <div id="ms-summary" style="display:none"></div>
         <div id="ms-warnings"></div>
       </div>
       <!-- ═══ الموديل التفاعلي -->
@@ -5329,6 +5335,7 @@ function openMeasurePanel(editId, presetClientId, presetRecord) {
   toggleProofa(); if(mod.proofa) renderProofaPieces(mod.proofaPieces||[]);
   _orderUnit = (src && src.unit) || 'cm';
   renderMeasFields(src ? src.values : null);
+  renderBodyFields(src ? src.body : null); msMainTab('model');
   _refreshUnitUI();
   renderOrderVisual();
   _orderBasket = []; renderOrderBasket();
@@ -5348,6 +5355,59 @@ function renderMeasFields(values) {
     </div>`).join('');
   validateMeasLive();
   if (document.getElementById('ms-diagram')) msMeasView(_measView);
+}
+// ═══════════════ تبويبات القياسات: قياسات الموديل / قياسات بدي (الجسم) / جدول القياسات
+const BODY_FIELDS = [
+  {k:'neck',l:'محيط الرقبة'},{k:'shoulderW',l:'عرض الكتف'},{k:'chestC',l:'محيط الصدر'},
+  {k:'waistC',l:'محيط الخصر'},{k:'hipsC',l:'محيط الأرداف'},{k:'armLen',l:'طول الذراع'},
+  {k:'wristC',l:'محيط المعصم'},{k:'heightT',l:'الطول الكلي (القامة)'},{k:'weightKg',l:'الوزن (كجم)'}
+];
+let _msMainTab = 'model';
+function msMainTab(which) {
+  _msMainTab = which;
+  ['model','body','table'].forEach(t=>{
+    const b=document.getElementById('mstab-'+t); if(b) b.classList.toggle('active', t===which);
+  });
+  const onModel = which==='model';
+  const gridView = document.getElementById('msv-grid').classList.contains('active');
+  document.getElementById('ms-fields').style.display        = (onModel && gridView) ? '' : 'none';
+  document.getElementById('ms-diagram').style.display       = (onModel && !gridView) ? '' : 'none';
+  document.getElementById('ms-diagram-hint').style.display  = (onModel && !gridView) ? '' : 'none';
+  document.getElementById('ms-view-tabs').style.display     = onModel ? '' : 'none';
+  document.getElementById('ms-warnings').style.display      = onModel ? '' : 'none';
+  document.getElementById('ms-body-fields').style.display   = which==='body' ? '' : 'none';
+  const sum=document.getElementById('ms-summary');
+  sum.style.display = which==='table' ? '' : 'none';
+  if (which==='table') buildMeasSummary();
+}
+function renderBodyFields(vals) {
+  document.getElementById('ms-body-fields').innerHTML = BODY_FIELDS.map(f=>`
+    <div class="fg" style="margin:0">
+      <label>${f.l}</label>
+      <input type="number" id="msb-${f.k}" min="0" step="0.5" style="direction:ltr;text-align:center"
+        value="${vals && vals[f.k]!=null && vals[f.k]!=='' ? vals[f.k] : ''}" onfocus="this.select()" placeholder="—">
+    </div>`).join('');
+}
+function _readBodyValues() {
+  const out={};
+  BODY_FIELDS.forEach(f=>{ const el=document.getElementById('msb-'+f.k); const v=el&&el.value.trim(); if(v!==''&&v!=null&&parseFloat(v)>0) out[f.k]=v; });
+  return out;
+}
+// جدول مراجعة يجمع قياسات الموديل والجسم المدخلة حالياً
+function buildMeasSummary() {
+  const unit = _orderUnit==='inch'?'إنش':'سم';
+  const mv = _readMeasValues(), bv = _readBodyValues();
+  const row = (l,v)=>`<tr><td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:start">${l}</td><td style="padding:6px 10px;border:1px solid #e0e0e0;text-align:center;font-weight:800;color:#1b5e20;direction:ltr">${v}</td></tr>`;
+  let html='';
+  const mkeys=Object.keys(mv);
+  if (mkeys.length) html += `<tr><th colspan="2" style="background:#e8f5e9;color:#1b5e20;padding:6px;border:1px solid #c8e6c9">📐 قياسات الموديل (${unit})</th></tr>`
+    + mkeys.map(k=>row(MEAS_DICT[k]||k, mv[k])).join('');
+  const bkeys=Object.keys(bv);
+  if (bkeys.length) html += `<tr><th colspan="2" style="background:#e3f2fd;color:#0d47a1;padding:6px;border:1px solid #bbdefb">🧍 قياسات بدي — الجسم (سم)</th></tr>`
+    + BODY_FIELDS.filter(f=>bv[f.k]!=null).map(f=>row(f.l, bv[f.k])).join('');
+  document.getElementById('ms-summary').innerHTML = html
+    ? `<table style="width:100%;border-collapse:collapse;font-size:.85rem">${html}</table>`
+    : '<div style="text-align:center;color:#999;padding:22px">لا توجد قياسات مدخلة بعد — عبّئ «قياسات الموديل» أو «قياسات بدي» أولاً</div>';
 }
 // ═══════════════ مخطط القياس: إدخال القياسات في مواضعها على رسم الثوب (طريقة بصرية)
 // مواضع افتراضية لصناديق القياس (٪ من اللوحة) — قابلة للسحب وتُحفظ لكل قالب
@@ -5417,8 +5477,9 @@ function msMeasView(mode){
   if(bd) bd.classList.toggle('active',mode==='diagram');
   // المخطط يظهر على الموديل الكامل (لوحة الطلب) لا في صندوق صغير
   if(diag) diag.style.display='none';
-  if(grid) grid.style.display = (mode==='diagram') ? 'none' : '';
-  if(hint) hint.style.display = (mode==='diagram') ? 'block' : 'none';
+  const onModel = (typeof _msMainTab==='undefined') || _msMainTab==='model'; // لا تُظهر حقول الموديل فوق تبويب آخر
+  if(grid) grid.style.display = (onModel && mode!=='diagram') ? '' : 'none';
+  if(hint) hint.style.display = (onModel && mode==='diagram') ? 'block' : 'none';
   renderOrderVisual();
 }
 // ═══════════════ محرّك النقاط التفاعلية لأوردر التفصيل
@@ -6814,7 +6875,7 @@ function _buildMeasData(){
     clientId, date: readDMY('ms-date'),
     name: document.getElementById('ms-name').value.trim(),
     template: document.getElementById('ms-template').value,
-    unit: _orderUnit, values, model: _collectModel(),
+    unit: _orderUnit, values, body: _readBodyValues(), model: _collectModel(),
     notes: document.getElementById('ms-notes').value.trim(),
     measurer: currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || (settings && settings.coName) || 'صاحب المنشأة'),
     salesman: currentMember ? currentMember.name : ((currentAccProfile && currentAccProfile.name) || (settings && settings.coName) || 'صاحب المنشأة'),
@@ -6851,7 +6912,7 @@ function _fillOrderForm(d){
   _orderParts = {};
   const mod = d.model||{};
   (mod.partsSel||[]).forEach(p=>{ _orderParts[p.id]=p.value; });
-  renderMeasFields(d.values);
+  renderMeasFields(d.values); renderBodyFields(d.body);
   document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
     fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('') +
     `<option value="__ext" ${mod.fabricExt?'selected':''}>🧵 قماش خارجي من العميل</option>`;
@@ -6884,7 +6945,7 @@ function _resetPieceForm(){
   document.getElementById('mm-qty').value=1;
   document.getElementById('mm-proofa').checked=false; toggleProofa();
   document.getElementById('mm-fabric').value=''; toggleExtFabric();
-  renderMeasFields(null); renderOrderVisual();
+  renderMeasFields(null); renderBodyFields(null); renderOrderVisual();
 }
 function addPieceToOrder(){
   if (document.getElementById('ms-edit-id').value){ alert('تعديل طلب محفوظ لا يدعم إضافة قطع'); return; }
@@ -7862,7 +7923,7 @@ function applyPrior(measId){
   _orderUnit = m.unit || 'cm'; _refreshUnitUI();
   _orderParts = {};
   if (m.model && m.model.partsSel) m.model.partsSel.forEach(p=>{ _orderParts[p.id]=p.value; });
-  renderMeasFields(m.values);
+  renderMeasFields(m.values); renderBodyFields(m.body);
   const mod = m.model||{};
   document.getElementById('mm-fabric').innerHTML = '<option value="">— بدون —</option>' +
     fabrics.map(f=>`<option value="${f.id}" ${String(f.id)===String(mod.fabricId)?'selected':''}>${escHtml(_fabricLabel(f))}</option>`).join('') +
@@ -8439,7 +8500,15 @@ function printProdOrder(id) {
       const has = m.values && m.values[k]!=null && m.values[k]!=='';
       return `<div style="border:1px solid #c5e1a5;border-radius:6px;padding:2px 3px;text-align:center"><div style="font-size:.55rem;color:#666;line-height:1.1">${escHtml(MEAS_DICT[k]||k)}</div><div style="font-size:.86rem;font-weight:800;color:${has?'#1b5e20':'#bbb'};direction:ltr">${has?formatNum(m.values[k]):'—'}</div></div>`;
     }).join('') +
-    '</div>') : '';
+    '</div>' +
+    // قياسات الجسم (بدي) إن سُجّلت مع الطلب
+    ((m.body && Object.keys(m.body).length) ? (
+      '<div style="font-size:.78rem;font-weight:700;color:#0d47a1;margin:6px 0 3px">🧍 قياسات بدي — الجسم (سم):</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:3px">' +
+      BODY_FIELDS.filter(f=>m.body[f.k]!=null&&m.body[f.k]!=='').map(f=>
+        `<div style="border:1px solid #bbdefb;border-radius:6px;padding:2px 3px;text-align:center"><div style="font-size:.55rem;color:#666;line-height:1.1">${escHtml(f.l)}</div><div style="font-size:.86rem;font-weight:800;color:#0d47a1;direction:ltr">${formatNum(m.body[f.k])}</div></div>`
+      ).join('') + '</div>') : '')
+    ) : '';
   // صورة الموديل المركّبة + مواصفات القطع (تساعد القصّاص على رؤية الشكل المطلوب)
   const mw = document.getElementById('pp-model-wrap');
   if (m) {
