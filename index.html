@@ -6978,15 +6978,23 @@ function msMatchDetail(idx){
 function msUseSize(idx){
   const tpl=document.getElementById('ms-template').value;
   const _a=_scActive(tpl); const sz=((_a&&_a.sizes)||[])[idx]; if(!sz) return;
-  const inch=_orderUnit==='inch'; let filled=0;
+  const inch=_orderUnit==='inch'; const tol=inch?0.4:1;
+  let filled=0; const fixes=[];
   getTemplateKeys(tpl).forEach(k=>{
     const el=document.getElementById('msf-'+k); if(!el) return;
+    let ref=sz.values[k]; if(ref==null||ref==='') return;
+    ref=+ref; if(inch) ref=+(ref/2.54).toFixed(1);
     const cur=parseFloat(el.value);
-    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.classList.remove('msf-filled'); el.classList.add('msf-auto'); filled++; }
+    if(!isFinite(cur)||cur<=0){ el.value=+ref.toFixed(1); el.classList.remove('msf-filled'); el.classList.add('msf-auto'); filled++; }
+    else if(Math.abs(cur-ref)>tol){ fixes.push({el, k, cur, ref}); } // مدخل يخالف الجدول
   });
+  let fixed=0;
+  if(fixes.length && confirm('⚠️ يوجد '+fixes.length+' قياس مدخل يخالف مقاس '+sz.name+':\n\n'+fixes.map(f=>'• '+(MEAS_DICT[f.k]||f.k)+': '+f.cur+' ← '+(+f.ref.toFixed(1))).join('\n')+'\n\nتعديلها أيضاً لقيم الجدول؟')){
+    fixes.forEach(f=>{ f.el.value=+f.ref.toFixed(1); f.el.classList.remove('msf-filled'); f.el.classList.add('msf-auto'); fixed++; });
+  }
   validateMeasLive();
-  if(filled) alert('✔ استُكمل '+filled+' قياساً من مقاس '+sz.name+' — المدخل يدوياً لم يُمَس');
-  else alert('لا حقول فارغة للاستكمال');
+  if(filled||fixed) alert('✔ من مقاس '+sz.name+': استُكمل '+filled+' فارغاً'+(fixed?(' وعُدّل '+fixed+' مخالفاً'):'')+(fixes.length&&!fixed?' — أبقينا المدخل يدوياً كما هو':''));
+  else if(!fixes.length) alert('لا حقول فارغة ولا قيم مخالفة — كل شيء مطابق');
 }
 // محرّر مواضع صناديق القياس (إعدادات القالب) — اسحب لترتيبها، تُحفظ وتبقى ثابتة في الأوردر
 function renderMeasPosEditor(){
