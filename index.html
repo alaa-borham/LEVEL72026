@@ -450,6 +450,7 @@ body.ltr .dash-card::after{content:'›'}
 .ms-view-tabs button{border:none;background:#fff;padding:7px 16px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.84rem;color:#666}
 .ms-view-tabs button.active{background:#2e7d32;color:#fff}
 .msf-filled{background:#e8f5e9 !important;border-color:#43a047 !important;box-shadow:0 0 0 2px rgba(67,160,71,.14)}
+.msf-auto{background:#f3e5f5 !important;border-color:#8e24aa !important;box-shadow:0 0 0 2px rgba(142,36,170,.18)}
 .ms-diagram{position:relative;aspect-ratio:520/640;max-width:540px;width:100%;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden;touch-action:none;container-type:size}
 .ms-diagram>svg,.ms-diagram>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .dgm-box{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:move;touch-action:none;z-index:2}
@@ -5379,7 +5380,7 @@ function renderMeasFields(values) {
     <div class="fg" style="margin:0">
       <label>${MEAS_DICT[k]||k}${MEAS_EN[k]?`<span style="color:#1565c0;font-size:.66rem;font-weight:800;direction:ltr;display:block">${MEAS_EN[k]}</span>`:''}</label>
       <input type="number" id="msf-${k}" min="0" step="0.5" style="direction:ltr;text-align:center" class="${values && parseFloat(values[k])>0 ? 'msf-filled' : ''}"
-        value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" onkeydown="msEnterNext(event,this)" oninput="this.classList.toggle('msf-filled',parseFloat(this.value)>0);validateMeasLive()">
+        value="${values && values[k] != null && values[k] !== '' ? values[k] : '0'}" onfocus="this.select()" onkeydown="msEnterNext(event,this)" oninput="this.classList.remove('msf-auto');this.classList.toggle('msf-filled',parseFloat(this.value)>0);validateMeasLive()">
     </div>`).join('');
   validateMeasLive();
   if (document.getElementById('ms-fields')) msMainTab(_msMainTab);
@@ -6942,7 +6943,7 @@ function msUseSize(idx){
   getTemplateKeys(tpl).forEach(k=>{
     const el=document.getElementById('msf-'+k); if(!el) return;
     const cur=parseFloat(el.value);
-    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.classList.add('msf-filled'); el.style.background='#f3e5f5'; setTimeout(()=>{el.style.background='';},1200); filled++; }
+    if(!isFinite(cur)||cur<=0){ let ref=sz.values[k]; if(ref==null||ref==='')return; ref=+ref; if(inch) ref=ref/2.54; el.value=+ref.toFixed(1); el.classList.remove('msf-filled'); el.classList.add('msf-auto'); filled++; }
   });
   validateMeasLive();
   if(filled) alert('✔ استُكمل '+filled+' قياساً من مقاس '+sz.name+' — المدخل يدوياً لم يُمَس');
