@@ -113,6 +113,7 @@ body.ltr .lang-btn{left:auto;right:18px}
 #sidebar .sb-sec:hover{color:#fff}
 #sidebar .sb-arrow{transition:transform .18s;font-size:.7rem;opacity:.7}
 #sidebar .sb-sec.closed .sb-arrow{transform:rotate(90deg)}
+#sidebar a.sb-collapsed{display:none !important}
 .dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;max-width:1500px;margin:0 auto;position:relative;z-index:1}
 .dash-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:13px;padding:9px 12px;display:flex;align-items:center;gap:10px;text-align:start;cursor:pointer;transition:all .2s cubic-bezier(.2,.8,.3,1);position:relative}
 .dash-card::after{content:'‹';color:rgba(255,255,255,.25);font-size:1.2rem;margin-inline-start:auto;transition:all .2s}
@@ -7940,7 +7941,7 @@ function tailorMenuGo(what){
 function _sbSetSec(h, closed){
   h.classList.toggle('closed', closed);
   let el=h.nextElementSibling;
-  while(el && !el.classList.contains('sb-sec')){ if(el.tagName==='A') el.style.display=closed?'none':''; el=el.nextElementSibling; }
+  while(el && !el.classList.contains('sb-sec')){ if(el.tagName==='A') el.classList.toggle('sb-collapsed', closed); el=el.nextElementSibling; }
 }
 function sbToggleSec(h){
   const wasClosed=h.classList.contains('closed');
