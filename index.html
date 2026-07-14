@@ -87,6 +87,22 @@ html[data-theme] .ms-view-tabs button{background:var(--panel2);color:var(--muted
 html[data-theme] .ms-view-tabs button.active{background:#2e7d32;color:#fff}
 html[data-theme] .order-canvas,html[data-theme] .ms-diagram{background:#fff} /* لوحات الرسم تبقى بيضاء للوضوح */
 html[data-theme="dark"] .moverlay{background:rgba(0,0,0,.72)}
+/* خلفيات الرئيسية وشاشة الدخول تتبع الثيم (كانت خضراء ثابتة) */
+html[data-theme="dark"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(67,160,71,.14) 0%,transparent 55%),linear-gradient(135deg,#0f1013,#15171c 60%,#111318)}
+html[data-theme="dark"] #auth-screen{background:linear-gradient(135deg,#101114,#181b20)}
+html[data-theme="gray"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(96,125,139,.14) 0%,transparent 55%),linear-gradient(135deg,#d9dce0,#e8eaee 60%,#dfe2e6)}
+html[data-theme="gray"] #auth-screen{background:linear-gradient(135deg,#dfe2e6,#eef0f3)}
+/* وضوح عناصر الشريط العلوي والترحيب على الخلفية الرمادية الفاتحة */
+html[data-theme="gray"] .nav-icon-btn{background:rgba(0,0,0,.07);color:#2b3138;border-color:rgba(0,0,0,.2)}
+html[data-theme="gray"] #acc-name{color:#4a5058 !important}
+html[data-theme="gray"] .thm-group{border-color:rgba(0,0,0,.25)}
+html[data-theme="gray"] .thm-group button{color:#5c636e}
+html[data-theme="gray"] .thm-group button:hover{color:#23282d}
+html[data-theme="gray"] .thm-group button.on{background:#2f353c;color:#fff}
+html[data-theme="gray"] .dash-hero{background:rgba(255,255,255,.6);border-color:rgba(0,0,0,.12)}
+html[data-theme="gray"] .dash-hero h1{color:#23282d}
+html[data-theme="gray"] .dash-hero p{color:#5c636e}
+html[data-theme="gray"] #sb-toggle{background:#2f353c}
 @media print{ html[data-theme]{--bg:#fff;--panel:#fff;--panel2:#fff;--text:#000;--muted:#444;--border:#ddd} html[data-theme] body{background:#fff;color:#000} }
 .thm-group{display:inline-flex;border:1px solid rgba(255,255,255,.25);border-radius:20px;overflow:hidden;margin-inline-end:10px;vertical-align:middle}
 .thm-group button{border:none;background:transparent;color:rgba(255,255,255,.65);padding:5px 11px;font-size:.72rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s}
