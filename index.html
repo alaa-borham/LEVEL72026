@@ -5524,15 +5524,10 @@ function renderBodyFields(vals) {
   box.style.display=''; box.classList.remove('ms-fields-grid');
   const tpl=document.getElementById('ms-template').value;
   const fit=fitSettings[tpl]||{}; const src=fit.src||{};
-  const rows=getTemplateKeys(tpl).filter(k=>src[k]);
-  if(!rows.length){
-    box.innerHTML='<div style="font-size:.78rem;color:#b26a00;background:#fff8e1;border:1.5px dashed #ffd54f;border-radius:10px;padding:12px;text-align:center">'
-      +'لتفعيل جدول البدي: اضبط «🧍 مصدر البدي» والزيادات لكل قياس من <b>⚙️ إعدادات الحقول ← ⚖️ الفيت</b>'
-      +'<br><button class="btn btn-sm" style="background:#e65100;color:#fff;margin-top:8px" onclick="openMeasSettings();setTimeout(()=>msetTab(\'fit\'),80)">فتح إعدادات الفيت</button></div>';
-    if(_msMainTab==='body') box.style.display='';
-    return;
-  }
-  const bl=bk=>{ const f=BODY_FIELDS.find(x=>x.k===bk); return f?f.l:bk; };
+  // كل القياسات الظاهرة (نفس فلتر جدول القياسات) — ما له مصدر بدي يتشارك قيمته، وما ليس له يُدخل مباشرة
+  const hidden=measVisible[tpl]||{};
+  const rows=getTemplateKeys(tpl).filter(k=>hidden[k]!==false);
+  const bl=bk=>{ const f=BODY_FIELDS.find(x=>x.k===bk); return f?f.l:''; };
   box.innerHTML =
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 10px;margin-bottom:8px">'
       +'<span style="font-size:.76rem;font-weight:800;color:#e65100">⚖️ نمط الجسم:</span>'
@@ -5547,9 +5542,10 @@ function renderBodyFields(vals) {
       +'<th style="padding:7px;border:1px solid #e1bee7;background:#f3e5f5;color:#6a1b9a">✨ المقترح</th>'
     +'</tr></thead><tbody>'
     +rows.map(k=>{
-      const bk=src[k]; const img=bodyGuideImgs[bk];
+      const bk=src[k]||k; const img=bodyGuideImgs[bk];
+      const sub=src[k]?bl(src[k]):(MEAS_EN[k]||'');
       return `<tr>
-        <td style="padding:6px 9px;border:1px solid #eee;text-align:start"><b>${escHtml(MEAS_DICT[k]||k)}</b><div style="font-size:.62rem;color:#999">${escHtml(bl(bk))}</div></td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:start"><b>${escHtml(MEAS_DICT[k]||k)}</b>${sub?`<div style="font-size:.62rem;color:#999">${escHtml(sub)}</div>`:''}</td>
         <td style="padding:4px;border:1px solid #eee;background:#f7fcf7;text-align:center;white-space:nowrap">
           <input type="number" step="0.5" id="msbt-${k}" data-bk="${bk}" value="${_bodyVals[bk]!=null?_bodyVals[bk]:''}" placeholder="—"
             onfocus="this.select()" onkeydown="msEnterNext(event,this)" oninput="msBodyInput(this)"
@@ -5579,8 +5575,9 @@ function msBodyRecalc(){
   const eases=fit[shId]||{};
   const inch=_orderUnit==='inch';
   window._msBodyFitRows=[];
-  getTemplateKeys(tpl).forEach(k=>{
-    const bk=src[k]; if(!bk) return;
+  const hidden=measVisible[tpl]||{};
+  getTemplateKeys(tpl).filter(k=>hidden[k]!==false).forEach(k=>{
+    const bk=src[k]||k;
     const eEl=document.getElementById('msbe-'+k), sEl=document.getElementById('msbs-'+k);
     if(!eEl||!sEl) return;
     let e=eases[k]!=null&&eases[k]!==''?+eases[k]:0;
