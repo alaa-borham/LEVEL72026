@@ -88,10 +88,12 @@ html[data-theme] .ms-view-tabs button.active{background:#2e7d32;color:#fff}
 html[data-theme] .order-canvas,html[data-theme] .ms-diagram{background:#fff} /* لوحات الرسم تبقى بيضاء للوضوح */
 html[data-theme="dark"] .moverlay{background:rgba(0,0,0,.72)}
 @media print{ html[data-theme]{--bg:#fff;--panel:#fff;--panel2:#fff;--text:#000;--muted:#444;--border:#ddd} html[data-theme] body{background:#fff;color:#000} }
-.theme-btn{position:fixed;bottom:66px;left:18px;z-index:600;background:#37474f;color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:1.15rem;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:all .15s;opacity:.85}
-.theme-btn:hover{opacity:1;transform:scale(1.08)}
-body.ltr .theme-btn{left:auto;right:18px}
-@media print{.theme-btn{display:none}}
+.thm-group{display:inline-flex;border:1px solid rgba(255,255,255,.25);border-radius:20px;overflow:hidden;margin-inline-end:10px;vertical-align:middle}
+.thm-group button{border:none;background:transparent;color:rgba(255,255,255,.65);padding:5px 11px;font-size:.72rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s}
+.thm-group button:hover{color:#fff}
+.thm-group button.on{background:rgba(255,255,255,.92);color:#1b3a20}
+@media(max-width:640px){.thm-group button{padding:5px 8px;font-size:.66rem}}
+@media print{.thm-group{display:none}}
 body.ltr .lang-btn{left:auto;right:18px}
 .dash-nav{display:flex;justify-content:space-between;align-items:center;max-width:1500px;margin:0 auto 26px;position:relative;z-index:1}
 .dash-nav .nav-actions{display:flex;gap:8px}
@@ -586,7 +588,6 @@ function _fbFail(){
 <div id="sb-overlay" onclick="closeSb()"></div>
 
 <button class="lang-btn" onclick="toggleLangMenu()" id="lang-btn" title="Language" style="display:none">🌐</button>
-<button class="theme-btn" onclick="cycleTheme()" id="theme-btn" title="تبديل الوضع: فاتح / داكن / رمادي">☀️</button>
 <div class="lang-menu" id="lang-menu"></div>
 
 <!-- ═══════════════ AUTH (SaaS multi-tenant) -->
@@ -691,6 +692,11 @@ function _fbFail(){
       <svg width="120" height="40" viewBox="0 0 340 116"><use href="#level7logo"/></svg>
     </div>
     <div class="nav-actions" style="align-items:center">
+      <span class="thm-group" id="thm-group">
+        <button onclick="applyTheme('')" id="thm-light" title="الوضع الفاتح">☀️ فاتح</button>
+        <button onclick="applyTheme('dark')" id="thm-dark" title="الوضع الداكن">🌙 داكن</button>
+        <button onclick="applyTheme('gray')" id="thm-gray" title="الوضع الرمادي">◐ رمادي</button>
+      </span>
       <span id="acc-name" style="color:rgba(255,255,255,.7);font-size:.84rem;margin-inline-end:6px"></span>
       <button class="nav-icon-btn" onclick="showScreen('settings-screen')">⚙️ <span data-i18n="settings">الإعدادات</span></button>
       <button class="nav-icon-btn" onclick="logout()">🚪 <span data-i18n="logout">خروج</span></button>
@@ -10224,9 +10230,9 @@ function applyTheme(t){
   if(t) document.documentElement.setAttribute('data-theme', t);
   else document.documentElement.removeAttribute('data-theme');
   try{ localStorage.setItem('l7_theme', t||''); }catch(_){}
-  const b=document.getElementById('theme-btn');
-  if(b){ b.textContent = t==='dark'?'🌙':(t==='gray'?'◐':'☀️');
-         b.title = 'الوضع الحالي: '+(t==='dark'?'داكن':(t==='gray'?'رمادي':'فاتح'))+' — اضغط للتبديل'; }
+  [['thm-light',''],['thm-dark','dark'],['thm-gray','gray']].forEach(([id,v])=>{
+    const b=document.getElementById(id); if(b) b.classList.toggle('on', (t||'')===v);
+  });
 }
 function cycleTheme(){
   const cur=(localStorage.getItem('l7_theme')||'');
