@@ -394,7 +394,7 @@ body.ltr .dash-card::after{content:'›'}
 .kcard .ks{font-size:.72rem;color:#666;margin-top:2px}
 .kcard .kd{font-size:.68rem;margin-top:3px;direction:ltr}
 /* ═══ شاشة أوردر التفصيل البصرية */
-.ord-page{min-height:100vh;display:flex;flex-direction:column;padding:10px 16px}
+.ord-page{height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:10px 16px}
 .ord-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #e6ece0;margin-bottom:10px;flex-shrink:0}
 .ord-head select,.ord-head input{padding:7px 10px;border:1.5px solid #cdd;border-radius:7px;font-family:inherit;font-size:.92rem;font-weight:700;background:#fff}
 .ord-idbox{display:flex;gap:7px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,#e3f0ff,#eef4ff);border:1.5px solid #b3d1f5;border-radius:11px;padding:6px 9px}
@@ -402,10 +402,10 @@ body.ltr .dash-card::after{content:'›'}
 .unit-tog{display:inline-flex;border:1.5px solid #c5e1a5;border-radius:8px;overflow:hidden}
 .unit-tog button{border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;color:#666}
 .unit-tog button.active{background:#2e7d32;color:#fff}
-.ord-body{display:grid;grid-template-columns:minmax(0,860px) auto;gap:18px;flex:1;min-height:0;align-items:start;justify-content:center}
-.ord-meas{min-width:0;align-content:start}
-.ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:8px;position:sticky;top:6px;align-self:start;max-height:calc(100vh - 8px);display:flex;flex-direction:column}
-.ord-model .order-canvas{flex:0 0 auto;aspect-ratio:var(--ar,420/640);height:calc(100vh - 26px);width:auto;max-width:100%;margin:0 auto;position:relative;container-type:size}
+.ord-body{display:grid;grid-template-columns:minmax(0,860px) auto;gap:18px;flex:1;min-height:0;align-items:stretch;justify-content:center}
+.ord-meas{min-width:0;align-content:start;max-height:100%;overflow-y:auto;padding-inline-end:4px}
+.ord-model{min-width:0;background:linear-gradient(160deg,#f7faf3,#eef4e6);border:1px solid #dcedc8;border-radius:14px;padding:8px;align-self:stretch;max-height:100%;display:flex;flex-direction:column}
+.ord-model .order-canvas{flex:1 1 auto;min-height:0;aspect-ratio:var(--ar,420/640);height:auto;width:auto;max-width:100%;margin:0 auto;position:relative;container-type:size}
 .ord-model .order-canvas svg,.ord-model .order-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ord-model .order-canvas img.ov-layer{position:absolute;inset:0;width:100% !important;height:100% !important;object-fit:contain;pointer-events:none;z-index:2}
 .stud-canvas{position:relative;background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden;aspect-ratio:var(--ar,420/640);width:min(100%,calc(60vh * var(--ar,.656)));margin:0 auto}
@@ -417,8 +417,10 @@ body.ltr .dash-card::after{content:'›'}
 .ord-details input:hover,.ord-details select:hover{box-shadow:0 0 0 2px rgba(38,166,154,.2),0 0 13px rgba(38,166,154,.62)}
 .ord-details input:focus,.ord-details select:focus{outline:none;border-color:#00897b !important;box-shadow:0 0 0 3px rgba(0,137,123,.22),0 0 17px rgba(0,150,136,.72)}
 @media(max-width:720px){
+  .ord-page{height:auto;min-height:100vh;overflow:visible}
+  .ord-meas{max-height:none;overflow:visible}
   .ord-body{grid-template-columns:1fr}
-  .ord-model{position:static;order:-1;height:auto;max-height:none}
+  .ord-model{position:static;order:-1;height:auto;max-height:none;align-self:auto}
   .ord-model .order-canvas{flex:none;aspect-ratio:var(--ar,420/640);width:min(100%,calc(70vh * var(--ar,.656)));height:auto;max-width:100%;margin:0 auto}
 }
 /* حاوية الصورة التفاعلية ونقاطها */
