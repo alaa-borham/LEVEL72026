@@ -6703,13 +6703,73 @@ function msetTab(which) {
   if (which==='sizes') renderSizeChartEditor();
 }
 // ═══════════════ جدول المقاسات المرجعي: تحرير واستيراد ومطابقة تلقائية
-function _scChart(tpl){ sizeCharts[tpl]=sizeCharts[tpl]||{sizes:[]}; sizeCharts[tpl].sizes=sizeCharts[tpl].sizes||[]; return sizeCharts[tpl]; }
+let _scSelByTpl={}; // الجدول المفتوح للتحرير في هذه الجلسة (لكل قالب)
+// جذر جداول القالب: {charts:[{name,sizes,lastPaste,map}], active} — مع ترحيل الشكل القديم ذي الجدول الواحد
+function _scRoot(tpl){
+  let r=sizeCharts[tpl];
+  if(!r || Array.isArray(r.sizes)){
+    r={ charts: (r&&r.sizes&&r.sizes.length)? [{name:'الجدول الأساسي', sizes:r.sizes, lastPaste:r.lastPaste||'', map:r.map||{}}] : [], active:0 };
+    sizeCharts[tpl]=r;
+  }
+  r.charts=r.charts||[];
+  if(r.active==null||r.active<0||r.active>=r.charts.length) r.active=0;
+  return r;
+}
+function _scSelIdx(tpl){ const r=_scRoot(tpl); let i=_scSelByTpl[tpl]; if(i==null||i<0||i>=r.charts.length) i=r.active; return i; }
+// الجدول المحدد للتحرير في الإعدادات
+function _scChart(tpl){
+  const r=_scRoot(tpl);
+  if(!r.charts.length){ r.charts.push({name:'الجدول الأساسي', sizes:[], map:{}}); r.active=0; }
+  const c=r.charts[_scSelIdx(tpl)]; c.sizes=c.sizes||[]; c.map=c.map||{}; return c;
+}
+// الجدول الأساسي ⭐ — المعتمد في حسابات المطابقة بالأوردر
+function _scActive(tpl){ const r=_scRoot(tpl); const c=r.charts[r.active]; if(c){ c.sizes=c.sizes||[]; } return c||null; }
+function scSelectChart(i){ const tpl=document.getElementById('mset-template').value; scReadEditor(); _scSelByTpl[tpl]=+i; renderSizeChartEditor(); }
+function scNewChart(){
+  const tpl=document.getElementById('mset-template').value;
+  const name=prompt('اسم الجدول الجديد (مثال: رجالي كلاسيك، أطفال، شتوي...):'); if(!name||!name.trim()) return;
+  scReadEditor(); const r=_scRoot(tpl);
+  r.charts.push({name:name.trim(), sizes:[], map:{}});
+  _scSelByTpl[tpl]=r.charts.length-1;
+  scPersist(tpl); renderSizeChartEditor();
+}
+function scRenameChart(){
+  const tpl=document.getElementById('mset-template').value; const c=_scChart(tpl);
+  const name=prompt('الاسم الجديد للجدول:', c.name||''); if(!name||!name.trim()) return;
+  c.name=name.trim(); scPersist(tpl); renderSizeChartEditor();
+}
+function scDeleteChart(){
+  const tpl=document.getElementById('mset-template').value; const r=_scRoot(tpl); const i=_scSelIdx(tpl);
+  if(!r.charts.length) return;
+  if(!confirm('حذف جدول «'+(r.charts[i].name||'')+'» بكل مقاساته؟')) return;
+  r.charts.splice(i,1);
+  if(r.active>=r.charts.length) r.active=Math.max(0,r.charts.length-1);
+  delete _scSelByTpl[tpl];
+  scPersist(tpl); renderSizeChartEditor();
+}
+function scSetActive(){
+  const tpl=document.getElementById('mset-template').value; const r=_scRoot(tpl);
+  r.active=_scSelIdx(tpl); scPersist(tpl); renderSizeChartEditor();
+}
 function renderSizeChartEditor(){
   const tpl=document.getElementById('mset-template').value;
+  const r=_scRoot(tpl); const box=document.getElementById('mset-sizes-body'); if(!box) return;
+  const sel=_scSelIdx(tpl);
+  const mgr = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#ede7f6;border:1px solid #d1c4e9;border-radius:9px;padding:6px 9px;margin-bottom:8px">'
+    +'<span style="font-size:.75rem;font-weight:800;color:#4527a0">📚 الجدول:</span>'
+    +'<select onchange="scSelectChart(this.value)" style="padding:4px 8px;border:1.5px solid #b39ddb;border-radius:6px;font-family:inherit;font-size:.78rem;font-weight:800">'
+    +(r.charts.length? r.charts.map((c,i)=>`<option value="${i}" ${i===sel?'selected':''}>${i===r.active?'⭐ ':''}${escHtml(c.name||('جدول '+(i+1)))}</option>`).join('') : '<option>—</option>')
+    +'</select>'
+    +'<button class="btn btn-success btn-sm" onclick="scNewChart()">＋ جدول جديد</button>'
+    +(r.charts.length?('<button class="btn btn-sm" style="background:#ffd54f;color:#5d4037" onclick="scSetActive()" '+(sel===r.active?'disabled title="هذا هو الجدول الأساسي المعتمد في المطابقة"':'title="اعتمد هذا الجدول في حسابات المطابقة بالأوردر"')+'>⭐ '+(sel===r.active?'الأساسي المعتمد':'تعيين كأساسي')+'</button>'
+    +'<button class="btn btn-info btn-sm" onclick="scRenameChart()">✏️ تسمية</button>'
+    +'<button class="btn btn-danger btn-sm" onclick="scDeleteChart()">🗑 حذف الجدول</button>'):'')
+    +'</div>';
+  if(!r.charts.length || !_scChart(tpl).sizes.length){
+    box.innerHTML=mgr+'<div style="color:#999;font-size:.8rem;text-align:center;padding:16px">لا مقاسات في هذا الجدول — اضغط «＋ مقاس جديد» أو الصق جدولاً من إكسل بالأسفل</div>'; return;
+  }
   const chart=_scChart(tpl), keys=getTemplateKeys(tpl);
-  const box=document.getElementById('mset-sizes-body'); if(!box) return;
-  if(!chart.sizes.length){ box.innerHTML='<div style="color:#999;font-size:.8rem;text-align:center;padding:16px">لا مقاسات بعد — اضغط «＋ مقاس جديد» أو الصق جدولاً من إكسل بالأسفل</div>'; return; }
-  box.innerHTML = '<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
+  box.innerHTML = mgr + '<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
     + '<thead><tr><th style="padding:5px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0">القياس</th>'
     + chart.sizes.map((sz,i)=>`<th style="padding:4px;border:1px solid #eee;background:#f3e5f5;position:sticky;top:0"><input value="${escHtml(sz.name)}" id="scn-${i}" style="width:64px;text-align:center;border:1px solid #ddd;border-radius:5px;padding:2px;font-weight:800"><button onclick="scDelSize(${i})" style="border:none;background:none;color:#c62828;cursor:pointer" title="حذف المقاس">✕</button></th>`).join('')
     + '</tr></thead><tbody>'
@@ -6833,7 +6893,7 @@ function scApplyMap(){
 // المطابقة الحية: تُحسب مع كل إدخال وتُعرض أعلى شبكة القياسات
 function msComputeSizeMatches(){
   const tpl=document.getElementById('ms-template').value;
-  const chart=(sizeCharts[tpl]&&sizeCharts[tpl].sizes)||[]; if(!chart.length) return [];
+  const _a=_scActive(tpl); const chart=(_a&&_a.sizes)||[]; if(!chart.length) return [];
   const mv=_readMeasValues(); const ents=Object.entries(mv).map(([k,v])=>[k,parseFloat(v)]).filter(e=>isFinite(e[1])&&e[1]>0);
   if(ents.length<3) return [];
   const inch=_orderUnit==='inch';
@@ -6848,7 +6908,7 @@ function msComputeSizeMatches(){
 function msRenderSizeMatch(){
   const box=document.getElementById('ms-size-match'); if(!box) return;
   const tpl=document.getElementById('ms-template').value;
-  const hasChart=((sizeCharts[tpl]&&sizeCharts[tpl].sizes)||[]).length>0;
+  const _ac=_scActive(tpl); const hasChart=((_ac&&_ac.sizes)||[]).length>0;
   const entered=Object.values(_readMeasValues()).filter(v=>parseFloat(v)>0).length;
   if(!hasChart){
     box.innerHTML = entered>=3 ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#ede7f6;border:1px dashed #b39ddb;border-radius:10px;padding:6px 10px;font-size:.75rem;color:#4527a0">
@@ -6859,7 +6919,7 @@ function msRenderSizeMatch(){
   const ms=msComputeSizeMatches();
   if(!ms.length){ box.innerHTML=''; return; }
   box.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f3e5f5;border:1px solid #e1bee7;border-radius:10px;padding:6px 9px">'
-    +'<span style="font-size:.73rem;font-weight:800;color:#6a1b9a">📊 أقرب مقاس مرجعي:</span>'
+    +'<span style="font-size:.73rem;font-weight:800;color:#6a1b9a">📊 أقرب مقاس (⭐ '+escHtml((_scActive(tpl)||{}).name||'المرجعي')+'):</span>'
     +ms.map((m,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;background:${i===0?'#6a1b9a':'#fff'};color:${i===0?'#fff':'#333'};border:1px solid #ce93d8;border-radius:18px;padding:3px 9px;font-size:.75rem;font-weight:800">
       ${escHtml(m.name)} · ${m.score.toFixed(1)}% · ${m.match}/${m.comp}
       <button onclick="msUseSize(${m.idx})" style="border:none;border-radius:12px;background:${i===0?'#fff':'#6a1b9a'};color:${i===0?'#6a1b9a':'#fff'};padding:2px 9px;cursor:pointer;font-family:inherit;font-weight:800;font-size:.7rem" title="استكمال الحقول الفارغة من هذا المقاس">استخدام</button></span>`).join('')
@@ -6867,7 +6927,7 @@ function msRenderSizeMatch(){
 }
 function msUseSize(idx){
   const tpl=document.getElementById('ms-template').value;
-  const sz=((sizeCharts[tpl]&&sizeCharts[tpl].sizes)||[])[idx]; if(!sz) return;
+  const _a=_scActive(tpl); const sz=((_a&&_a.sizes)||[])[idx]; if(!sz) return;
   const inch=_orderUnit==='inch'; let filled=0;
   getTemplateKeys(tpl).forEach(k=>{
     const el=document.getElementById('msf-'+k); if(!el) return;
