@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<script>try{var _t=localStorage.getItem('l7_theme');if(_t)document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
+<script>try{var _t=localStorage.getItem('l7_theme')||'light';document.documentElement.setAttribute('data-theme',_t);}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1b4d2e">
@@ -69,6 +69,34 @@ body.ltr .lang-menu{left:auto;right:18px}
 .lang-btn{position:fixed;bottom:18px;left:18px;z-index:600;background:#1b5e20;color:white;border:none;border-radius:50px;padding:10px 16px;font-weight:bold;font-size:.82rem;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:all .15s;opacity:.85}
 .lang-btn:hover{opacity:1;transform:scale(1.06)}
 /* ═══ الثيمات: داكن ورمادي (الفاتح = الافتراضي بلا سمة) ═══ */
+html[data-theme="light"]{--bg:#eef1f4;--panel:#ffffff;--panel2:#f5f7f9;--text:#22272c;--muted:#5f6771;--border:#dfe4ea}
+html[data-theme="light"] #dashboard{background:radial-gradient(1000px 500px at 80% -10%,rgba(67,160,71,.09) 0%,transparent 55%),linear-gradient(135deg,#eef1f4,#f7f9fb 60%,#eef2f5)}
+html[data-theme="light"] #auth-screen{background:linear-gradient(135deg,#e8f5e9,#f1f8f6)}
+html[data-theme="light"] .stat-box{background:#fff;border-color:#e3e8ee;color:#22272c}
+html[data-theme="light"] .stat-box:hover{background:#f6f9f6;border-color:#c8e6c9}
+html[data-theme="light"] .stat-box .lbl{opacity:.8}
+html[data-theme="light"] .dash-hero{background:#fff;border-color:#e3e8ee}
+html[data-theme="light"] .dash-hero h1{color:#1b5e20}
+html[data-theme="light"] .dash-hero p{color:#5f6771}
+html[data-theme="light"] .nav-icon-btn{background:#fff;color:#2b3138;border-color:#d7dde3}
+html[data-theme="light"] #acc-name{color:#4a5058 !important}
+html[data-theme="light"] .thm-group{border-color:#c8cfd6;background:#fff}
+html[data-theme="light"] .thm-group button{color:#5f6771}
+html[data-theme="light"] .thm-group button:hover{color:#22272c}
+html[data-theme="light"] .thm-group button.on{background:#1b5e20;color:#fff}
+html[data-theme="light"] .da-head h2{color:#22272c}
+html[data-theme="light"] .da-gear{background:#fff;border-color:#d7dde3;color:#374046}
+html[data-theme="light"] .da-kpi{background:#fff;border-color:#e3e8ee}
+html[data-theme="light"] .da-kpi .v{color:#22272c}
+html[data-theme="light"] .da-kpi .l{color:#5f6771}
+html[data-theme="light"] .da-kpi .ic{background:#f0f4f7}
+html[data-theme="light"] .da-card{background:#fff;border-color:#e3e8ee}
+html[data-theme="light"] .da-card h3{color:#22272c}
+html[data-theme="light"] .da-col .cval{color:#33691e}
+html[data-theme="light"] .da-col .clbl{color:#5f6771}
+html[data-theme="light"] .da-donut::after{background:#fff}
+html[data-theme="light"] .da-donut .dc{color:#22272c}
+html[data-theme="light"] #sb-toggle{background:#1b5e20}
 html[data-theme="dark"]{--bg:#101114;--panel:#1a1c20;--panel2:#22252b;--text:#e7e7e7;--muted:#9aa0a6;--border:#3a3f47}
 html[data-theme="gray"]{--bg:#2b2f34;--panel:#383d43;--panel2:#43494f;--text:#e8eaed;--muted:#a5abb3;--border:#545a61}
 html[data-theme] body{background:var(--bg);color:var(--text)}
@@ -703,7 +731,7 @@ function _fbFail(){
     </div>
     <div class="nav-actions" style="align-items:center">
       <span class="thm-group" id="thm-group">
-        <button onclick="applyTheme('')" id="thm-light" title="الوضع الفاتح">☀️ فاتح</button>
+        <button onclick="applyTheme('light')" id="thm-light" title="الوضع الفاتح">☀️ فاتح</button>
         <button onclick="applyTheme('dark')" id="thm-dark" title="الوضع الداكن">🌙 داكن</button>
         <button onclick="applyTheme('gray')" id="thm-gray" title="الوضع الرمادي">◐ رمادي</button>
       </span>
@@ -10237,21 +10265,21 @@ document.addEventListener('click', e => {
 
 // ثيمات العرض: فاتح (افتراضي) / داكن / رمادي — تُحفظ على الجهاز
 function applyTheme(t){
-  if(t) document.documentElement.setAttribute('data-theme', t);
-  else document.documentElement.removeAttribute('data-theme');
-  try{ localStorage.setItem('l7_theme', t||''); }catch(_){}
-  [['thm-light',''],['thm-dark','dark'],['thm-gray','gray']].forEach(([id,v])=>{
-    const b=document.getElementById(id); if(b) b.classList.toggle('on', (t||'')===v);
+  t=t||'light';
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('l7_theme', t); }catch(_){}
+  [['thm-light','light'],['thm-dark','dark'],['thm-gray','gray']].forEach(([id,v])=>{
+    const b=document.getElementById(id); if(b) b.classList.toggle('on', t===v);
   });
 }
 function cycleTheme(){
-  const cur=(localStorage.getItem('l7_theme')||'');
-  applyTheme(cur===''?'dark':(cur==='dark'?'gray':''));
+  const cur=(localStorage.getItem('l7_theme')||'light');
+  applyTheme(cur==='light'?'dark':(cur==='dark'?'gray':'light'));
 }
 // init
 applyLang();
 sbInitSecs();
-applyTheme(localStorage.getItem('l7_theme')||'');
+applyTheme(localStorage.getItem('l7_theme')||'light');
 if (location.hash === '#admin') {
   // لوحة السوبر أدمن انتقلت لصفحة مستقلة بدخول آمن عبر Firebase
   location.href = 'admin.html';
