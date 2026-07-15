@@ -1,8 +1,8 @@
 // عامل الخدمة LEVEL7 — استراتيجية «الشبكة أولاً»:
 // عند توفر الموقع يُحمَّل دائماً أحدث إصدار (مثل اللايف)،
 // وإن تعطل الموقع يعمل التطبيق من آخر نسخة محفوظة على الجهاز.
-const CACHE = 'lvl72026-v4';
-const LEGACY = ['level7-v1','level7-v2','level7-v3']; // أسماء قديمة مشتركة تُنظّف مرة واحدة
+const CACHE = 'lvl72026-v5';
+const LEGACY = ['lvl72026-v4','level7-v1','level7-v2','level7-v3']; // أسماء قديمة مشتركة تُنظّف مرة واحدة
 
 self.addEventListener('install', () => self.skipWaiting());
 
