@@ -5580,11 +5580,11 @@ function msBodyRecalc(){
     const bk=src[k]||k;
     const eEl=document.getElementById('msbe-'+k), sEl=document.getElementById('msbs-'+k);
     if(!eEl||!sEl) return;
-    let e=eases[k]!=null&&eases[k]!==''?+eases[k]:0;
-    let v=parseFloat(_bodyVals[bk]);
+    let eRaw=eases[k]!=null&&eases[k]!==''?+eases[k]:0;
+    let e = inch ? +(eRaw/2.54).toFixed(2) : eRaw; // الزيادة مخزّنة سم — تُعرض وتُحسب بوحدة العرض
+    let v=parseFloat(_bodyVals[bk]);               // قيمة البدي بوحدة العرض الحالية (كما أُدخلت)
     eEl.textContent=(e>=0?'+':'')+e;
     if(isFinite(v)&&v>0){
-      if(inch){ v=+(v/2.54).toFixed(1); e=+(e/2.54).toFixed(2); }
       const sug=+(v+e).toFixed(1);
       sEl.textContent=sug;
       window._msBodyFitRows.push({k, sug});
@@ -5734,13 +5734,23 @@ let _orderParts = {};   // اختيارات أجزاء الأوردر الحال
 let _orderUnit = 'cm';  // وحدة إدخال القياسات: سم (افتراضي) أو إنش
 function setOrderUnit(u) {
   if (u === _orderUnit) return;
-  const f = u === 'inch' ? (1/2.54) : 2.54; // تحويل القيم المدخلة حالياً
+  const f = u === 'inch' ? (1/2.54) : 2.54; // معامل تحويل القيم المدخلة (الجدول المرجعي يبقى سم دائماً)
+  // شبكة قياسات الموديل
   document.querySelectorAll('#ms-fields input').forEach(inp=>{
     const v = parseFloat(inp.value);
     if (!isNaN(v)) inp.value = Math.round(v*f*10)/10;
   });
+  // جدول البدي: القيم المخزّنة والمعروضة
+  const nb={};
+  Object.keys(_bodyVals||{}).forEach(k=>{ const v=parseFloat(_bodyVals[k]); nb[k]=isFinite(v)?String(Math.round(v*f*10)/10):_bodyVals[k]; });
+  _bodyVals=nb;
+  document.querySelectorAll('#ms-body-fields input[type=number]').forEach(inp=>{
+    const v=parseFloat(inp.value); if(!isNaN(v)) inp.value=Math.round(v*f*10)/10;
+  });
   _orderUnit = u;
   _refreshUnitUI();
+  try{ validateMeasLive(); }catch(_){}  // يحدّث شريط أقرب مقاس بالوحدة الجديدة
+  try{ msBodyRecalc(); }catch(_){}      // يحدّث مقترحات البدي بالوحدة الجديدة
 }
 function _refreshUnitUI() {
   const cm = document.getElementById('unit-cm'), inb = document.getElementById('unit-in');
