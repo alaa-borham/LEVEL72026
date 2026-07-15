@@ -8053,6 +8053,29 @@ function sbInitSecs(){
 let _sessId=null;
 function _sessLog(){ try{ return JSON.parse(lsGet('loginLog','[]')); }catch(_){ return []; } }
 function _sessSave(list){ lsSet('loginLog', JSON.stringify(list.slice(-200))); }
+// جلب الموقع التقريبي عبر عدة خدمات بديلة (CORS + HTTPS + بلا مفتاح) — أول ناجحة
+function _fetchGeo(cb){
+  const svcs=[
+    ['https://ipwho.is/', g=>g&&g.success!==false&&g.country?{city:g.city,country:g.country,ip:g.ip}:null],
+    ['https://get.geojs.io/v1/ip/geo.json', g=>g&&g.country?{city:g.city,country:g.country,ip:g.ip}:null],
+    ['https://ipapi.co/json/', g=>g&&g.country_name?{city:g.city,country:g.country_name,ip:g.ip}:null],
+    ['https://freeipapi.com/api/json', g=>g&&g.countryName?{city:g.cityName,country:g.countryName,ip:g.ipAddress}:null]
+  ];
+  let i=0;
+  const tryNext=()=>{
+    if(i>=svcs.length){ cb(null); return; }
+    const [url,parse]=svcs[i++];
+    fetch(url).then(r=>r.json()).then(g=>{ const res=parse(g); if(res&&res.country) cb(res); else tryNext(); }).catch(tryNext);
+  };
+  tryNext();
+}
+function _sessGeoInto(id){
+  _fetchGeo(res=>{
+    if(!res) return;
+    const l=_sessLog(); const e=l.find(x=>x.id===id);
+    if(e){ e.loc=(res.city?res.city+'، ':'')+res.country; e.ip=res.ip||''; _sessSave(l); try{ if(document.getElementById('monitor-modal').classList.contains('open')) renderLoginMonitor(); }catch(_){} }
+  });
+}
 function _sessionStart(member){
   const now=new Date().toISOString();
   _sessId = now+'_'+Math.floor(Math.random()*1e6);
@@ -8060,12 +8083,7 @@ function _sessionStart(member){
   list.push({ id:_sessId, who: member?('🧑‍💼 '+member.name):'👑 المالك',
     at: now, last: now, ua: (navigator.userAgent.match(/(Android|iPhone|iPad|Windows|Mac|Linux)/)||[''])[0]||'جهاز', loc:'' });
   _sessSave(list);
-  // الموقع الجغرافي عبر خدمة عامة — إن تعذر يبقى فارغاً
-  fetch('https://ipapi.co/json/').then(r=>r.json()).then(g=>{
-    if(!g||!g.country_name) return;
-    const list2=_sessLog(); const e=list2.find(x=>x.id===_sessId);
-    if(e){ e.loc=(g.city?g.city+'، ':'')+g.country_name; e.ip=g.ip||''; _sessSave(list2); }
-  }).catch(()=>{});
+  _sessGeoInto(_sessId); // الموقع الجغرافي — إن تعذر يبقى فارغاً
   // نبض المدة كل 4 دقائق ما دام التطبيق مفتوحاً
   setInterval(()=>{ try{
     if(!_sessId||!currentAccId) return;
@@ -8095,6 +8113,8 @@ function openLoginMonitor(){
   }
   renderLoginMonitor();
   document.getElementById('monitor-modal').classList.add('open');
+  // إن كانت الجلسة الحالية بلا موقع، أعد المحاولة الآن
+  try{ const cur=_sessLog().find(x=>x.id===_sessId); if(cur && !cur.loc) _sessGeoInto(_sessId); }catch(_){}
 }
 function monChangePass(){
   const p=prompt('كلمة المرور الجديدة لصفحة المتابعة (4 أحرف على الأقل):');
