@@ -23,6 +23,9 @@ body.app-on #sidebar{display:block}
 .sb-brand small{display:block;font-weight:600;font-size:.66rem;color:rgba(255,255,255,.45);margin-top:3px}
 .sb-sec{font-size:.92rem;font-weight:800;color:rgba(255,255,255,.85);margin:6px 0 2px;padding:10px 12px;letter-spacing:.3px;border-radius:10px}
 .sb-sec:hover{background:rgba(124,179,66,.16)}
+.admin-hub{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.admin-hub .btn{background:var(--panel2,#f1f5ee);color:var(--text,#33691e);border:1px solid var(--border,#dcedc8);border-radius:10px;padding:11px 10px;font-weight:700;font-size:.86rem;text-align:center;cursor:pointer;font-family:inherit;transition:all .15s}
+.admin-hub .btn:hover{background:#2e7d32;color:#fff;transform:translateY(-2px)}
 #sidebar a{display:flex;gap:10px;align-items:center;color:rgba(255,255,255,.78);padding:8px 12px;border-radius:10px;cursor:pointer;font-size:.86rem;font-weight:600;transition:all .15s;text-decoration:none}
 #sidebar a:hover{background:rgba(124,179,66,.16);color:#fff;padding-inline-start:16px}
 #sb-toggle{display:none;position:fixed;top:12px;inset-inline-start:12px;z-index:460;background:#0b1f13;color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:10px;width:42px;height:42px;font-size:1.2rem;cursor:pointer}
@@ -833,6 +836,22 @@ function _fbFail(){
   <div class="page-wrap">
     <div class="page-header">
       <h2>⚙️ <span data-i18n="settingsTitle">إعدادات النظام</span></h2>
+    </div>
+    <div class="form-card" style="max-width:640px;margin-bottom:14px">
+      <div class="fb">
+        <h4 style="color:#2e7d32;margin-bottom:12px">🗂️ لوحة الإدارة</h4>
+        <div class="admin-hub">
+          <button class="btn" data-perm="analytics" onclick="showScreen('analytics-screen')">📊 التحليلات</button>
+          <button class="btn" data-perm="analytics" onclick="showReports()">📑 التقارير</button>
+          <button class="btn" id="hub-members" onclick="showMembers()">🧑‍💼 المستخدمون</button>
+          <button class="btn" id="hub-branches" onclick="showBranches()">🏬 الفروع</button>
+          <button class="btn" data-perm="archive" onclick="showScreen('archive-screen')">🗂️ الأرشيف</button>
+          <button class="btn" onclick="showAIInsights()">🤖 الرؤى الذكية</button>
+          <button class="btn" id="hub-audit" onclick="showAudit()">📜 سجل العمليات</button>
+          <button class="btn" id="hub-monitor" onclick="openLoginMonitor()">🕵️ متابعة الدخول</button>
+          <button class="btn" id="hub-terms" onclick="showTerms()">🏷️ المسميات</button>
+        </div>
+      </div>
     </div>
     <div class="form-card" style="max-width:640px">
       <div class="fb">
@@ -3255,7 +3274,7 @@ function _afterFirebaseLogin(user) {
     document.getElementById('acc-name').textContent = '👤 '+profile.biz
       + (member ? ' — '+member.name + (member.branchName ? ' (🏬 '+member.branchName+')' : '') : '');
     // إدارة المستخدمين والفروع متاحة لصاحب المنشأة فقط
-    ['members-btn','card-members','card-branches','sb-members','sb-branches','sb-terms','sb-audit'].forEach(i=>{
+    ['members-btn','card-members','card-branches','sb-members','sb-branches','sb-terms','sb-audit','sb-monitor','hub-members','hub-branches','hub-terms','hub-audit','hub-monitor'].forEach(i=>{
       const el = document.getElementById(i);
       if (el) el.style.display = member ? 'none' : '';
     });
