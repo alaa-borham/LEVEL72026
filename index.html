@@ -5534,10 +5534,17 @@ function renderBodyFields(vals) {
   box.style.display=''; box.classList.remove('ms-fields-grid');
   const tpl=document.getElementById('ms-template').value;
   const fit=fitSettings[tpl]||{}; const src=fit.src||{};
-  // كل القياسات الظاهرة (نفس فلتر جدول القياسات) — ما له مصدر بدي يتشارك قيمته، وما ليس له يُدخل مباشرة
+  // القياسات المحددة كـ«بدي» فقط (من إعدادات الفيت) — فإن لم تُحدَّد أيٌّ منها تُعرض كل القياسات الظاهرة
   const hidden=measVisible[tpl]||{};
-  const rows=getTemplateKeys(tpl).filter(k=>hidden[k]!==false);
+  const show=fit.show||{}; const hasSel=Object.keys(show).length>0;
+  const rows=getTemplateKeys(tpl).filter(k=>hidden[k]!==false && (hasSel? show[k] : true));
   const bl=bk=>{ const f=BODY_FIELDS.find(x=>x.k===bk); return f?f.l:''; };
+  if(!rows.length){
+    box.innerHTML='<div style="font-size:.8rem;color:#4527a0;background:#ede7f6;border:1px dashed #b39ddb;border-radius:10px;padding:14px;text-align:center">'
+      +'حدّد قياسات «بدي» أولاً من <b>⚙️ إعدادات الحقول ← ⚖️ الفيت</b> (علّم عمود «☑ بدي» للقياسات التي تُدخَل مباشرة)'
+      +'<br><button class="btn btn-sm" style="background:#6a1b9a;color:#fff;margin-top:8px" onclick="openMeasSettings();setTimeout(()=>msetTab(\'fit\'),80)">فتح إعدادات الفيت</button></div>';
+    return;
+  }
   box.innerHTML =
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:6px 10px;margin-bottom:8px">'
       +'<span style="font-size:.76rem;font-weight:800;color:#e65100">⚖️ نمط الجسم:</span>'
@@ -5586,7 +5593,8 @@ function msBodyRecalc(){
   const inch=_orderUnit==='inch';
   window._msBodyFitRows=[];
   const hidden=measVisible[tpl]||{};
-  getTemplateKeys(tpl).filter(k=>hidden[k]!==false).forEach(k=>{
+  const show=fit.show||{}; const hasSel=Object.keys(show).length>0;
+  getTemplateKeys(tpl).filter(k=>hidden[k]!==false && (hasSel? show[k] : true)).forEach(k=>{
     const bk=src[k]||k;
     const eEl=document.getElementById('msbe-'+k), sEl=document.getElementById('msbs-'+k);
     if(!eEl||!sEl) return;
@@ -6910,12 +6918,16 @@ function renderFitEditor(){
   const tpl=document.getElementById('mset-template').value;
   const fit=_fitOf(tpl), keys=getTemplateKeys(tpl);
   const box=document.getElementById('mset-fit-body'); if(!box) return;
-  box.innerHTML='<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
+  fit.show=fit.show||{};
+  box.innerHTML='<div style="font-size:.74rem;color:#1b5e20;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;padding:7px 10px;margin-bottom:8px">☑ علّم عمود «بدي» للقياسات التي تُدخَل مباشرة في تبويب «قياسات بدي». الباقي يُحسب تلقائياً بالمعادلات (مصدر + زيادة النمط).</div>'
+    +'<table style="border-collapse:collapse;font-size:.78rem;min-width:100%">'
     +'<thead><tr><th style="padding:5px 8px;border:1px solid #eee;background:#fff3e0;position:sticky;top:0">المسميات</th>'
+    +'<th style="padding:4px 6px;border:1px solid #eee;background:#ede7f6;position:sticky;top:0;text-align:center"><div style="font-size:.7rem;font-weight:800;color:#4527a0">☑ بدي</div><div style="font-size:.56rem;color:#999">إدخال مباشر</div></th>'
     +'<th style="padding:4px 6px;border:1px solid #eee;background:#e8f5e9;position:sticky;top:0;text-align:center"><div style="font-size:.7rem;font-weight:800;color:#1b5e20">🧍 مصدر البدي</div><div style="font-size:.58rem;color:#999">التعويض من قياس</div></th>'
     +FIT_SHAPES.map(sh=>`<th style="padding:4px 6px;border:1px solid #eee;background:#fff3e0;position:sticky;top:0;text-align:center"><div style="font-size:1.3rem;line-height:1">${sh.ic}</div><div style="font-size:.66rem;font-weight:800">${sh.ar}</div><div style="font-size:.6rem;color:#999;direction:ltr">${sh.en}</div></th>`).join('')
     +'</tr></thead><tbody>'
     +keys.map(k=>'<tr><td style="padding:4px 8px;border:1px solid #f5f5f5;white-space:nowrap">'+escHtml(MEAS_DICT[k]||k)+(MEAS_EN[k]?'<div style="font-size:.62rem;color:#c62828;direction:ltr">'+escHtml(MEAS_EN[k])+'</div>':'')+'</td>'
+      +'<td style="padding:2px;border:1px solid #f5f5f5;text-align:center"><input type="checkbox" id="fitshow-'+k+'" '+(fit.show[k]?'checked':'')+' style="width:18px;height:18px;cursor:pointer"></td>'
       +'<td style="padding:2px;border:1px solid #f5f5f5"><select id="fitsrc-'+k+'" style="max-width:110px;padding:3px;border:1px solid #c8e6c9;border-radius:5px;font-family:inherit;font-size:.68rem">'
         +'<option value="">—</option>'+BODY_FIELDS.map(f=>`<option value="${f.k}" ${fit.src[k]===f.k?'selected':''}>${f.l}</option>`).join('')+'</select></td>'
       +FIT_SHAPES.map(sh=>`<td style="padding:2px;border:1px solid #f5f5f5"><input type="number" step="0.5" id="fitv-${sh.id}-${k}" value="${fit[sh.id][k]!=null?fit[sh.id][k]:''}" style="width:58px;text-align:center;border:1px solid #eee;border-radius:5px;padding:3px;direction:ltr" placeholder="—"></td>`).join('')+'</tr>').join('')
@@ -6930,6 +6942,8 @@ function fitSave(){
     if(v==='') delete fit[sh.id][k]; else fit[sh.id][k]=parseFloat(v);
   }); });
   keys.forEach(k=>{ const el=document.getElementById('fitsrc-'+k); if(!el) return; if(el.value) fit.src[k]=el.value; else delete fit.src[k]; });
+  fit.show=fit.show||{};
+  keys.forEach(k=>{ const el=document.getElementById('fitshow-'+k); if(!el) return; if(el.checked) fit.show[k]=1; else delete fit.show[k]; });
   lsSet('fitSettings', JSON.stringify(fitSettings));
   alert('✔ حُفظت إعدادات الفيت لقالب '+(L(tpl)||tpl));
 }
