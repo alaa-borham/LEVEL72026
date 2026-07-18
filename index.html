@@ -591,6 +591,7 @@ function _fbFail(){
   <a data-perm="customers" onclick="showCustomers();closeSb()">👥 العملاء</a>
   <a data-perm="tailoring" onclick="showMeasurements();closeSb()">📐 القياسات</a>
   <a data-perm="tailoring" onclick="showModelStudio();closeSb()">🎨 استوديو الموديل</a>
+  <a onclick="showWhiteboard();closeSb()">🖊️ الوايت بورد</a>
   <a data-perm="tailoring" onclick="showNaseej();closeSb()">🧬 تصدير نسيج XML</a>
   <a data-perm="appointments" onclick="showAppointments();closeSb()">📅 المواعيد</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تطريز');closeSb()">🪡 التطريز</a>
@@ -1500,6 +1501,110 @@ function _fbFail(){
       </div>
       <div style="font-size:.76rem;color:#777;margin-bottom:8px">اكتب الاسم الإنجليزي المقابل في نسيج لكل اختيار، أو اضغط «تعبئة الأسماء المعروفة» للبدء السريع ثم عدّل ما يلزم واحفظ. الاختيار الفارغ يُصدَّر باسمه تلقائياً.</div>
       <div id="nz-map"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN: WHITEBOARD (الوايت بورد — رسم حر + مهام + ملاحظات) -->
+<style>
+#whiteboard-screen .wb-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+#whiteboard-screen .wb-tab{background:#fff;border:1.5px solid #dfe6d6;color:#4a5a3a;border-radius:11px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .15s}
+#whiteboard-screen .wb-tab:hover{border-color:#7cb342}
+#whiteboard-screen .wb-tab.active{background:linear-gradient(135deg,#7cb342,#558b2f);color:#fff;border-color:#558b2f;box-shadow:0 4px 12px rgba(124,179,66,.3)}
+#whiteboard-screen .wb-pane{background:#fff;border:1px solid #e6ece0;border-radius:14px;padding:14px}
+/* ── رسم حر */
+#whiteboard-screen .wb-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef2ea}
+#whiteboard-screen .wb-swatches{display:flex;gap:6px}
+#whiteboard-screen .wb-swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1.5px #ccc;transition:transform .12s}
+#whiteboard-screen .wb-swatch:hover{transform:scale(1.12)}
+#whiteboard-screen .wb-swatch.sel{box-shadow:0 0 0 2.5px #2e7d32;transform:scale(1.12)}
+#whiteboard-screen .wb-sep{width:1px;align-self:stretch;background:#e6ece0;margin:0 2px}
+#whiteboard-screen .wb-tool-lbl{font-size:.8rem;color:#777;font-weight:600}
+#wb-canvas-wrap{position:relative;width:100%;background:#fff;background-image:radial-gradient(#eef2ea 1.3px,transparent 1.3px);background-size:22px 22px;border:1.5px solid #e0e6d8;border-radius:12px;overflow:hidden;touch-action:none}
+#wb-canvas{display:block;width:100%;height:auto;cursor:crosshair}
+/* ── لوحة المهام (Kanban) */
+#wb-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+.wb-col{background:#f6f9f2;border:1px solid #e2e9d6;border-radius:12px;padding:10px;min-height:120px}
+.wb-col.drag-over{background:#eaf4dc;border-color:#7cb342;box-shadow:inset 0 0 0 2px #a5d16b}
+.wb-col-head{display:flex;align-items:center;gap:6px;margin-bottom:9px}
+.wb-col-title{flex:1;font-weight:800;color:#33691e;font-size:.95rem;padding:3px 5px;border-radius:6px;outline:none}
+.wb-col-title:focus{background:#fff;box-shadow:0 0 0 1.5px #a5d16b}
+.wb-col-count{background:#dcecc4;color:#4a6b1e;border-radius:20px;padding:1px 9px;font-size:.74rem;font-weight:700}
+.wb-card{background:#fff;border:1px solid #e6ece0;border-inline-start:4px solid #7cb342;border-radius:9px;padding:9px 10px;margin-bottom:8px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.05);position:relative}
+.wb-card:active{cursor:grabbing}
+.wb-card.dragging{opacity:.45}
+.wb-card-text{font-size:.88rem;color:#334;line-height:1.5;word-break:break-word;outline:none;padding-inline-end:16px}
+.wb-card-text:focus{background:#fbfdf7;box-shadow:0 0 0 1.5px #cfe6a8;border-radius:5px}
+.wb-card-del{position:absolute;top:5px;inset-inline-end:6px;background:none;border:none;color:#c0c8b8;cursor:pointer;font-size:.9rem;line-height:1;padding:2px}
+.wb-card-del:hover{color:#e53935}
+.wb-add-card{width:100%;background:none;border:1.5px dashed #cdd8be;color:#6b7a56;border-radius:9px;padding:7px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.85rem;transition:all .15s}
+.wb-add-card:hover{border-color:#7cb342;color:#33691e;background:#f1f7e8}
+/* ── ملاحظات لاصقة */
+#wb-notes-board{position:relative;width:100%;height:min(70vh,640px);background:#faf9f0;background-image:radial-gradient(#e8e6d2 1.3px,transparent 1.3px);background-size:24px 24px;border:1.5px solid #e6e2cf;border-radius:12px;overflow:hidden;touch-action:none}
+.wb-note{position:absolute;width:172px;min-height:130px;border-radius:4px 4px 10px 4px;padding:26px 12px 12px;box-shadow:0 5px 14px rgba(0,0,0,.14);cursor:grab;touch-action:none;transform:rotate(-1deg)}
+.wb-note:nth-child(even){transform:rotate(1.2deg)}
+.wb-note.dragging{cursor:grabbing;box-shadow:0 12px 26px rgba(0,0,0,.24);z-index:50;transform:rotate(0) scale(1.03)}
+.wb-note-txt{width:100%;min-height:88px;background:transparent;border:none;resize:none;outline:none;font-family:inherit;font-size:.9rem;line-height:1.5;color:#3a3524;overflow:hidden}
+.wb-note-del{position:absolute;top:4px;inset-inline-end:5px;background:rgba(255,255,255,.35);border:none;border-radius:5px;color:#5a5030;cursor:pointer;font-size:.82rem;line-height:1;padding:2px 5px;opacity:.55}
+.wb-note-del:hover{opacity:1;background:rgba(255,255,255,.75)}
+.wb-note-grip{position:absolute;top:5px;inset-inline-start:8px;color:rgba(0,0,0,.28);font-size:.8rem;cursor:grab;user-select:none}
+body.theme-dark #whiteboard-screen .wb-pane,body.theme-gray #whiteboard-screen .wb-pane{background:#1c2620;border-color:#2f3d33}
+</style>
+<div id="whiteboard-screen" class="screen">
+  <div class="page-wrap">
+    <div class="page-header">
+      <h2>🖊️ الوايت بورد</h2>
+    </div>
+    <div class="wb-tabs">
+      <button class="wb-tab active" data-mode="draw"  onclick="wbSetMode('draw')">✏️ رسم حر</button>
+      <button class="wb-tab"        data-mode="tasks" onclick="wbSetMode('tasks')">📋 لوحة المهام</button>
+      <button class="wb-tab"        data-mode="notes" onclick="wbSetMode('notes')">🗒️ ملاحظات لاصقة</button>
+    </div>
+
+    <!-- ── وضع الرسم الحر -->
+    <div id="wb-draw" class="wb-pane">
+      <div class="wb-toolbar">
+        <div class="wb-swatches" id="wb-swatches"></div>
+        <input type="color" id="wb-color" value="#1565c0" oninput="wbPickColor(this.value)" title="لون مخصّص" style="width:34px;height:30px;border:none;background:none;cursor:pointer;padding:0">
+        <div class="wb-sep"></div>
+        <span class="wb-tool-lbl">سماكة</span>
+        <input type="range" id="wb-size" min="1" max="40" value="4" oninput="wbState.size=+this.value" style="width:110px">
+        <div class="wb-sep"></div>
+        <button class="btn btn-outline btn-sm" id="wb-eraser-btn" onclick="wbToggleEraser()">🧽 ممحاة</button>
+        <button class="btn btn-outline btn-sm" onclick="wbUndo()">↶ تراجع</button>
+        <div class="wb-sep"></div>
+        <button class="btn btn-info btn-sm" onclick="wbSavePng()">🖼️ حفظ صورة</button>
+        <button class="btn btn-danger btn-sm" onclick="wbClearCanvas()">🗑️ مسح الكل</button>
+        <span style="flex:1"></span>
+        <span class="wb-tool-lbl">💾 يُحفظ تلقائياً</span>
+      </div>
+      <div id="wb-canvas-wrap"><canvas id="wb-canvas" width="1400" height="880"></canvas></div>
+    </div>
+
+    <!-- ── وضع لوحة المهام -->
+    <div id="wb-tasks" class="wb-pane" style="display:none">
+      <div class="wb-toolbar">
+        <button class="btn btn-success btn-sm" onclick="wbAddColumn()">➕ عمود جديد</button>
+        <span class="wb-tool-lbl">اسحب البطاقات بين الأعمدة • انقر النص للتعديل</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline btn-sm" onclick="wbResetBoard()">♻️ إعادة ضبط</button>
+      </div>
+      <div id="wb-board"></div>
+    </div>
+
+    <!-- ── وضع الملاحظات اللاصقة -->
+    <div id="wb-notes" class="wb-pane" style="display:none">
+      <div class="wb-toolbar">
+        <span class="wb-tool-lbl">أضف ملاحظة:</span>
+        <button class="wb-swatch" style="background:#fff59d;box-shadow:0 0 0 1.5px #ccc" onclick="wbAddNote('#fff59d')" title="أصفر"></button>
+        <button class="wb-swatch" style="background:#a5d6a7;box-shadow:0 0 0 1.5px #ccc" onclick="wbAddNote('#a5d6a7')" title="أخضر"></button>
+        <button class="wb-swatch" style="background:#90caf9;box-shadow:0 0 0 1.5px #ccc" onclick="wbAddNote('#90caf9')" title="أزرق"></button>
+        <button class="wb-swatch" style="background:#f48fb1;box-shadow:0 0 0 1.5px #ccc" onclick="wbAddNote('#f48fb1')" title="وردي"></button>
+        <button class="wb-swatch" style="background:#ffcc80;box-shadow:0 0 0 1.5px #ccc" onclick="wbAddNote('#ffcc80')" title="برتقالي"></button>
+        <span style="flex:1"></span>
+        <button class="btn btn-danger btn-sm" onclick="wbClearNotes()">🗑️ مسح الكل</button>
+      </div>
+      <div id="wb-notes-board"></div>
     </div>
   </div>
 </div>
@@ -2902,7 +3007,7 @@ function lsDel(k)      { localStorage.removeItem(lsKey(k)); _dirtyKeys.add(k); s
 const CLOUD_KEYS = ['invoices','deletedInvoices','customers','products','payments',
                     'nextInvNum','nextProdSeq','appSettings','logoImg','bgImg',
                     'logoWidth','bgWidth','bgOpacity','branches','nextRcptNum','nextDsbNum','suppliers','supPayments','expenses',
-                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts','fitSettings','loginLog','monPass'];
+                    'measurements','appointments','fabrics','prodOrders','prodAssignees','measVisible','tailorJobs','deliveries','qcDefects','tmplImages','tmplHotspots','tmplLayers','tmplMeasKeys','customLabels','dashWidgets','cardHidden','leadDays','patterns','quotations','auditLog','heldOrders','naseejVarMap','tmplMeasPos','fabricUse','tmplPatterns','tmplZ','bodyGuideImgs','sizeCharts','fitSettings','loginLog','monPass','wbCanvas','wbKanban','wbNotes'];
 let _cloudTimer = null;
 let _viewerMode = false; // وضع العرض فقط (دخول 1/1 من رمز QR) — لا يحفظ سحابياً
 function scheduleCloudSave() {
@@ -6235,6 +6340,257 @@ function showMarker(){
   showScreen('marker-screen');
   runMarker();
 }
+
+// ═══════════════ WHITEBOARD (الوايت بورد) — رسم حر + لوحة مهام + ملاحظات لاصقة
+const WB_SWATCHES = ['#1565c0','#e53935','#2e7d32','#f9a825','#6a1b9a','#00838f','#111111','#ff6f00'];
+const wbState = { mode:'draw', color:'#1565c0', size:4, eraser:false, drawing:false, last:null, inited:false, undo:[] };
+function wbUid(){ return 'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function showWhiteboard(){
+  showScreen('whiteboard-screen');
+  document.body.classList.add('app-on');
+  wbInit();
+}
+function wbInit(){
+  if (!wbState.inited){
+    // أزرار الألوان
+    const sw = document.getElementById('wb-swatches');
+    sw.innerHTML = '';
+    WB_SWATCHES.forEach((c,i)=>{
+      const b = document.createElement('div');
+      b.className = 'wb-swatch' + (i===0?' sel':'');
+      b.style.background = c; b.dataset.color = c;
+      b.onclick = ()=>wbPickColor(c);
+      sw.appendChild(b);
+    });
+    wbSetupCanvas();
+    wbState.inited = true;
+  }
+  wbSetMode(wbState.mode);
+}
+function wbSetMode(m){
+  wbState.mode = m;
+  ['draw','tasks','notes'].forEach(k=>{
+    document.getElementById('wb-'+k).style.display = (k===m)?'':'none';
+  });
+  document.querySelectorAll('#whiteboard-screen .wb-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.mode===m);
+  });
+  if (m==='draw')  wbLoadCanvas();
+  if (m==='tasks') wbRenderBoard();
+  if (m==='notes') wbRenderNotes();
+}
+
+/* ── الرسم الحر ─────────────────────────── */
+function wbCtx(){ return document.getElementById('wb-canvas').getContext('2d'); }
+function wbPickColor(c){
+  wbState.color = c; wbState.eraser = false;
+  document.getElementById('wb-eraser-btn').classList.remove('btn-warning');
+  document.querySelectorAll('#wb-swatches .wb-swatch').forEach(s=>s.classList.toggle('sel', s.dataset.color===c));
+}
+function wbToggleEraser(){
+  wbState.eraser = !wbState.eraser;
+  document.getElementById('wb-eraser-btn').classList.toggle('btn-warning', wbState.eraser);
+  if (wbState.eraser) document.querySelectorAll('#wb-swatches .wb-swatch').forEach(s=>s.classList.remove('sel'));
+}
+function wbPointerPos(e){
+  const cv = document.getElementById('wb-canvas'), r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) };
+}
+function wbSetupCanvas(){
+  const cv = document.getElementById('wb-canvas');
+  const start = e=>{
+    e.preventDefault();
+    wbSnapshot();
+    wbState.drawing = true; wbState.last = wbPointerPos(e);
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+  };
+  const move = e=>{
+    if (!wbState.drawing) return;
+    const p = wbPointerPos(e), ctx = wbCtx();
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.lineWidth = wbState.eraser ? wbState.size*2.5 : wbState.size;
+    ctx.strokeStyle = wbState.eraser ? '#ffffff' : wbState.color;
+    ctx.beginPath(); ctx.moveTo(wbState.last.x, wbState.last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    wbState.last = p;
+  };
+  const end = ()=>{ if(wbState.drawing){ wbState.drawing=false; wbSaveCanvas(); } };
+  cv.addEventListener('pointerdown', start);
+  cv.addEventListener('pointermove', move);
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointerleave', end);
+  wbClearCtx();
+}
+function wbClearCtx(){ const cv=document.getElementById('wb-canvas'), ctx=cv.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,cv.width,cv.height); }
+function wbSnapshot(){
+  wbState.undo.push(document.getElementById('wb-canvas').toDataURL('image/png'));
+  if (wbState.undo.length>20) wbState.undo.shift();
+}
+function wbUndo(){
+  if (!wbState.undo.length) return;
+  const url = wbState.undo.pop(), cv=document.getElementById('wb-canvas'), ctx=cv.getContext('2d');
+  const img = new Image(); img.onload=()=>{ wbClearCtx(); ctx.drawImage(img,0,0,cv.width,cv.height); wbSaveCanvas(); }; img.src=url;
+}
+function wbLoadCanvas(){
+  const data = lsGet('wbCanvas', '');
+  const cv=document.getElementById('wb-canvas'), ctx=cv.getContext('2d');
+  if (data){ const img=new Image(); img.onload=()=>{ wbClearCtx(); ctx.drawImage(img,0,0,cv.width,cv.height); }; img.src=data; }
+  else wbClearCtx();
+}
+function wbSaveCanvas(){ try{ lsSet('wbCanvas', document.getElementById('wb-canvas').toDataURL('image/png')); }catch(_){} }
+function wbClearCanvas(){
+  if (!confirm('مسح الرسمة بالكامل؟')) return;
+  wbSnapshot(); wbClearCtx(); wbSaveCanvas();
+}
+function wbSavePng(){
+  const a=document.createElement('a');
+  a.download = 'whiteboard-'+new Date().toISOString().slice(0,10)+'.png';
+  a.href = document.getElementById('wb-canvas').toDataURL('image/png'); a.click();
+}
+
+/* ── لوحة المهام (Kanban) ───────────────── */
+let wbDragCard = null;
+function wbLoadBoard(){
+  try{ const d=JSON.parse(lsGet('wbKanban','')); if(d&&d.cols) return d; }catch(_){}
+  return { cols:[
+    { id:wbUid(), title:'قيد الانتظار', cards:[] },
+    { id:wbUid(), title:'جاري التنفيذ', cards:[] },
+    { id:wbUid(), title:'منجز',         cards:[] },
+  ]};
+}
+function wbSaveBoard(b){ lsSet('wbKanban', JSON.stringify(b)); }
+let _wbBoard = null;
+function wbRenderBoard(){
+  _wbBoard = wbLoadBoard();
+  const wrap = document.getElementById('wb-board');
+  wrap.innerHTML = '';
+  _wbBoard.cols.forEach(col=>{
+    const cEl = document.createElement('div'); cEl.className='wb-col'; cEl.dataset.col=col.id;
+    cEl.addEventListener('dragover', e=>{ e.preventDefault(); cEl.classList.add('drag-over'); });
+    cEl.addEventListener('dragleave', ()=>cEl.classList.remove('drag-over'));
+    cEl.addEventListener('drop', e=>{ e.preventDefault(); cEl.classList.remove('drag-over'); wbDropCard(col.id); });
+
+    const head = document.createElement('div'); head.className='wb-col-head';
+    const title = document.createElement('div'); title.className='wb-col-title'; title.contentEditable='true'; title.textContent=col.title;
+    title.addEventListener('blur', ()=>{ col.title=title.textContent.trim()||'عمود'; wbSaveBoard(_wbBoard); });
+    title.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); title.blur(); } });
+    const count = document.createElement('span'); count.className='wb-col-count'; count.textContent=col.cards.length;
+    const delCol = document.createElement('button'); delCol.className='wb-card-del'; delCol.style.position='static'; delCol.textContent='🗑';
+    delCol.title='حذف العمود'; delCol.onclick=()=>wbDelColumn(col.id);
+    head.appendChild(title); head.appendChild(count); head.appendChild(delCol);
+    cEl.appendChild(head);
+
+    col.cards.forEach(card=>{
+      const cardEl = document.createElement('div'); cardEl.className='wb-card'; cardEl.draggable=true;
+      cardEl.addEventListener('dragstart', ()=>{ wbDragCard={colId:col.id,cardId:card.id}; cardEl.classList.add('dragging'); });
+      cardEl.addEventListener('dragend', ()=>cardEl.classList.remove('dragging'));
+      const txt = document.createElement('div'); txt.className='wb-card-text'; txt.contentEditable='true'; txt.textContent=card.text;
+      txt.addEventListener('blur', ()=>{ card.text=txt.textContent.trim(); if(!card.text){ wbDelCard(col.id,card.id); return; } wbSaveBoard(_wbBoard); });
+      const del = document.createElement('button'); del.className='wb-card-del'; del.textContent='×'; del.title='حذف';
+      del.onclick=()=>wbDelCard(col.id,card.id);
+      cardEl.appendChild(txt); cardEl.appendChild(del);
+      cEl.appendChild(cardEl);
+    });
+
+    const add = document.createElement('button'); add.className='wb-add-card'; add.textContent='＋ بطاقة';
+    add.onclick=()=>wbAddCard(col.id);
+    cEl.appendChild(add);
+    wrap.appendChild(cEl);
+  });
+}
+function wbAddCard(colId){
+  const col = _wbBoard.cols.find(c=>c.id===colId); if(!col) return;
+  col.cards.push({ id:wbUid(), text:'مهمة جديدة' }); wbSaveBoard(_wbBoard); wbRenderBoard();
+}
+function wbDelCard(colId,cardId){
+  const col = _wbBoard.cols.find(c=>c.id===colId); if(!col) return;
+  col.cards = col.cards.filter(c=>c.id!==cardId); wbSaveBoard(_wbBoard); wbRenderBoard();
+}
+function wbDropCard(destColId){
+  if (!wbDragCard) return;
+  const src = _wbBoard.cols.find(c=>c.id===wbDragCard.colId);
+  const dest = _wbBoard.cols.find(c=>c.id===destColId);
+  if (!src||!dest){ wbDragCard=null; return; }
+  const i = src.cards.findIndex(c=>c.id===wbDragCard.cardId);
+  if (i<0){ wbDragCard=null; return; }
+  const [card] = src.cards.splice(i,1);
+  dest.cards.push(card); wbDragCard=null; wbSaveBoard(_wbBoard); wbRenderBoard();
+}
+function wbAddColumn(){
+  _wbBoard.cols.push({ id:wbUid(), title:'عمود جديد', cards:[] }); wbSaveBoard(_wbBoard); wbRenderBoard();
+}
+function wbDelColumn(colId){
+  const col = _wbBoard.cols.find(c=>c.id===colId);
+  if (col && col.cards.length && !confirm('حذف العمود «'+col.title+'» وكل بطاقاته؟')) return;
+  _wbBoard.cols = _wbBoard.cols.filter(c=>c.id!==colId); wbSaveBoard(_wbBoard); wbRenderBoard();
+}
+function wbResetBoard(){
+  if (!confirm('إعادة ضبط لوحة المهام إلى الأعمدة الافتراضية؟ (تُحذف كل البطاقات)')) return;
+  lsDel('wbKanban'); wbRenderBoard();
+}
+
+/* ── الملاحظات اللاصقة ──────────────────── */
+function wbLoadNotes(){ try{ const d=JSON.parse(lsGet('wbNotes','')); if(Array.isArray(d)) return d; }catch(_){} return []; }
+let _wbNotes = null;
+function wbSaveNotes(){ lsSet('wbNotes', JSON.stringify(_wbNotes)); }
+function wbRenderNotes(){
+  _wbNotes = wbLoadNotes();
+  const board = document.getElementById('wb-notes-board');
+  board.innerHTML = '';
+  const bw = board.clientWidth || 800, bh = board.clientHeight || 600;
+  _wbNotes.forEach(n=>{
+    const el = document.createElement('div'); el.className='wb-note'; el.dataset.id=n.id;
+    el.style.background = n.color;
+    el.style.left = Math.min(Math.max(n.x,0), Math.max(bw-176,0)) + 'px';
+    el.style.top  = Math.min(Math.max(n.y,0), Math.max(bh-134,0)) + 'px';
+    const grip = document.createElement('span'); grip.className='wb-note-grip'; grip.textContent='⠿';
+    const del = document.createElement('button'); del.className='wb-note-del'; del.textContent='×'; del.title='حذف';
+    del.onclick=()=>{ _wbNotes=_wbNotes.filter(x=>x.id!==n.id); wbSaveNotes(); wbRenderNotes(); };
+    const ta = document.createElement('textarea'); ta.className='wb-note-txt'; ta.value=n.text; ta.placeholder='اكتب هنا…';
+    ta.addEventListener('input', ()=>{ n.text=ta.value; wbSaveNotes(); });
+    ta.addEventListener('pointerdown', e=>e.stopPropagation()); // منع بدء السحب أثناء الكتابة
+    el.appendChild(grip); el.appendChild(del); el.appendChild(ta);
+    wbNoteDrag(el, n);
+    board.appendChild(el);
+  });
+}
+function wbNoteDrag(el, n){
+  let sx,sy,ox,oy,moved;
+  const down = e=>{
+    if (e.target.tagName==='TEXTAREA' || e.target.classList.contains('wb-note-del')) return;
+    e.preventDefault(); moved=false;
+    const board=document.getElementById('wb-notes-board');
+    sx=e.clientX; sy=e.clientY; ox=el.offsetLeft; oy=el.offsetTop;
+    el.classList.add('dragging');
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    const move = ev=>{
+      moved=true;
+      const bw=board.clientWidth, bh=board.clientHeight;
+      let nx=ox+(ev.clientX-sx), ny=oy+(ev.clientY-sy);
+      nx=Math.min(Math.max(nx,0), bw-el.offsetWidth); ny=Math.min(Math.max(ny,0), bh-el.offsetHeight);
+      el.style.left=nx+'px'; el.style.top=ny+'px';
+    };
+    const up = ()=>{
+      el.classList.remove('dragging');
+      el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+      if (moved){ n.x=el.offsetLeft; n.y=el.offsetTop; wbSaveNotes(); }
+    };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+  };
+  el.addEventListener('pointerdown', down);
+}
+function wbAddNote(color){
+  _wbNotes = wbLoadNotes();
+  const board=document.getElementById('wb-notes-board');
+  const bw=board.clientWidth||800, bh=board.clientHeight||600;
+  _wbNotes.push({ id:wbUid(), text:'', color:color, x:Math.round(Math.random()*Math.max(bw-200,20))+10, y:Math.round(Math.random()*Math.max(bh-180,20))+10 });
+  wbSaveNotes(); wbRenderNotes();
+}
+function wbClearNotes(){
+  if (!confirm('حذف كل الملاحظات؟')) return;
+  _wbNotes=[]; wbSaveNotes(); wbRenderNotes();
+}
+
 function markerFromOrder(){
   const m=measurements.find(x=>String(x.id)===String(document.getElementById('mk-order').value));
   if(!m){ return; }
