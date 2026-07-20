@@ -472,8 +472,14 @@ body.ltr .dash-card::after{content:'›'}
 .kcol.over{background:#e8f5e9;border-color:#a5d6a7}
 .kcol h4{font-size:.82rem;font-weight:800;color:#33691e;text-align:center;margin-bottom:7px;display:flex;justify-content:center;gap:5px;align-items:center}
 .kcol .kn{background:#fff;border-radius:10px;font-size:.7rem;color:#777;padding:1px 7px}
-.kcard{background:#fff;border:1px solid #dde6d5;border-inline-start:4px solid #7cb342;border-radius:9px;padding:7px 9px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.kcard{background:#fff;border:1px solid #dde6d5;border-inline-start:4px solid #7cb342;border-radius:9px;padding:7px 9px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.06);touch-action:none;user-select:none}
 .kcard:active{cursor:grabbing}
+html[data-theme="dark"] .kcol{background:var(--panel);border-color:var(--border)}
+html[data-theme="dark"] .kcol h4{color:#aed581}
+html[data-theme="dark"] .kcol .kn{background:var(--panel2);color:var(--muted)}
+html[data-theme="dark"] .kcard{background:var(--panel2);border-color:var(--border);color:var(--text)}
+html[data-theme="gray"] .kcol{background:var(--panel);border-color:var(--border)}
+html[data-theme="gray"] .kcard{background:#fff}
 .kcard.late{border-inline-start-color:#ef5350;background:#fff5f5}
 .kcard .kt{font-weight:800;font-size:.8rem;color:#1b3a26}
 .kcard .ks{font-size:.72rem;color:#666;margin-top:2px}
@@ -2261,7 +2267,7 @@ function _fbFail(){
 <!-- ═══════════════ MODAL: KANBAN (لوحة الإنتاج) -->
 <div class="moverlay" id="kanban-modal">
   <div class="mbox" style="max-width:1400px;width:96vw">
-    <div class="mhdr"><h3>📋 لوحة الإنتاج (كانبان) — اسحب الأمر بين المراحل</h3><button class="mcls" onclick="closeModal('kanban-modal')">✕</button></div>
+    <div class="mhdr"><h3>📋 لوحة الإنتاج (كانبان) — اسحب الأمر بين المراحل، وانقره للتعديل</h3><button class="mcls" onclick="closeModal('kanban-modal')">✕</button></div>
     <div class="mlist" style="padding:12px"><div class="kanban" id="kanban-board"></div></div>
   </div>
 </div>
@@ -9040,35 +9046,90 @@ function renderKanban(){
   const today=new Date().toISOString().split('T')[0];
   const active=prodOrders.filter(o=>!o.delivered);
   const board=document.getElementById('kanban-board');
+  const colHtml=(title,count,inner,dropIdx)=>`<div class="kcol" data-drop="${dropIdx}">
+      <h4>${title} <span class="kn">${count}</span></h4>${inner||'<div style="text-align:center;color:#ccc;font-size:.72rem;padding:8px">—</div>'}</div>`;
+  const cardHtml=o=>{
+    const late=!o.done && o.due && o.due<today;
+    const who=(o.assignees||{})[PROD_STAGES[o.stageIdx]]||'';
+    return `<div class="kcard ${late?'late':''}" data-kid="${o.id}">
+      <div class="kt">#${o.num} ${escHtml(_custName(o.clientId))}</div>
+      <div class="ks">${escHtml(o.desc||'')}${who?' • '+escHtml(who):''}</div>
+      ${o.due?`<div class="kd" style="${late?'color:#c62828;font-weight:700':'color:#888'}">📅 ${isoToDMY(o.due)}${late?' ⚠️':''}</div>`:''}
+    </div>`;};
   board.innerHTML = PROD_STAGES.map((st,si)=>{
     const cards=active.filter(o=>!o.done && o.stageIdx===si)
       .concat(si===PROD_STAGES.length-1 ? active.filter(o=>o.done) : []);
-    const cardsHtml=cards.map(o=>{
-      const late=!o.done && o.due && o.due<today;
-      const who=(o.assignees||{})[PROD_STAGES[o.stageIdx]]||'';
-      return `<div class="kcard ${late?'late':''}" draggable="true" ondragstart="event.dataTransfer.setData('id','${o.id}')">
-        <div class="kt">#${o.num} ${escHtml(_custName(o.clientId))}</div>
-        <div class="ks">${escHtml(o.desc||'')}${who?' • '+escHtml(who):''}</div>
-        ${o.due?`<div class="kd" style="${late?'color:#c62828;font-weight:700':'color:#888'}">📅 ${isoToDMY(o.due)}${late?' ⚠️':''}</div>`:''}
-      </div>`;}).join('');
-    return `<div class="kcol" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="kanbanDrop(event,${si})">
-      <h4>${escHtml(L(st))} <span class="kn">${cards.length}</span></h4>${cardsHtml||'<div style="text-align:center;color:#ccc;font-size:.72rem;padding:8px">—</div>'}</div>`;
-  }).join('');
+    return colHtml(escHtml(L(st)), cards.length, cards.map(cardHtml).join(''), si);
+  }).join('')
+  + colHtml('📦 '+escHtml(L('تم التسليم')), prodOrders.filter(o=>o.delivered).length,
+      prodOrders.filter(o=>o.delivered).slice(-8).reverse().map(o=>`<div class="kcard" style="opacity:.65" data-kid="${o.id}"><div class="kt">#${o.num} ${escHtml(_custName(o.clientId))}</div><div class="ks">${escHtml(o.desc||'')}</div></div>`).join(''), 'deliver');
+  _kanbanBindDrag(board);
 }
-function kanbanDrop(ev, stageIdx){
-  ev.preventDefault();
-  document.querySelectorAll('.kcol.over').forEach(c=>c.classList.remove('over'));
-  const id=parseInt(ev.dataTransfer.getData('id')); const o=prodOrders.find(x=>x.id===id); if(!o) return;
+// نقل أمر لمرحلة (يسجّل في اللوج ويُشعر عند الاكتمال)
+function kanbanMove(id, stageIdx){
+  const o=prodOrders.find(x=>x.id===id); if(!o) return;
+  if(stageIdx==='deliver'){ if(!o.done){ alert('الأمر ليس جاهزاً بعد — انقله إلى «جاهز» أولاً'); return; } deliverProdOrder(o.id); renderKanban(); return; }
+  stageIdx=+stageIdx;
   if(o.stageIdx===stageIdx && !o.done && stageIdx!==PROD_STAGES.length-1) return;
   const last=PROD_STAGES.length-1;
   o.stageIdx=stageIdx;
   o.done = (stageIdx===last);
+  if(o.delivered && !o.done) o.delivered=false; // سحب مسلَّم لمرحلة سابقة يعيده للعمل
   o.log=o.log||[];
   o.log.push({ stage:PROD_STAGES[stageIdx], by:(o.assignees||{})[PROD_STAGES[stageIdx]]||(currentMember?currentMember.name:'صاحب المنشأة'), at:new Date().toISOString() });
   save('prodOrders');
   logAction('نقل مرحلة إنتاج','أمر #'+o.num+' → '+PROD_STAGES[stageIdx]);
   renderKanban(); renderDashStats(); renderDashboard();
   if(o.done) autoNotify(o.clientId,'ready','🎉 أصبح الأمر #'+o.num+' جاهزاً.\nإرسال رسالة واتساب للعميل؟');
+}
+// سحب موحّد يعمل بالفأرة واللمس معاً + النقر يفتح الأمر للتعديل
+function _kanbanBindDrag(board){
+  board.querySelectorAll('.kcard[data-kid]').forEach(card=>{
+    card.onpointerdown=e=>{
+      if(e.button&&e.button!==0) return;
+      const id=+card.dataset.kid;
+      const sx=e.clientX, sy=e.clientY;
+      let ghost=null, dragging=false, holdTimer=null;
+      const isTouch=e.pointerType!=='mouse';
+      const begin=()=>{ if(dragging) return; dragging=true;
+        ghost=card.cloneNode(true);
+        ghost.style.cssText='position:fixed;z-index:9999;width:'+card.offsetWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);left:0;top:0';
+        document.body.appendChild(ghost);
+        card.style.opacity='.35';
+        mv(e); };
+      const colUnder=(x,y)=>{ if(ghost) ghost.style.display='none'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.display=''; return el?el.closest('.kcol[data-drop]'):null; };
+      const mv=ev=>{
+        if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>(isTouch?12:5)){ if(isTouch&&holdTimer){ cleanup(); return; } begin(); } else return; }
+        ev.preventDefault();
+        ghost.style.left=(ev.clientX-ghost.offsetWidth/2)+'px';
+        ghost.style.top=(ev.clientY-24)+'px';
+        // تمرير اللوحة تلقائياً عند الاقتراب من حافتيها للوصول للأعمدة البعيدة
+        const br=board.getBoundingClientRect();
+        if(ev.clientX<br.left+70) board.scrollLeft-=16;
+        else if(ev.clientX>br.right-70) board.scrollLeft+=16;
+        board.querySelectorAll('.kcol.over').forEach(c=>c.classList.remove('over'));
+        const col=colUnder(ev.clientX,ev.clientY); if(col) col.classList.add('over');
+      };
+      const up=ev=>{
+        cleanup();
+        if(dragging){
+          const col=colUnder(ev.clientX,ev.clientY);
+          board.querySelectorAll('.kcol.over').forEach(c=>c.classList.remove('over'));
+          if(ghost) ghost.remove();
+          card.style.opacity='';
+          if(col) kanbanMove(id, col.dataset.drop);
+        } else {
+          openProdPanel(id); // نقرة بلا سحب = فتح الأمر
+        }
+      };
+      const cleanup=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); };
+      const cancel=()=>{ cleanup(); if(ghost) ghost.remove(); card.style.opacity=''; };
+      if(isTouch) holdTimer=setTimeout(()=>{ holdTimer=null; begin(); }, 220); // لمس مطوّل يبدأ السحب — والتمرير العادي يبقى حراً
+      window.addEventListener('pointermove',mv,{passive:false});
+      window.addEventListener('pointerup',up);
+      window.addEventListener('pointercancel',cancel);
+    };
+  });
 }
 function advanceProdStage(id) {
   const o = prodOrders.find(x=>x.id===id); if (!o || o.done) return;
