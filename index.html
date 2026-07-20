@@ -679,51 +679,6 @@ function _fbFail(){
 
 <datalist id="email-suggest"></datalist>
 
-<!-- ═══════════════ SUPER ADMIN (access via #admin) -->
-<div id="admin-screen" class="screen">
-  <div id="admin-login-wrap" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e)">
-    <div class="auth-card" style="max-width:360px">
-      <h3 style="text-align:center;color:#1a1a2e;margin-bottom:16px">🛡️ سوبر أدمن</h3>
-      <div class="auth-err" id="admin-err"></div>
-      <div class="fg"><label>اسم المستخدم</label><input type="text" id="admin-user"></div>
-      <div class="fg"><label>كلمة المرور</label><div class="pwd-wrap"><input type="password" id="admin-pass" onkeydown="if(event.key==='Enter')adminLogin()"><button type="button" class="pwd-eye" onclick="togglePwd(this)" tabindex="-1" aria-label="إظهار كلمة المرور">👁️</button></div></div>
-      <button class="btn" style="width:100%;padding:11px;background:#1a1a2e;color:white" onclick="adminLogin()">دخول →</button>
-      <div style="font-size:.72rem;color:#aaa;text-align:center;margin-top:10px">الافتراضي: admin / admin123 — غيّرها فور الدخول</div>
-    </div>
-  </div>
-  <div id="admin-panel-wrap" style="display:none">
-    <div class="page-wrap">
-      <div class="page-header" style="background:linear-gradient(90deg,#1a1a2e,#16213e)">
-        <h2>🛡️ لوحة السوبر أدمن — إدارة الاشتراكات</h2>
-        <div style="display:flex;gap:7px">
-          <button class="btn btn-outline" onclick="adminChangePass()">🔑 تغيير كلمة المرور</button>
-          <button class="btn btn-danger" onclick="adminLogout()">🚪 خروج</button>
-        </div>
-      </div>
-      <div class="an-stat-row" id="admin-stats"></div>
-
-      <div class="an-card" style="margin-bottom:14px">
-        <h3>📧 خدمة الإيميل</h3>
-        <div style="font-size:.84rem;color:#555">
-          ✅ تأكيد الحسابات واستعادة كلمات المرور تتم تلقائياً عبر <b>Firebase</b> —
-          تصل رسائل حقيقية لبريد كل مشترك دون أي إعداد إضافي.
-        </div>
-      </div>
-
-      <div class="data-table-wrap">
-        <table>
-          <thead><tr>
-            <th>المنشأة</th><th>المستخدم</th><th>الإيميل</th><th>مؤكد؟</th><th>تاريخ التسجيل</th>
-            <th>نهاية الاشتراك</th><th>الحالة</th><th>إجراءات</th>
-          </tr></thead>
-          <tbody id="admin-tbody"></tbody>
-        </table>
-        <div id="admin-empty" class="empty-state" style="display:none"><div class="big">🏢</div><p>لا توجد منشآت مسجلة بعد.</p></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══════════════ DASHBOARD -->
 <div id="dashboard" class="screen active">
   <div class="dash-nav">
@@ -1776,7 +1731,7 @@ function _fbFail(){
         <input type="hidden" id="ms-edit-id">
         <div class="ord-idbox">
           <div class="fg" style="margin:0;display:flex;gap:5px;align-items:center"><select id="ms-client" style="min-width:130px" onchange="suggestFromHistory()"></select><button class="btn btn-sm" style="background:#fff;color:#1b3a6b;font-weight:800" onclick="quickAddCustomer()" title="إضافة عميل جديد">＋</button></div>
-          <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderOrderVisual()"></select></div>
+          <div class="fg" style="margin:0"><select id="ms-template" onchange="renderMeasFields();renderBodyFields(_readBodyValues());renderOrderVisual()"></select></div>
           <div class="fg" style="margin:0"><span class="dmy"><input type="text" id="ms-date" placeholder="يوم/شهر/سنة" inputmode="numeric" style="width:118px"><button type="button" class="dmy-btn" onclick="dmyPick(this)" tabindex="-1">📅</button><input type="date" class="dmy-hidden" tabindex="-1"></span></div>
           <div class="fg" style="margin:0"><input type="text" id="ms-name" placeholder="اسم الطلب (اختياري)" style="width:150px"></div>
         </div>
@@ -1826,7 +1781,6 @@ function _fbFail(){
         <div id="ms-size-match" style="margin-bottom:6px"></div>
         <div id="ms-fit-bar" style="margin-bottom:6px"></div>
         <div id="ms-fields" class="ms-fields-grid"></div>
-        <div id="ms-diagram" class="ms-diagram" style="display:none"></div>
         <div id="ms-diagram-hint" style="display:none;font-size:.72rem;color:#888;text-align:center;margin-top:5px">💡 أدخل القياسات على <b>الموديل الكبير</b> — المواضع ثابتة. لترتيبها: «⚙️ إعدادات الحقول ← 📍 مواضع القياس»</div>
         <div id="ms-body-fields" style="display:none"></div>
         <div id="ms-warnings"></div>
@@ -2899,7 +2853,6 @@ function _fbFail(){
 
 <script>
 // ═══════════════ MULTI-TENANT ACCOUNTS (SaaS — Firebase Auth + Firestore)
-let accounts     = [];   // يُحمَّل من Firestore في لوحة الأدمن فقط
 let currentAccId = null; // = معرّف المنشأة (UID المالك) بعد الدخول
 let currentAccProfile = null;
 let currentMember = null; // بيانات الموظف إن كان الداخل مستخدماً تابعاً لمنشأة
@@ -3305,114 +3258,6 @@ function logout() {
     showScreen('auth-screen');
   });
 }
-// ═══════════════ SUPER ADMIN (إدارة الاشتراكات) — الوصول عبر #admin في الرابط
-function getSuper() { return JSON.parse(localStorage.getItem('l7_super')||'{"user":"admin","pass":"admin123"}'); }
-function adminLogin() {
-  const sa = getSuper();
-  const u = document.getElementById('admin-user').value.trim();
-  const pw = document.getElementById('admin-pass').value;
-  if (u!==sa.user || pw!==sa.pass) { document.getElementById('admin-err').textContent='بيانات الدخول غير صحيحة'; return; }
-  sessionStorage.setItem('l7_admin_in','1');
-  document.getElementById('admin-login-wrap').style.display='none';
-  document.getElementById('admin-panel-wrap').style.display='block';
-  adminLoadAccounts();
-}
-// جلب كل المنشآت من السحابة (Firestore)
-function adminLoadAccounts() {
-  fbDB.collection('accounts').get().then(q=>{
-    accounts = q.docs.map(d=>({ id:d.id, ...d.data() }));
-    renderAdminPanel();
-  }).catch(e=>{
-    document.getElementById('admin-tbody').innerHTML =
-      '<tr><td colspan="8" style="color:#c62828">تعذر جلب البيانات: '+escHtml(e.message||'')+'</td></tr>';
-  });
-}
-function adminLogout() {
-  sessionStorage.removeItem('l7_admin_in');
-  location.hash=''; location.reload();
-}
-function adminChangePass() {
-  const sa = getSuper();
-  const np = prompt('كلمة المرور الجديدة للسوبر أدمن:');
-  if (!np || np.length<5) { if(np!==null) alert('5 أحرف على الأقل'); return; }
-  sa.pass = np;
-  localStorage.setItem('l7_super', JSON.stringify(sa));
-  alert('تم التغيير ✔');
-}
-function renderAdminPanel() {
-  const tb = document.getElementById('admin-tbody');
-  const today = new Date();
-  const active = accounts.filter(a=>!a.suspended && (!a.subEnd || new Date(a.subEnd+'T23:59:59')>=today)).length;
-  const expired = accounts.filter(a=>a.subEnd && new Date(a.subEnd+'T23:59:59')<today).length;
-  document.getElementById('admin-stats').innerHTML = `
-    <div class="an-stat"><div class="v">${accounts.length}</div><div class="l">إجمالي المنشآت</div></div>
-    <div class="an-stat b"><div class="v">${active}</div><div class="l">اشتراكات نشطة</div></div>
-    <div class="an-stat o"><div class="v">${expired}</div><div class="l">اشتراكات منتهية</div></div>
-    <div class="an-stat p"><div class="v">${accounts.filter(a=>a.suspended).length}</div><div class="l">موقوفة</div></div>`;
-  document.getElementById('admin-empty').style.display = accounts.length?'none':'block';
-  tb.innerHTML = accounts.map(a=>{
-    const exp = a.subEnd && new Date(a.subEnd+'T23:59:59') < today;
-    const st = a.suspended ? '<span class="pbadge" style="background:#ffebee;color:#c62828">موقوف</span>'
-             : exp ? '<span class="pbadge pay-ajal">منتهي</span>'
-             : '<span class="pbadge pay-cash">نشط</span>';
-    const created = a.createdAt ? fmtDate(a.createdAt.split('T')[0]) : '-';
-    return `<tr>
-      <td><strong>${escHtml(a.biz)}</strong></td>
-      <td>${escHtml(a.user)}</td>
-      <td style="direction:ltr">${escHtml(a.email||'-')}</td>
-      <td>${a.verified!==false?'✅':'❌'}</td>
-      <td>${created}</td>
-      <td><input type="text" value="${isoToDMY(a.subEnd)||''}" placeholder="يوم/شهر/سنة" onchange="adminSetSubEnd('${a.id}',this.value)" style="padding:4px;border:1px solid #ddd;border-radius:5px;font-family:inherit;direction:ltr;text-align:center;width:110px"></td>
-      <td>${st}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-success btn-sm" onclick="adminExtend('${a.id}',30)">+30ي</button>
-        <button class="btn btn-primary btn-sm" onclick="adminExtend('${a.id}',90)">+90ي</button>
-        <button class="btn btn-info btn-sm" onclick="adminExtend('${a.id}',365)">+سنة</button>
-        <button class="btn btn-warning btn-sm" onclick="adminToggleSuspend('${a.id}')">${a.suspended?'تفعيل':'إيقاف'}</button>
-        <button class="btn btn-sm" style="background:#6a1b9a;color:white" onclick="adminResetPass('${a.id}')" title="إرسال رابط تغيير كلمة المرور">🔑</button>
-        <button class="btn btn-danger btn-sm" onclick="adminDeleteAcc('${a.id}')">🗑</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-// حفظ تعديل منشأة في السحابة ثم إعادة الرسم
-function _adminUpdate(id, fields) {
-  fbDB.collection('accounts').doc(id).set(fields, {merge:true})
-    .then(()=>{ const a=accounts.find(x=>x.id===id); if(a) Object.assign(a, fields); renderAdminPanel(); })
-    .catch(e=>alert('فشل الحفظ: '+(e.message||'')));
-}
-function adminSetSubEnd(id, val) {
-  const iso = dmyToISO(val);
-  if (iso === null) { alert('صيغة التاريخ: يوم/شهر/سنة مثل 31/12/2026'); renderAdminPanel(); return; }
-  _adminUpdate(id, { subEnd: iso||null });
-}
-function adminExtend(id, days) {
-  const a=accounts.find(x=>x.id===id); if(!a) return;
-  const base = (a.subEnd && new Date(a.subEnd) > new Date()) ? new Date(a.subEnd) : new Date();
-  base.setDate(base.getDate()+days);
-  _adminUpdate(id, { subEnd: base.toISOString().split('T')[0] });
-}
-function adminToggleSuspend(id) { const a=accounts.find(x=>x.id===id); if(a) _adminUpdate(id, { suspended: !a.suspended }); }
-// إرسال رابط تغيير كلمة المرور لبريد المنشأة (التغيير المباشر يتطلب خادماً — Firebase لا يسمح به من المتصفح)
-function adminResetPass(id) {
-  const a=accounts.find(x=>x.id===id); if(!a) return;
-  if (!a.email) { alert('لا يوجد بريد مسجل لهذه المنشأة'); return; }
-  if (!confirm('إرسال رابط تغيير كلمة المرور إلى:\n'+a.email+' ؟')) return;
-  fbAuth.sendPasswordResetEmail(a.email)
-    .then(()=>alert('📬 أُرسل رابط تغيير كلمة المرور إلى '+a.email+'\nيفتح صاحب المنشأة بريده ويضع كلمة مرور جديدة.'))
-    .catch(e=>alert('فشل الإرسال: '+(e.message||'')));
-}
-function adminDeleteAcc(id) {
-  const a=accounts.find(x=>x.id===id); if(!a) return;
-  if (!confirm('حذف منشأة "'+a.biz+'" وجميع بياناتها نهائياً؟')) return;
-  if (!confirm('تأكيد أخير — لا يمكن التراجع!')) return;
-  fbDB.collection('accounts').doc(id).delete()
-    .then(()=>{ accounts = accounts.filter(x=>x.id!==id); renderAdminPanel(); })
-    .catch(e=>alert('فشل الحذف: '+(e.message||'')));
-}
-
-let editingInvId=null, editingProdId=null, returnForInvId=null, rowCount=0, stmtClientId=null;
-
 // ═══════════════ I18N
 const T = {
   ar: {
@@ -3672,7 +3517,7 @@ function showScreen(id) {
   document.querySelectorAll('.moverlay.open,.side-panel.open').forEach(el=>el.classList.remove('open'));
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.body.classList.toggle('app-on', id !== 'auth-screen' && id !== 'admin-screen');
+  document.body.classList.toggle('app-on', id !== 'auth-screen');
   if (id === 'invoice-list')     { populateClientFilter(); renderInvoiceList(); }
   if (id === 'products-screen')  renderProducts();
   if (id === 'archive-screen')   renderArchive();
@@ -5530,7 +5375,6 @@ function msMainTab(which) {
   if(el('ms-size-match'))   el('ms-size-match').style.display   = which==='table' ? '' : 'none';
   if(el('ms-fit-bar')){ el('ms-fit-bar').style.display = which==='table' ? '' : 'none'; if(which==='table') msRenderFitBar(); }
   if(el('ms-warnings'))     el('ms-warnings').style.display     = which==='table' ? '' : 'none';
-  if(el('ms-diagram'))      el('ms-diagram').style.display      = 'none';
   if(el('ms-diagram-hint')) el('ms-diagram-hint').style.display = which==='model' ? 'block' : 'none';
   if(el('ms-body-fields'))  el('ms-body-fields').style.display  = which==='body' ? '' : 'none';
   if(which==='body') try{ msBodyRecalc(); }catch(_){}
@@ -5577,7 +5421,8 @@ function renderBodyFields(vals) {
           <input type="number" step="0.5" id="msbt-${k}" data-bk="${bk}" value="${_bodyVals[bk]!=null?_bodyVals[bk]:''}" placeholder="—"
             onfocus="this.select()" onkeydown="msEnterNext(event,this)" oninput="msBodyInput(this)"
             style="width:76px;text-align:center;direction:ltr;border:1.5px solid #a5d6a7;border-radius:7px;padding:6px 4px;font-weight:800">
-          ${img?`<button type="button" onclick="bodyImgView('${bk}')" style="border:none;background:none;cursor:pointer;font-size:.85rem" title="صورة إرشادية">📷</button>`:''}
+          ${img?`<button type="button" onclick="bodyImgView('${bk}')" style="border:none;background:none;cursor:pointer;font-size:.85rem" title="عرض الصورة الإرشادية">📷</button>`:''}
+          ${!currentMember?`<label style="cursor:pointer;font-size:.8rem" title="${img?'تغيير':'إضافة'} صورة إرشادية">${img?'🔁':'➕'}<input type="file" accept="image/*" style="display:none" onchange="bodyImgUpload('${bk}',this)"></label>${img?`<button type="button" onclick="bodyImgRemove('${bk}')" style="border:none;background:none;color:#c62828;cursor:pointer;font-size:.72rem" title="حذف الصورة">✕</button>`:''}`:''}
         </td>
         <td style="padding:6px;border:1px solid #eee;text-align:center;direction:ltr;color:#e65100;font-weight:700" id="msbe-${k}">—</td>
         <td style="padding:6px;border:1px solid #eee;text-align:center;direction:ltr;color:#6a1b9a;font-weight:900;background:#faf5fc" id="msbs-${k}">—</td>
@@ -8099,8 +7944,9 @@ function _sessionStart(member){
     at: now, last: now, ua: (navigator.userAgent.match(/(Android|iPhone|iPad|Windows|Mac|Linux)/)||[''])[0]||'جهاز', loc:'' });
   _sessSave(list);
   _sessGeoInto(_sessId); // الموقع الجغرافي — إن تعذر يبقى فارغاً
-  // نبض المدة كل 4 دقائق ما دام التطبيق مفتوحاً
-  setInterval(()=>{ try{
+  // نبض المدة كل 4 دقائق ما دام التطبيق مفتوحاً (مؤقّت واحد فقط)
+  if(window._sessHb) clearInterval(window._sessHb);
+  window._sessHb=setInterval(()=>{ try{
     if(!_sessId||!currentAccId) return;
     const l=_sessLog(); const e=l.find(x=>x.id===_sessId);
     if(e){ e.last=new Date().toISOString(); _sessSave(l); }
@@ -10437,10 +10283,6 @@ function applyTheme(t){
   [['thm-light','light'],['thm-dark','dark'],['thm-gray','gray']].forEach(([id,v])=>{
     const b=document.getElementById(id); if(b) b.classList.toggle('on', t===v);
   });
-}
-function cycleTheme(){
-  const cur=(localStorage.getItem('l7_theme')||'light');
-  applyTheme(cur==='light'?'dark':(cur==='dark'?'gray':'light'));
 }
 // init
 applyLang();
