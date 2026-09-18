@@ -9089,20 +9089,25 @@ function _kanbanBindDrag(board){
       if(e.button&&e.button!==0) return;
       const id=+card.dataset.kid;
       const sx=e.clientX, sy=e.clientY;
-      let ghost=null, dragging=false, holdTimer=null;
+      let ghost=null, dragging=false, holdTimer=null, ghostWidth=0;
       const isTouch=e.pointerType!=='mouse';
       const begin=()=>{ if(dragging) return; dragging=true;
         ghost=card.cloneNode(true);
-        ghost.style.cssText='position:fixed;z-index:9999;width:'+card.offsetWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);left:0;top:0';
+        ghostWidth=card.offsetWidth;
+        ghost.style.cssText='position:fixed;z-index:9999;width:'+ghostWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);height:auto;max-height:500px;overflow:visible';
         document.body.appendChild(ghost);
         card.style.opacity='.35';
         mv(e); };
-      const colUnder=(x,y)=>{ if(ghost) ghost.style.display='none'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.display=''; return el?el.closest('.kcol[data-drop]'):null; };
+      const colUnder=(x,y)=>{ if(ghost) ghost.style.visibility='hidden'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.visibility='visible'; return el?el.closest('.kcol[data-drop]'):null; };
       const mv=ev=>{
         if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>(isTouch?12:5)){ if(isTouch&&holdTimer){ cleanup(); return; } begin(); } else return; }
         ev.preventDefault();
-        ghost.style.left=(ev.clientX-ghost.offsetWidth/2)+'px';
-        ghost.style.top=(ev.clientY-24)+'px';
+        let left=ev.clientX-ghostWidth/2;
+        let top=ev.clientY-24;
+        left=Math.max(0,Math.min(left,window.innerWidth-ghostWidth-20));
+        top=Math.max(0,Math.min(top,window.innerHeight-100));
+        ghost.style.left=left+'px';
+        ghost.style.top=top+'px';
         // تمرير اللوحة تلقائياً عند الاقتراب من حافتيها للوصول للأعمدة البعيدة
         const br=board.getBoundingClientRect();
         if(ev.clientX<br.left+70) board.scrollLeft-=16;
