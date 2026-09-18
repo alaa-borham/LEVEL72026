@@ -9097,6 +9097,7 @@ function _kanbanBindDrag(board){
         ghost.style.cssText='position:fixed;z-index:9999;width:'+ghostWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);height:auto;max-height:500px;overflow:visible';
         document.body.appendChild(ghost);
         card.style.opacity='.35';
+        if(card.setPointerCapture) card.setPointerCapture(e.pointerId);
         mv(e); };
       const colUnder=(x,y)=>{ if(ghost) ghost.style.visibility='hidden'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.visibility='visible'; return el?el.closest('.kcol[data-drop]'):null; };
       const mv=ev=>{
@@ -9127,7 +9128,7 @@ function _kanbanBindDrag(board){
           openProdPanel(id); // نقرة بلا سحب = فتح الأمر
         }
       };
-      const cleanup=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); };
+      const cleanup=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} if(card.releasePointerCapture) try{ card.releasePointerCapture(e.pointerId); } catch(err){} window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); };
       const cancel=()=>{ cleanup(); if(ghost) ghost.remove(); card.style.opacity=''; };
       if(isTouch) holdTimer=setTimeout(()=>{ holdTimer=null; begin(); }, 220); // لمس مطوّل يبدأ السحب — والتمرير العادي يبقى حراً
       window.addEventListener('pointermove',mv,{passive:false});
