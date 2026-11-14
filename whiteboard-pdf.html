@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1f13">
+<title>لوحة الشرح و PDF</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--g1:#7cb342;--g2:#558b2f;--d1:#0b1f13;--d2:#081409;--bg:#f4f7f0;--card:#fff;--line:#e2e8dc;--txt:#2a3320;--mut:#6f7a66}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+button{font-family:inherit;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--txt);border-radius:9px;padding:7px 12px;font-weight:700;font-size:13px}
+button:hover{border-color:var(--g1)}
+button:disabled{opacity:.4;cursor:default}
+.hide{display:none!important}
+header{background:linear-gradient(90deg,var(--d1),var(--d2));color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:30}
+header h1{font-size:17px;margin:0}
+header .sp{flex:1}
+.mode{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.8)}
+.mode.on{background:var(--g1);color:#fff}
+.bar{background:var(--card);border-bottom:1px solid var(--line);padding:8px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:52px;z-index:20}
+.grp{display:flex;gap:4px;align-items:center;padding-inline-end:8px;border-inline-end:1px solid var(--line)}
+.grp:last-child{border:none}
+.tool{min-width:38px;padding:6px 8px;font-size:15px}
+.tool.on{background:var(--g1);border-color:var(--g2);color:#fff}
+.sw{width:24px;height:24px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px #ccc;padding:0;min-width:0}
+.sw.on{box-shadow:0 0 0 2.5px var(--g2)}
+input[type=color]{width:30px;height:28px;border:none;padding:0;background:none;cursor:pointer}
+input[type=range]{width:90px}
+.lbl{font-size:12px;color:var(--mut);font-weight:700}
+.prim{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:var(--g2)}
+main{padding:16px;max-width:1500px;margin:0 auto}
+.stage{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin:0 auto}
+.stage canvas{display:block;width:100%;height:auto}
+.stage canvas.ink{position:absolute;inset:0;height:100%;touch-action:none;cursor:crosshair}
+.stage.grid{background-image:linear-gradient(#e6eee0 1px,transparent 1px),linear-gradient(90deg,#e6eee0 1px,transparent 1px);background-size:25px 25px}
+.stage.grid canvas.bgpdf{opacity:.92}
+#board-stage{aspect-ratio:2/1}
+#board-stage canvas.ink{height:100%}
+.page{max-width:1000px;margin:0 auto 18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.page-no{text-align:center;color:var(--mut);font-size:12px;margin:-12px 0 14px}
+.drop{border:2.5px dashed #c7d6bb;border-radius:16px;background:#fff;padding:70px 20px;text-align:center;color:var(--mut);cursor:pointer;max-width:900px;margin:20px auto}
+.drop.over{border-color:var(--g1);background:#f1f7e8}
+.drop b{display:block;font-size:19px;color:var(--g2);margin-bottom:6px}
+#txt{position:fixed;z-index:60;border:2px solid var(--g1);border-radius:6px;padding:4px 6px;font-family:inherit;min-width:160px;background:#fff}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:16px}
+.modal .box{background:#fff;border-radius:14px;padding:16px;width:min(520px,100%);max-height:80vh;overflow:auto}
+.modal h3{margin:0 0 12px;color:var(--g2)}
+.saved{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:8px}
+.saved img{width:110px;height:55px;object-fit:contain;background:#fafafa;border-radius:6px}
+.saved .n{flex:1;font-weight:700}
+.saved .n small{display:block;color:var(--mut);font-weight:400}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--d1);color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:90}
+.toast.show{opacity:1}
+.busy{position:fixed;inset:0;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--g2);font-size:16px;z-index:95}
+</style>
+</head>
+<body>
+<header>
+  <h1>🖊️ لوحة الشرح</h1>
+  <button class="mode on" data-mode="board" onclick="setMode('board')">✏️ لوحة رسم</button>
+  <button class="mode" data-mode="pdf" onclick="setMode('pdf')">📄 شرح على PDF</button>
+  <span class="sp"></span>
+  <span id="pdfName" style="font-size:12px;opacity:.8;direction:ltr"></span>
+</header>
+
+<div class="bar">
+  <div class="grp" id="tools"></div>
+  <div class="grp" id="swatches"><input type="color" id="color" value="#d32f2f" title="لون مخصص"></div>
+  <div class="grp"><span class="lbl">السُمك</span><input type="range" id="size" min="1" max="30" value="3"><span class="lbl" id="sizeLbl">3</span></div>
+  <div class="grp">
+    <button class="tool" id="undoBtn" onclick="undo()" title="تراجع (Ctrl+Z)">↶</button>
+    <button class="tool" id="redoBtn" onclick="redo()" title="إعادة (Ctrl+Y)">↷</button>
+    <button class="tool" id="gridBtn" onclick="toggleGrid()" title="شبكة">▦</button>
+  </div>
+  <div class="grp" id="boardActions">
+    <button onclick="saveBoard()">💾 حفظ</button>
+    <button onclick="openSaved()">📂 المحفوظات</button>
+    <button onclick="exportBoardPng()">🖼️ PNG</button>
+    <button onclick="clearActive()">🗑️ مسح</button>
+  </div>
+  <div class="grp hide" id="pdfActions">
+    <button onclick="pickPdf()">📂 فتح PDF</button>
+    <button onclick="clearActive()" title="مسح رسم الصفحة الأخيرة التي رسمت عليها">🗑️ مسح الصفحة</button>
+    <button class="prim" id="exportPdfBtn" onclick="exportPdf()" disabled>⬇️ حفظ PDF مع الشرح</button>
+  </div>
+</div>
+
+<main>
+  <section id="mode-board">
+    <div class="stage" id="board-stage"><canvas class="ink" id="boardInk" width="1600" height="800"></canvas></div>
+  </section>
+  <section id="mode-pdf" class="hide">
+    <div class="drop" id="drop" onclick="pickPdf()"><b>📄 اسحب ملف PDF هنا أو اضغط للاختيار</b>ارسم واكتب على الصفحات ثم احفظ ملف PDF جديد يحتوي الشرح</div>
+    <div id="pages"></div>
+  </section>
+</main>
+<input type="file" id="pdfFile" accept="application/pdf,.pdf" class="hide">
+<input id="txt" class="hide" placeholder="اكتب ثم Enter">
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $ = id => document.getElementById(id);
+const TOOLS = [['pen','✏️','قلم حر'],['marker','🖍️','قلم تظليل'],['line','📏','خط مستقيم'],['arrow','➜','سهم'],['rect','▭','مربع'],['circle','◯','دائرة'],['triangle','△','مثلث'],['text','T','نص'],['measure','📐','قياس مسافة'],['eraser','🧽','ممحاة']];
+const COLORS = ['#d32f2f','#1565c0','#2e7d32','#f9a825','#6a1b9a','#111111'];
+let tool='pen', mode='board', active=null, grid=false;
+
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+
+// ═══ لوحة رسم قابلة لإعادة الاستخدام (لوحة الرسم وكل صفحة PDF) ═══
+class Board{
+  constructor(canvas, onChange){
+    this.c=canvas; this.x=canvas.getContext('2d'); this.undo=[]; this.redo=[]; this.onChange=onChange;
+    canvas.addEventListener('pointerdown', e=>this.down(e));
+    canvas.addEventListener('pointermove', e=>this.move(e));
+    canvas.addEventListener('pointerup', e=>this.up(e));
+    canvas.addEventListener('pointercancel', e=>this.up(e));
+  }
+  pt(e){ const r=this.c.getBoundingClientRect(); return {x:(e.clientX-r.left)*this.c.width/r.width, y:(e.clientY-r.top)*this.c.height/r.height}; }
+  scale(){ return this.c.width/this.c.getBoundingClientRect().width; }
+  snap(){ return this.x.getImageData(0,0,this.c.width,this.c.height); }
+  push(){ this.undo.push(this.snap()); if(this.undo.length>40) this.undo.shift(); this.redo=[]; }
+  style(){
+    const x=this.x, s=+$('size').value*this.scale();
+    x.globalCompositeOperation = tool==='eraser' ? 'destination-out' : 'source-over';
+    x.globalAlpha = tool==='marker' ? .35 : 1;
+    x.strokeStyle = x.fillStyle = $('color').value;
+    x.lineWidth = tool==='marker' ? s*4 : tool==='eraser' ? s*5 : s;
+    x.lineCap='round'; x.lineJoin='round'; x.setLineDash([]);
+  }
+  down(e){
+    active=this; refreshUndo();
+    const p=this.pt(e);
+    if(tool==='text'){ e.preventDefault(); askText(this, p, e); return; }
+    this.c.setPointerCapture(e.pointerId);
+    this.push(); this.start=p; this.last=p; this.base=this.snap(); this.drawing=true;
+    if(tool==='pen'||tool==='marker'||tool==='eraser'){ this.style(); this.x.beginPath(); this.x.moveTo(p.x,p.y); this.x.lineTo(p.x+.01,p.y); this.x.stroke(); }
+  }
+  move(e){
+    if(!this.drawing) return;
+    const pts = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    if(tool==='pen'||tool==='eraser'){
+      this.style(); const x=this.x; x.beginPath(); x.moveTo(this.last.x,this.last.y);
+      for(const ev of pts){ const p=this.pt(ev); x.lineTo(p.x,p.y); this.last=p; } x.stroke();
+    } else if(tool==='marker'){
+      // يُعاد رسم الخط كاملاً حتى لا تتراكم الشفافية في نقاط التقاطع
+      this.path=this.path||[this.start]; for(const ev of pts) this.path.push(this.pt(ev));
+      this.x.putImageData(this.base,0,0); this.style(); const x=this.x; x.beginPath(); x.moveTo(this.path[0].x,this.path[0].y);
+      this.path.forEach(p=>x.lineTo(p.x,p.y)); x.stroke();
+    } else {
+      this.x.putImageData(this.base,0,0); this.shape(this.start, this.pt(e), e.shiftKey);
+    }
+  }
+  up(){ if(!this.drawing) return; this.drawing=false; this.path=null; this.x.globalAlpha=1; this.x.globalCompositeOperation='source-over'; this.changed(); }
+  shape(a,b,shift){
+    this.style(); const x=this.x;
+    if(shift && (tool==='rect'||tool==='circle')){ const d=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y)); b={x:a.x+Math.sign(b.x-a.x||1)*d, y:a.y+Math.sign(b.y-a.y||1)*d}; }
+    x.beginPath();
+    if(tool==='line'){ x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke(); }
+    else if(tool==='arrow'){ arrowPath(x,a,b,x.lineWidth); }
+    else if(tool==='rect'){ x.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y); }
+    else if(tool==='circle'){ x.ellipse((a.x+b.x)/2,(a.y+b.y)/2,Math.abs(b.x-a.x)/2,Math.abs(b.y-a.y)/2,0,0,Math.PI*2); x.stroke(); }
+    else if(tool==='triangle'){ x.moveTo((a.x+b.x)/2,a.y); x.lineTo(b.x,b.y); x.lineTo(a.x,b.y); x.closePath(); x.stroke(); }
+    else if(tool==='measure'){
+      x.setLineDash([8*this.scale(),6*this.scale()]); x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke(); x.setLineDash([]);
+      const px=Math.hypot(b.x-a.x,b.y-a.y), lbl = this.mmPerPx ? `${(px*this.mmPerPx/10).toFixed(1)} سم` : `${Math.round(px/this.scale())} px`;
+      const fs=14*this.scale(); x.font=`bold ${fs}px Tahoma`; const w=x.measureText(lbl).width, mx=(a.x+b.x)/2, my=(a.y+b.y)/2-fs;
+      x.fillStyle='rgba(255,255,255,.9)'; x.fillRect(mx-w/2-4,my-fs,w+8,fs*1.35); x.fillStyle=$('color').value; x.textAlign='center'; x.fillText(lbl,mx,my); x.textAlign='start';
+    }
+  }
+  changed(){ refreshUndo(); this.onChange && this.onChange(); }
+  doUndo(){ if(!this.undo.length) return; this.redo.push(this.snap()); this.x.putImageData(this.undo.pop(),0,0); this.changed(); }
+  doRedo(){ if(!this.redo.length) return; this.undo.push(this.snap()); this.x.putImageData(this.redo.pop(),0,0); this.changed(); }
+  clear(){ this.push(); this.x.clearRect(0,0,this.c.width,this.c.height); this.changed(); }
+  isEmpty(){ const d=this.snap().data; for(let i=3;i<d.length;i+=4) if(d[i]) return false; return true; }
+}
+
+function arrowPath(x,a,b,w){
+  const ang=Math.atan2(b.y-a.y,b.x-a.x), h=Math.max(14,w*6);
+  x.moveTo(a.x,a.y); x.lineTo(b.x,b.y); x.stroke();
+  x.beginPath(); x.moveTo(b.x,b.y);
+  x.lineTo(b.x-h*Math.cos(ang-Math.PI/7), b.y-h*Math.sin(ang-Math.PI/7));
+  x.lineTo(b.x-h*Math.cos(ang+Math.PI/7), b.y-h*Math.sin(ang+Math.PI/7));
+  x.closePath(); x.fill();
+}
+
+// ═══ أداة النص ═══
+function askText(board, p, e){
+  const t=$('txt'); t.value=''; t.classList.remove('hide');
+  t.style.left=Math.min(e.clientX, innerWidth-180)+'px'; t.style.top=(e.clientY-14)+'px';
+  t.style.color=$('color').value; setTimeout(()=>t.focus(),0);
+  const done = ok => {
+    t.onkeydown=t.onblur=null; t.classList.add('hide');
+    if(!ok || !t.value.trim()) return;
+    board.push(); const x=board.x, fs=(10+ +$('size').value*3)*board.scale();
+    x.globalCompositeOperation='source-over'; x.globalAlpha=1; x.fillStyle=$('color').value; x.font=`bold ${fs}px Tahoma, Arial`; x.textBaseline='middle';
+    t.value.split('\n').forEach((ln,i)=>x.fillText(ln,p.x,p.y+i*fs*1.25)); x.textBaseline='alphabetic';
+    board.changed();
+  };
+  t.onkeydown = ev => { if(ev.key==='Enter') done(true); if(ev.key==='Escape') done(false); };
+  t.onblur = () => done(true);
+}
+
+// ═══ الأدوات والإعدادات ═══
+TOOLS.forEach(([id,ic,tt])=>{ const b=document.createElement('button'); b.className='tool'+(id===tool?' on':''); b.textContent=ic; b.title=tt; b.dataset.t=id; b.onclick=()=>setTool(id); $('tools').append(b); });
+COLORS.forEach(c=>{ const b=document.createElement('button'); b.className='sw'+(c===$('color').value?' on':''); b.style.background=c; b.onclick=()=>{ $('color').value=c; markColor(); }; $('swatches').insertBefore(b,$('color')); });
+function markColor(){ document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on', s.style.background===hexToRgb($('color').value))); }
+function hexToRgb(h){ const n=parseInt(h.slice(1),16); return `rgb(${n>>16}, ${n>>8&255}, ${n&255})`; }
+$('color').oninput=markColor;
+$('size').oninput=()=>$('sizeLbl').textContent=$('size').value;
+function setTool(t){ tool=t; document.querySelectorAll('#tools .tool').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); document.querySelectorAll('canvas.ink').forEach(c=>c.style.cursor = t==='text'?'text':'crosshair'); }
+function toggleGrid(){ grid=!grid; $('gridBtn').classList.toggle('on',grid); document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('grid',grid)); }
+function undo(){ active && active.doUndo(); }
+function redo(){ active && active.doRedo(); }
+function refreshUndo(){ $('undoBtn').disabled=!(active&&active.undo.length); $('redoBtn').disabled=!(active&&active.redo.length); }
+function clearActive(){ if(!active){ toast('ارسم أولاً على الصفحة التي تريد مسحها'); return; } if(confirm('مسح كل الرسم في هذه اللوحة/الصفحة؟')) active.clear(); }
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT') return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey) && k==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
+  else if((e.ctrlKey||e.metaKey) && k==='y'){ e.preventDefault(); redo(); }
+});
+
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  $('mode-board').classList.toggle('hide',m!=='board'); $('mode-pdf').classList.toggle('hide',m!=='pdf');
+  $('boardActions').classList.toggle('hide',m!=='board'); $('pdfActions').classList.toggle('hide',m!=='pdf');
+  active = m==='board' ? board : (pdfBoards.find(b=>b.undo.length) || pdfBoards[0] || null);
+  refreshUndo();
+}
+
+// ═══ لوحة الرسم الحر ═══
+const KEY='l7_wb_board', SAVED='l7_wb_saved';
+const board = new Board($('boardInk'), ()=>{ try{ localStorage.setItem(KEY, board.c.toDataURL()); }catch(e){} });
+active = board;
+try{ const d=localStorage.getItem(KEY); if(d){ const i=new Image(); i.onload=()=>board.x.drawImage(i,0,0); i.src=d; } }catch(e){}
+
+function flatten(ink, bg){
+  const c=document.createElement('canvas'); c.width=ink.width; c.height=ink.height; const x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); if(bg) x.drawImage(bg,0,0,c.width,c.height); x.drawImage(ink,0,0); return c;
+}
+function download(href,name){ const a=document.createElement('a'); a.href=href; a.download=name; document.body.append(a); a.click(); a.remove(); }
+function stamp(){ return new Date().toISOString().slice(0,16).replace(/[T:]/g,'-'); }
+function exportBoardPng(){ download(flatten(board.c).toDataURL('image/png'), `board-${stamp()}.png`); }
+
+function savedList(){ try{ return JSON.parse(localStorage.getItem(SAVED)||'[]'); }catch(e){ return []; } }
+function saveBoard(){
+  const name=prompt('اسم الرسمة:', 'رسمة '+(savedList().length+1)); if(name===null) return;
+  const list=savedList(); list.unshift({name:name.trim()||'بدون اسم', time:new Date().toLocaleString('ar'), data:board.c.toDataURL()});
+  try{ localStorage.setItem(SAVED, JSON.stringify(list)); toast('💾 تم الحفظ'); }
+  catch(e){ alert('مساحة التخزين في المتصفح ممتلئة. احذف بعض الرسومات المحفوظة أولاً.'); }
+}
+function openSaved(){
+  const list=savedList(); const m=document.createElement('div'); m.className='modal';
+  const box=document.createElement('div'); box.className='box'; m.append(box);
+  const h=document.createElement('h3'); h.textContent='📂 الرسومات المحفوظة'; box.append(h);
+  if(!list.length){ const p=document.createElement('p'); p.textContent='لا توجد رسومات محفوظة بعد.'; box.append(p); }
+  list.forEach((it,i)=>{
+    const row=document.createElement('div'); row.className='saved';
+    const img=new Image(); img.src=it.data;
+    const n=document.createElement('div'); n.className='n'; n.textContent=it.name; const s=document.createElement('small'); s.textContent=it.time; n.append(s);
+    const open=document.createElement('button'); open.textContent='فتح'; open.className='prim';
+    open.onclick=()=>{ const im=new Image(); im.onload=()=>{ board.push(); board.x.clearRect(0,0,board.c.width,board.c.height); board.x.drawImage(im,0,0); board.changed(); m.remove(); toast('تم فتح '+it.name); }; im.src=it.data; };
+    const del=document.createElement('button'); del.textContent='🗑'; del.onclick=()=>{ if(!confirm('حذف '+it.name+'؟')) return; list.splice(i,1); localStorage.setItem(SAVED,JSON.stringify(list)); m.remove(); openSaved(); };
+    row.append(img,n,open,del); box.append(row);
+  });
+  const close=document.createElement('button'); close.textContent='إغلاق'; close.onclick=()=>m.remove(); box.append(close);
+  m.onclick=e=>{ if(e.target===m) m.remove(); };
+  document.body.append(m);
+}
+
+// ═══ وضع PDF ═══
+let pdfDoc=null, pdfBoards=[], pdfBgs=[], pdfSizes=[], pdfFileName='document.pdf';
+const RENDER_SCALE=2;
+function pickPdf(){ $('pdfFile').click(); }
+$('pdfFile').onchange=e=>{ const f=e.target.files[0]; if(f) openPdf(f); e.target.value=''; };
+const drop=$('drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('over')));
+drop.addEventListener('drop',e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) openPdf(f); });
+
+async function openPdf(file){
+  if(!window.pdfjsLib){ alert('تعذر تحميل مكتبة PDF. تأكد من الاتصال بالإنترنت ثم حدّث الصفحة.'); return; }
+  if(pdfBoards.some(b=>b.undo.length) && !confirm('سيتم إغلاق الملف الحالي وفقدان الشرح غير المحفوظ. متابعة؟')) return;
+  const busy=document.createElement('div'); busy.className='busy'; busy.textContent='⏳ جارٍ فتح الملف…'; document.body.append(busy);
+  try{
+    pdfDoc = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+    pdfFileName=file.name; $('pdfName').textContent=file.name;
+    const wrap=$('pages'); wrap.innerHTML=''; pdfBoards=[]; pdfBgs=[]; pdfSizes=[];
+    for(let i=1;i<=pdfDoc.numPages;i++){
+      busy.textContent=`⏳ صفحة ${i} من ${pdfDoc.numPages}…`;
+      const page=await pdfDoc.getPage(i), base=page.getViewport({scale:1}), vp=page.getViewport({scale:RENDER_SCALE});
+      const stage=document.createElement('div'); stage.className='stage page'+(grid?' grid':'');
+      const bg=document.createElement('canvas'); bg.className='bgpdf'; bg.width=vp.width; bg.height=vp.height;
+      const ink=document.createElement('canvas'); ink.className='ink'; ink.width=vp.width; ink.height=vp.height;
+      stage.append(bg,ink); wrap.append(stage);
+      const no=document.createElement('div'); no.className='page-no'; no.textContent=`صفحة ${i} / ${pdfDoc.numPages}`; wrap.append(no);
+      await page.render({canvasContext:bg.getContext('2d'), viewport:vp}).promise;
+      const b=new Board(ink); b.mmPerPx = 25.4/72/RENDER_SCALE; // القياس بالسنتيمتر حسب مقاس الصفحة الحقيقي
+      pdfBoards.push(b); pdfBgs.push(bg); pdfSizes.push([base.width, base.height]);
+    }
+    drop.classList.add('hide'); $('exportPdfBtn').disabled=false; active=pdfBoards[0]; refreshUndo(); setTool(tool);
+    toast(`📄 تم فتح ${pdfDoc.numPages} صفحة`);
+  }catch(err){ alert('تعذر فتح الملف: '+err.message); }
+  finally{ busy.remove(); }
+}
+
+async function exportPdf(){
+  if(!pdfBoards.length) return;
+  const busy=document.createElement('div'); busy.className='busy'; busy.textContent='⏳ جارٍ تجهيز PDF…'; document.body.append(busy);
+  try{
+    if(!window.jspdf) throw new Error('تعذر تحميل مكتبة الحفظ، تأكد من الاتصال بالإنترنت');
+    const { jsPDF } = window.jspdf; let out=null;
+    for(let i=0;i<pdfBoards.length;i++){
+      busy.textContent=`⏳ صفحة ${i+1} من ${pdfBoards.length}…`; await new Promise(r=>setTimeout(r));
+      const [w,h]=pdfSizes[i], o = w>h ? 'l':'p';
+      if(!out) out=new jsPDF({orientation:o, unit:'pt', format:[w,h], compress:true}); else out.addPage([w,h], o);
+      out.addImage(flatten(pdfBoards[i].c, pdfBgs[i]).toDataURL('image/jpeg',.9), 'JPEG', 0, 0, w, h);
+    }
+    const url=URL.createObjectURL(out.output('blob'));
+    download(url, pdfFileName.replace(/\.pdf$/i,'')+'-annotated.pdf'); setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    toast('✅ تم حفظ PDF مع الشرح');
+  }catch(err){ alert('تعذر حفظ الملف: '+err.message); }
+  finally{ busy.remove(); }
+}
+window.addEventListener('beforeunload', e=>{ if(pdfBoards.some(b=>b.undo.length)){ e.preventDefault(); e.returnValue=''; } });
+refreshUndo();
+</script>
+</body>
+</html>
