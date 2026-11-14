@@ -39,7 +39,11 @@ main{padding:16px;max-width:1500px;margin:0 auto}
 .stage.grid canvas.bgpdf{opacity:.92}
 #board-stage{aspect-ratio:2/1}
 #board-stage canvas.ink{height:100%}
-.page{max-width:1000px;margin:0 auto 18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.page{margin:0 auto 18px;box-shadow:0 2px 10px rgba(0,0,0,.08);flex:none}
+#pages{direction:ltr;overflow:auto;border-radius:12px;padding:12px 8px;overscroll-behavior:contain}
+.stage canvas.hi{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.stage.grid canvas.hi{opacity:.92}
+#zoomLbl{min-width:46px;text-align:center;font-weight:800;color:var(--g2);cursor:pointer}
 .page-no{text-align:center;color:var(--mut);font-size:12px;margin:-12px 0 14px}
 .drop{border:2.5px dashed #c7d6bb;border-radius:16px;background:#fff;padding:70px 20px;text-align:center;color:var(--mut);cursor:pointer;max-width:900px;margin:20px auto}
 .drop.over{border-color:var(--g1);background:#f1f7e8}
@@ -85,6 +89,12 @@ main{padding:16px;max-width:1500px;margin:0 auto}
     <button onclick="pickPdf()">📂 فتح PDF</button>
     <button onclick="clearActive()" title="مسح رسم الصفحة الأخيرة التي رسمت عليها">🗑️ مسح الصفحة</button>
     <button class="prim" id="exportPdfBtn" onclick="exportPdf()" disabled>⬇️ حفظ PDF مع الشرح</button>
+  </div>
+  <div class="grp hide" id="zoomGrp">
+    <button class="tool" onclick="zoomBy(1/1.25)" title="تصغير (Ctrl -)">−</button>
+    <span id="zoomLbl" onclick="setZoom(1)" title="ملاءمة العرض">100%</span>
+    <button class="tool" onclick="zoomBy(1.25)" title="تكبير (Ctrl +)">+</button>
+    <button onclick="setZoom(1)" title="ملاءمة عرض الشاشة (Ctrl 0)">↔ ملاءمة</button>
   </div>
 </div>
 
@@ -137,7 +147,8 @@ class Board{
     active=this; refreshUndo();
     const p=this.pt(e);
     if(tool==='text'){ e.preventDefault(); askText(this, p, e); return; }
-    this.c.setPointerCapture(e.pointerId);
+    try{ this.c.setPointerCapture(e.pointerId); }catch(_){}
+    if(pinch.active) return;
     this.push(); this.start=p; this.last=p; this.base=this.snap(); this.drawing=true;
     if(tool==='pen'||tool==='marker'||tool==='eraser'){ this.style(); this.x.beginPath(); this.x.moveTo(p.x,p.y); this.x.lineTo(p.x+.01,p.y); this.x.stroke(); }
   }
@@ -156,6 +167,7 @@ class Board{
       this.x.putImageData(this.base,0,0); this.shape(this.start, this.pt(e), e.shiftKey);
     }
   }
+  cancel(){ if(!this.drawing) return; this.x.putImageData(this.base,0,0); this.undo.pop(); this.drawing=false; this.path=null; this.x.globalAlpha=1; this.x.globalCompositeOperation='source-over'; refreshUndo(); }
   up(){ if(!this.drawing) return; this.drawing=false; this.path=null; this.x.globalAlpha=1; this.x.globalCompositeOperation='source-over'; this.changed(); }
   shape(a,b,shift){
     this.style(); const x=this.x;
@@ -224,6 +236,9 @@ document.addEventListener('keydown', e=>{
   const k=e.key.toLowerCase();
   if((e.ctrlKey||e.metaKey) && k==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
   else if((e.ctrlKey||e.metaKey) && k==='y'){ e.preventDefault(); redo(); }
+  else if(mode==='pdf' && pdfBoards.length && (e.ctrlKey||e.metaKey) && ['=','+','-','0'].includes(k)){
+    e.preventDefault(); k==='0' ? setZoom(1) : zoomBy(k==='-' ? 1/1.25 : 1.25);
+  }
 });
 
 function setMode(m){
@@ -231,6 +246,8 @@ function setMode(m){
   document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
   $('mode-board').classList.toggle('hide',m!=='board'); $('mode-pdf').classList.toggle('hide',m!=='pdf');
   $('boardActions').classList.toggle('hide',m!=='board'); $('pdfActions').classList.toggle('hide',m!=='pdf');
+  $('zoomGrp').classList.toggle('hide',m!=='pdf'||!pdfBoards.length);
+  if(m==='pdf') requestAnimationFrame(()=>{ sizePages(); layoutPages(); });
   active = m==='board' ? board : (pdfBoards.find(b=>b.undo.length) || pdfBoards[0] || null);
   refreshUndo();
 }
@@ -276,8 +293,84 @@ function openSaved(){
 }
 
 // ═══ وضع PDF ═══
-let pdfDoc=null, pdfBoards=[], pdfBgs=[], pdfSizes=[], pdfFileName='document.pdf';
-const RENDER_SCALE=2;
+let pdfDoc=null, pdfBoards=[], pdfBgs=[], pdfSizes=[], pdfPages=[], pdfHi=[], pdfFileName='document.pdf';
+const RENDER_SCALE=2, MAX_SCALE=4;
+
+// ═══ التكبير والتصغير ═══
+let zoom=1;
+const pinch={active:false, pts:new Map()};
+function baseWidth(){ return Math.max(200, Math.min(1000, $('pages').clientWidth-24)); }
+function sizePages(){ const pg=$('pages'); pg.style.height = pdfBoards.length ? Math.max(300, innerHeight-pg.getBoundingClientRect().top-12)+'px' : ''; }
+function layoutPages(){
+  const w=baseWidth()*zoom;
+  document.querySelectorAll('#pages .page').forEach(p=>p.style.width=w+'px');
+  $('zoomLbl').textContent=Math.round(zoom*100)+'%';
+}
+function zoomBy(f){ setZoom(zoom*f); }
+// يحافظ على النقطة تحت المؤشر (أو منتصف الشاشة) ثابتة أثناء التكبير
+function setZoom(z, cx, cy){
+  const pg=$('pages'); z=Math.min(5, Math.max(.25, z));
+  if(Math.abs(z-zoom)<.001){ layoutPages(); return; }
+  const r=pg.getBoundingClientRect();
+  cx = cx==null ? pg.clientWidth/2 : cx-r.left; cy = cy==null ? pg.clientHeight/2 : cy-r.top;
+  const ax=pg.scrollLeft+cx, ay=pg.scrollTop+cy, k=z/zoom;
+  zoom=z; layoutPages();
+  pg.scrollLeft=ax*k-cx; pg.scrollTop=ay*k-cy;
+  scheduleSharpen();
+}
+$('pages').addEventListener('wheel', e=>{
+  if(!(e.ctrlKey||e.metaKey) || !pdfBoards.length) return;
+  e.preventDefault(); setZoom(zoom*Math.exp(-e.deltaY*.0025), e.clientX, e.clientY);
+}, {passive:false});
+// قرص بإصبعين على شاشات اللمس: تكبير وتحريك، ويلغي أي خط بدأ بالإصبع الأول
+['pointerdown','pointermove','pointerup','pointercancel'].forEach(type=>$('pages').addEventListener(type, e=>{
+  if(e.pointerType!=='touch') return;
+  const pts=pinch.pts;
+  if(type==='pointerdown'){
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===2){
+      pdfBoards.forEach(b=>b.cancel());
+      const [a,b]=[...pts.values()];
+      Object.assign(pinch,{active:true, d0:Math.hypot(a.x-b.x,a.y-b.y)||1, z0:zoom, mx:(a.x+b.x)/2, my:(a.y+b.y)/2});
+    }
+    if(pinch.active) e.stopPropagation();
+  } else if(type==='pointermove'){
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(!pinch.active) return;
+    e.stopPropagation();
+    if(pts.size<2) return;
+    const [a,b]=[...pts.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, pg=$('pages');
+    setZoom(pinch.z0*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d0, mx, my);
+    pg.scrollLeft-=mx-pinch.mx; pg.scrollTop-=my-pinch.my; pinch.mx=mx; pinch.my=my;
+  } else {
+    pts.delete(e.pointerId);
+    if(pinch.active){ e.stopPropagation(); if(!pts.size) pinch.active=false; }
+  }
+}, true));
+addEventListener('resize', ()=>{ if(pdfBoards.length){ sizePages(); layoutPages(); scheduleSharpen(); } });
+
+// عند التكبير تُرسم الصفحات الظاهرة فقط بدقة أعلى، والصورة الأساسية تبقى للرسم والحفظ
+let sharpenT=null;
+function scheduleSharpen(){ clearTimeout(sharpenT); sharpenT=setTimeout(sharpenVisible, 250); }
+$('pages').addEventListener('scroll', ()=>{ if(zoom>1) scheduleSharpen(); });
+function sharpenVisible(){
+  const view=$('pages').getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  pdfBoards.forEach((b,i)=>{
+    const stage=b.c.parentElement, r=stage.getBoundingClientRect();
+    const visible = r.bottom>view.top-200 && r.top<view.bottom+200;
+    const want = Math.min(MAX_SCALE, Math.round(r.width*dpr/pdfSizes[i][0]*2)/2);
+    const hi=pdfHi[i];
+    if(!visible || want<=RENDER_SCALE){ if(hi){ hi.task&&hi.task.cancel(); hi.c.remove(); pdfHi[i]=null; } return; }
+    if(hi && hi.scale===want) return;
+    if(hi && hi.task) hi.task.cancel();
+    const vp=pdfPages[i].getViewport({scale:want}), c=document.createElement('canvas');
+    c.className='bgpdf hi'; c.width=vp.width; c.height=vp.height;
+    const job={c, scale:want, task:pdfPages[i].render({canvasContext:c.getContext('2d'), viewport:vp})};
+    pdfHi[i]=job;
+    job.task.promise.then(()=>{ if(pdfHi[i]!==job) return; job.task=null; stage.querySelectorAll('canvas.hi').forEach(o=>o.remove()); stage.insertBefore(c, b.c); hi&&hi.c.remove(); }).catch(()=>{});
+  });
+}
 function pickPdf(){ $('pdfFile').click(); }
 $('pdfFile').onchange=e=>{ const f=e.target.files[0]; if(f) openPdf(f); e.target.value=''; };
 const drop=$('drop');
@@ -292,20 +385,20 @@ async function openPdf(file){
   try{
     pdfDoc = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
     pdfFileName=file.name; $('pdfName').textContent=file.name;
-    const wrap=$('pages'); wrap.innerHTML=''; pdfBoards=[]; pdfBgs=[]; pdfSizes=[];
+    const wrap=$('pages'); wrap.innerHTML=''; pdfBoards=[]; pdfBgs=[]; pdfSizes=[]; pdfPages=[]; pdfHi=[]; zoom=1;
     for(let i=1;i<=pdfDoc.numPages;i++){
       busy.textContent=`⏳ صفحة ${i} من ${pdfDoc.numPages}…`;
       const page=await pdfDoc.getPage(i), base=page.getViewport({scale:1}), vp=page.getViewport({scale:RENDER_SCALE});
       const stage=document.createElement('div'); stage.className='stage page'+(grid?' grid':'');
       const bg=document.createElement('canvas'); bg.className='bgpdf'; bg.width=vp.width; bg.height=vp.height;
       const ink=document.createElement('canvas'); ink.className='ink'; ink.width=vp.width; ink.height=vp.height;
-      stage.append(bg,ink); wrap.append(stage);
+      stage.append(bg,ink); wrap.append(stage); stage.style.width=baseWidth()+'px';
       const no=document.createElement('div'); no.className='page-no'; no.textContent=`صفحة ${i} / ${pdfDoc.numPages}`; wrap.append(no);
       await page.render({canvasContext:bg.getContext('2d'), viewport:vp}).promise;
       const b=new Board(ink); b.mmPerPx = 25.4/72/RENDER_SCALE; // القياس بالسنتيمتر حسب مقاس الصفحة الحقيقي
-      pdfBoards.push(b); pdfBgs.push(bg); pdfSizes.push([base.width, base.height]);
+      pdfBoards.push(b); pdfBgs.push(bg); pdfSizes.push([base.width, base.height]); pdfPages.push(page);
     }
-    drop.classList.add('hide'); $('exportPdfBtn').disabled=false; active=pdfBoards[0]; refreshUndo(); setTool(tool);
+    drop.classList.add('hide'); $('zoomGrp').classList.remove('hide'); sizePages(); layoutPages(); $('exportPdfBtn').disabled=false; active=pdfBoards[0]; refreshUndo(); setTool(tool);
     toast(`📄 تم فتح ${pdfDoc.numPages} صفحة`);
   }catch(err){ alert('تعذر فتح الملف: '+err.message); }
   finally{ busy.remove(); }
