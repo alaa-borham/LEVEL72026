@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14504f">
+<title>محرر طلبات XML</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--teal:#1f6e6e;--dteal:#14504f;--blue:#2e75b6;--green:#2e9e5b;--red:#d9534f;--amber:#e0a800;
+--bg:#f4f6f8;--card:#fff;--line:#e2e7ec;--txt:#1f2a37;--mut:#6b7683;--soft:#eef5f5}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px}
+input,select,textarea{direction:ltr;font-family:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--txt);width:100%}
+input:focus,textarea:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+input.num{text-align:center}
+input[placeholder]{direction:rtl}
+.hide{display:none!important}
+header{background:linear-gradient(90deg,var(--dteal),var(--teal));color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+header h1{font-size:18px;margin:0}
+header .file{font-size:12px;opacity:.85;direction:ltr}
+header .sp{flex:1}
+.b-main{background:#fff;color:var(--dteal)}
+.b-ghost{background:rgba(255,255,255,.15);color:#fff}
+.b-teal{background:var(--teal);color:#fff}
+.b-light{background:var(--soft);color:var(--dteal)}
+.b-red{background:#fdecec;color:var(--red)}
+.dirty{background:var(--amber);color:#3a2c00;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+main{max-width:1300px;margin:18px auto;padding:0 16px}
+.drop{border:2.5px dashed #b9cccc;border-radius:16px;background:#fff;padding:60px 20px;text-align:center;color:var(--mut);cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--teal);background:var(--soft);color:var(--dteal)}
+.drop b{display:block;font-size:20px;color:var(--dteal);margin-bottom:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--dteal);display:flex;align-items:center;gap:8px}
+.card h2 .sp{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.fld label{display:block;font-size:12px;color:var(--mut);font-weight:700;margin-bottom:3px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.tab{background:#fff;border:1.5px solid var(--line);color:var(--txt);direction:ltr}
+.tab.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--soft);border:1px solid #cfe0e0;border-radius:20px;padding:2px 4px 2px 10px;direction:ltr}
+.chip input{border:none;background:transparent;padding:3px 0;width:auto;min-width:60px;font-weight:600;color:var(--dteal)}
+.chip input:focus{outline:none}
+.x{background:none;color:var(--mut);padding:2px 7px;font-size:14px}
+.x:hover{color:var(--red)}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--mut);text-align:start;padding:6px;border-bottom:2px solid var(--line);background:#fafbfc}
+td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td input{padding:5px 7px}
+td.abbr input{direction:ltr;text-align:center;font-weight:700;color:var(--dteal);max-width:90px}
+td.val input{max-width:110px}
+tr.chg td{background:#fff8e1}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+textarea.raw{direction:ltr;font-family:Consolas,'Courier New',monospace;font-size:12px;min-height:420px;white-space:pre;resize:vertical}
+.err{background:#fdecec;color:var(--red);border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:600}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dteal);color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+.toast.show{opacity:1}
+.muted{color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧾 محرر طلبات XML</h1>
+  <span class="file" id="fileName"></span>
+  <span class="dirty hide" id="dirty">تعديلات غير محفوظة</span>
+  <span class="sp"></span>
+  <button class="b-ghost" onclick="pick()">📂 فتح ملف</button>
+  <button class="b-ghost hide" id="rawBtn" onclick="toggleRaw()">&lt;/&gt; الكود</button>
+  <button class="b-main hide" id="saveBtn" onclick="save()">💾 حفظ XML</button>
+</header>
+<input type="file" id="file" accept=".xml,text/xml" class="hide">
+
+<main>
+  <div id="drop" class="drop" onclick="pick()">
+    <b>📂 اسحب ملف XML هنا أو اضغط للاختيار</b>
+    ملف طلبات Level7 (OrderMaster) — عدّل البيانات والقياسات ثم احفظ
+  </div>
+
+  <div id="editor" class="hide">
+    <div class="card">
+      <h2>📦 بيانات الملف <span class="sp"></span><span class="muted" id="summary"></span></h2>
+      <div class="grid" id="master"></div>
+      <div class="fld" style="margin-top:10px"><label>ملاحظات (Remarks)</label><textarea id="remarks" rows="2"></textarea></div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div id="order"></div>
+  </div>
+
+  <div id="rawView" class="hide card">
+    <h2>&lt;/&gt; كود XML <span class="sp"></span>
+      <button class="b-light" onclick="toggleRaw()">رجوع</button>
+      <button class="b-teal" onclick="applyRaw()">✔ تطبيق التعديل</button>
+    </h2>
+    <div id="rawErr" class="err hide"></div>
+    <textarea class="raw" id="raw" spellcheck="false"></textarea>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+let doc = null, fileName = 'order.xml', cur = 0, dirty = false, original = null;
+
+const $ = id => document.getElementById(id);
+const kids = (el, tag) => el ? [...el.children].filter(c => c.tagName === tag) : [];
+const kid = (el, tag) => kids(el, tag)[0] || null;
+const orders = () => kids(kid(doc.documentElement, 'Orders'), 'Order');
+
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+function setDirty(v=true){ dirty=v; $('dirty').classList.toggle('hide',!v); }
+window.addEventListener('beforeunload', e => { if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
+function el(tag, props={}, ...children){
+  const e = document.createElement(tag);
+  for(const [k,v] of Object.entries(props)){
+    if(k==='class') e.className=v; else if(k.startsWith('on')) e[k]=v; else if(k in e) e[k]=v; else e.setAttribute(k,v);
+  }
+  for(const c of children) if(c!=null) e.append(c);
+  return e;
+}
+function ensure(parent, tag){ let c=kid(parent,tag); if(!c){ c=doc.createElement(tag); parent.appendChild(c); } return c; }
+
+// حقل مرتبط بخاصية في عنصر XML — التعديل يُكتب مباشرة في المستند
+function attrField(node, attr, label, opts={}){
+  const input = el('input', { value: node ? (node.getAttribute(attr) ?? '') : '', class: opts.num ? 'num' : '' });
+  input.oninput = () => { node.setAttribute(attr, input.value); setDirty(); opts.after && opts.after(); };
+  if(opts.blurFmt) input.onblur = () => { const v=fmtNum(input.value); if(v!==input.value){ input.value=v; node.setAttribute(attr,v); } };
+  return el('div', {class:'fld'}, el('label', {}, label), input);
+}
+function fmtNum(v){ const n = parseFloat(String(v).replace(',','.')); return isNaN(n) ? v : n.toFixed(2); }
+
+// ═══ فتح الملف ═══
+function pick(){ if(dirty && !confirm('توجد تعديلات غير محفوظة. فتح ملف آخر؟')) return; $('file').click(); }
+$('file').onchange = e => { const f=e.target.files[0]; if(f) readFile(f); e.target.value=''; };
+const drop = $('drop');
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('over')));
+drop.addEventListener('drop', e => { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+
+function readFile(f){
+  const r = new FileReader();
+  r.onload = () => { if(load(r.result)){ fileName=f.name; $('fileName').textContent=f.name; } };
+  r.readAsText(f, 'utf-8');
+}
+
+function parse(text){
+  const d = new DOMParser().parseFromString(text, 'application/xml');
+  const pe = d.getElementsByTagName('parsererror')[0];
+  if(pe) throw new Error(pe.textContent.split('\n')[0]);
+  return d;
+}
+
+function load(text){
+  try{ doc = parse(text); }
+  catch(err){ alert('❌ الملف ليس XML صالحاً:\n' + err.message); return false; }
+  if(doc.documentElement.tagName !== 'OrderMaster'){
+    alert('⚠️ هذا الملف لا يبدأ بـ <OrderMaster>. سيُفتح في عرض الكود فقط.');
+  }
+  original = new XMLSerializer().serializeToString(doc);
+  cur = 0; setDirty(false);
+  $('drop').classList.add('hide');
+  ['rawBtn','saveBtn'].forEach(id => $(id).classList.remove('hide'));
+  if(doc.documentElement.tagName === 'OrderMaster'){ $('editor').classList.remove('hide'); $('rawView').classList.add('hide'); render(); }
+  else { $('editor').classList.add('hide'); openRaw(); }
+  return true;
+}
+
+// ═══ العرض ═══
+function render(){
+  const root = doc.documentElement;
+  const m = $('master'); m.innerHTML='';
+  [['Number','رقم الملف'],['Reference','المرجع'],['Reseller','الموزّع'],['Order-Date','التاريخ']]
+    .forEach(([a,l]) => m.append(attrField(root, a, l)));
+  const rem = ensure(root, 'Remarks');
+  $('remarks').value = rem.textContent;
+  $('remarks').oninput = () => { rem.textContent = $('remarks').value; setDirty(); };
+  renderTabs(); renderOrder();
+}
+
+function renderTabs(){
+  const list = orders(), t = $('tabs'); t.innerHTML='';
+  if(cur >= list.length) cur = Math.max(0, list.length-1);
+  list.forEach((o,i) => t.append(el('button', {class:'tab'+(i===cur?' on':''), onclick:()=>{ cur=i; renderTabs(); renderOrder(); }},
+    o.getAttribute('Number') || ('#'+(i+1)))));
+  t.append(el('button', {class:'b-light', onclick:addOrder}, '➕ طلب جديد'));
+  $('summary').textContent = `${list.length} طلب`;
+}
+
+function renderOrder(){
+  const box = $('order'); box.innerHTML='';
+  const o = orders()[cur];
+  if(!o){ box.append(el('div',{class:'card muted'},'لا توجد طلبات في الملف.')); return; }
+
+  // بيانات الطلب
+  const item = ensure(o,'Item'), fab = ensure(o,'Fabric');
+  const head = el('div',{class:'card'},
+    el('h2',{}, '🧵 الطلب ', el('span',{style:'direction:ltr'}, o.getAttribute('Number')||''), el('span',{class:'sp'}),
+      el('button',{class:'b-light', onclick:()=>dupOrder(o)},'⧉ نسخ الطلب'),
+      el('button',{class:'b-red', onclick:()=>delOrder(o)},'🗑 حذف الطلب')),
+    el('div',{class:'grid'},
+      attrField(o,'Number','رقم الطلب',{after:renderTabs}),
+      attrField(o,'Order-Date','تاريخ الطلب'),
+      attrField(item,'Number','رقم الصنف',{num:true}),
+      attrField(item,'Quantity','الكمية',{num:true}),
+      attrField(fab,'Number','رقم القماش',{num:true}),
+      attrField(fab,'Width','عرض القماش',{num:true}),
+      attrField(fab,'Color','اللون',{num:true})));
+  box.append(head);
+
+  const cols = el('div',{class:'cols'});
+  cols.append(variationsCard(o), programsCard(o));
+  box.append(cols, measurementCard(o));
+}
+
+function variationsCard(o){
+  const vs = ensure(o,'Variations');
+  const chips = el('div',{class:'chips'});
+  kids(vs,'Variation').forEach(v => {
+    const inp = el('input',{value:v.getAttribute('Name')||''});
+    inp.size = Math.max(6, inp.value.length);
+    inp.oninput = () => { v.setAttribute('Name', inp.value); inp.size=Math.max(6,inp.value.length); setDirty(); };
+    chips.append(el('span',{class:'chip'}, inp, el('button',{class:'x', title:'حذف', onclick:()=>{ v.remove(); setDirty(); renderOrder(); }},'×')));
+  });
+  const add = el('input',{placeholder:'إضافة تفصيلة… Enter', style:'width:180px;direction:ltr'});
+  add.onkeydown = e => { if(e.key==='Enter' && add.value.trim()){ const v=doc.createElement('Variation'); v.setAttribute('Name',add.value.trim()); vs.appendChild(v); setDirty(); renderOrder(); } };
+  chips.append(add);
+  return el('div',{class:'card'}, el('h2',{},'✂️ التفاصيل (Variations)', el('span',{class:'sp'}), el('span',{class:'muted'}, kids(vs,'Variation').length)), chips);
+}
+
+function programsCard(o){
+  const ps = ensure(o,'Programs');
+  const tb = el('tbody');
+  kids(ps,'Program').forEach(p => {
+    const cell = a => { const i=el('input',{value:p.getAttribute(a)??''}); i.style.direction='ltr'; i.oninput=()=>{ p.setAttribute(a,i.value); setDirty(); }; return el('td',{},i); };
+    tb.append(el('tr',{}, cell('VariationName'), cell('Value'), cell('Type'),
+      el('td',{}, el('button',{class:'x', onclick:()=>{ p.remove(); setDirty(); renderOrder(); }},'×'))));
+  });
+  const addBtn = el('button',{class:'b-light', onclick:()=>{ const p=doc.createElement('Program'); p.setAttribute('Value',''); p.setAttribute('Type','RealNumber'); p.setAttribute('VariationName',''); ps.appendChild(p); setDirty(); renderOrder(); }},'➕ برنامج');
+  return el('div',{class:'card'}, el('h2',{},'⚙️ البرامج (Programs)', el('span',{class:'sp'}), addBtn),
+    el('table',{}, el('thead',{}, el('tr',{}, el('th',{},'التفصيلة'), el('th',{},'القيمة'), el('th',{},'النوع'), el('th'))), tb));
+}
+
+function measurementCard(o){
+  const m = ensure(o,'Measurement');
+  const origRows = originalMeasurements(o);
+  const tb = el('tbody');
+  kids(m,'Type').forEach(t => {
+    const tr = el('tr');
+    const mark = () => { const ov = origRows[t.getAttribute('Abbreviation')]; tr.classList.toggle('chg', ov!==undefined && ov!==t.getAttribute('Value')); };
+    const name = el('input',{value:t.getAttribute('Name')||''}); name.style.direction='ltr';
+    name.oninput = () => { t.setAttribute('Name',name.value); setDirty(); };
+    const ab = el('input',{value:t.getAttribute('Abbreviation')||''});
+    ab.oninput = () => { t.setAttribute('Abbreviation',ab.value); setDirty(); };
+    const val = el('input',{value:t.getAttribute('Value')||'', class:'num', inputMode:'decimal'});
+    val.oninput = () => { t.setAttribute('Value',val.value); setDirty(); mark(); };
+    val.onblur = () => { const v=fmtNum(val.value); if(v!==val.value){ val.value=v; t.setAttribute('Value',v); mark(); } };
+    val.onkeydown = e => { if(e.key==='Enter'){ const n=tr.nextElementSibling; n ? n.querySelector('td.val input').focus() : val.blur(); } };
+    const orig = origRows[t.getAttribute('Abbreviation')];
+    tr.append(el('td',{class:'abbr'},ab), el('td',{},name), el('td',{class:'val'},val),
+      el('td',{class:'muted', style:'direction:ltr'}, orig!==undefined ? orig : ''),
+      el('td',{}, el('button',{class:'x', onclick:()=>{ t.remove(); setDirty(); renderOrder(); }},'×')));
+    mark();
+    tb.append(tr);
+  });
+  const addBtn = el('button',{class:'b-light', onclick:()=>{ const t=doc.createElement('Type'); t.setAttribute('Name',''); t.setAttribute('Abbreviation',''); t.setAttribute('Value','0.00'); m.appendChild(t); setDirty(); renderOrder(); }},'➕ قياس');
+  return el('div',{class:'card'},
+    el('h2',{},'📏 القياسات', el('span',{class:'sp'}), el('span',{class:'muted'},'Enter ينقل للقياس التالي • المعدّل يظهر بالأصفر'), addBtn),
+    el('div',{class:'grid', style:'margin-bottom:10px'},
+      attrField(m,'Measurement-Table-Name','جدول القياسات'),
+      attrField(m,'Basic-Size','المقاس الأساسي')),
+    el('table',{}, el('thead',{}, el('tr',{}, el('th',{},'الرمز'), el('th',{},'الاسم'), el('th',{},'القيمة'), el('th',{},'الأصلية'), el('th'))), tb));
+}
+
+// القيم الأصلية من الملف كما فُتح، لمقارنة ما تغيّر
+function originalMeasurements(o){
+  const res = {};
+  if(!original) return res;
+  const od = new DOMParser().parseFromString(original,'application/xml');
+  const num = o.getAttribute('Number');
+  const match = [...od.getElementsByTagName('Order')].find(x => x.getAttribute('Number')===num);
+  if(match) for(const t of match.getElementsByTagName('Type')) res[t.getAttribute('Abbreviation')] = t.getAttribute('Value');
+  return res;
+}
+
+// ═══ عمليات الطلبات ═══
+function addOrder(){
+  const list = orders();
+  const container = ensure(doc.documentElement,'Orders');
+  let o;
+  if(list.length){ o = list[list.length-1].cloneNode(true); }
+  else { o = doc.createElement('Order'); }
+  o.setAttribute('Number', nextNumber());
+  container.appendChild(o);
+  cur = orders().length-1; setDirty(); renderTabs(); renderOrder();
+  toast('تمت إضافة طلب (نسخة من آخر طلب)');
+}
+function dupOrder(o){
+  const c = o.cloneNode(true); c.setAttribute('Number', nextNumber());
+  o.after(c); cur = orders().indexOf(c); setDirty(); renderTabs(); renderOrder(); toast('تم نسخ الطلب');
+}
+function delOrder(o){
+  if(!confirm(`حذف الطلب ${o.getAttribute('Number')||''}؟`)) return;
+  o.remove(); setDirty(); renderTabs(); renderOrder();
+}
+function nextNumber(){
+  const base = doc.documentElement.getAttribute('Number') || 'ORDER';
+  const m = base.match(/^(.*-)\d+(_\d+)?$/);
+  const used = new Set(orders().map(o => o.getAttribute('Number')));
+  for(let i=1;;i++){ const n = m ? `${m[1]}${i}${m[2]||''}` : `${base}-${i}`; if(!used.has(n)) return n; }
+}
+
+// ═══ الكود الخام ═══
+function serialize(){
+  let s = new XMLSerializer().serializeToString(doc);
+  if(!s.startsWith('<?xml')) s = '<?xml version="1.0" encoding="UTF-8"?>\n' + s;
+  return s;
+}
+function pretty(xml){
+  const d = parse(xml), out = [];
+  (function walk(n, ind){
+    const attrs = [...n.attributes].map(a => ` ${a.name}="${esc(a.value)}"`).join('');
+    const ch = [...n.childNodes].filter(c => c.nodeType===1 || (c.nodeType===3 && c.nodeValue.trim()));
+    if(!ch.length) out.push(`${ind}<${n.tagName}${attrs}/>`);
+    else if(ch.every(c=>c.nodeType===3)) out.push(`${ind}<${n.tagName}${attrs}>${esc(n.textContent)}</${n.tagName}>`);
+    else { out.push(`${ind}<${n.tagName}${attrs}>`); ch.forEach(c => c.nodeType===1 ? walk(c, ind+'  ') : out.push(ind+'  '+esc(c.nodeValue.trim()))); out.push(`${ind}</${n.tagName}>`); }
+  })(d.documentElement, '');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + out.join('\n');
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function openRaw(){ $('raw').value = pretty(serialize()); $('rawErr').classList.add('hide'); $('rawView').classList.remove('hide'); $('editor').classList.add('hide'); }
+function toggleRaw(){
+  if($('rawView').classList.contains('hide')) openRaw();
+  else if(doc.documentElement.tagName==='OrderMaster'){ $('rawView').classList.add('hide'); $('editor').classList.remove('hide'); render(); }
+}
+function applyRaw(){
+  try{ doc = parse($('raw').value); }
+  catch(err){ $('rawErr').textContent = '❌ خطأ في الكود: ' + err.message; $('rawErr').classList.remove('hide'); return; }
+  setDirty(); $('rawErr').classList.add('hide'); toast('✔ تم تطبيق الكود');
+  if(doc.documentElement.tagName==='OrderMaster'){ $('rawView').classList.add('hide'); $('editor').classList.remove('hide'); render(); }
+}
+
+// ═══ الحفظ ═══
+// يُحفظ بنفس شكل الملف الأصلي (سطر واحد) حتى يقبله برنامج Level7 كما هو
+function save(){
+  if(!$('rawView').classList.contains('hide')){
+    try{ doc = parse($('raw').value); } catch(err){ $('rawErr').textContent='❌ صحّح الكود قبل الحفظ: '+err.message; $('rawErr').classList.remove('hide'); return; }
+  }
+  const s = serialize().replace(/>\s+</g,'><').replace('?><','?>\n<') + '\n';
+  const a = el('a',{href:URL.createObjectURL(new Blob([s],{type:'application/xml'})), download:fileName});
+  document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  original = new XMLSerializer().serializeToString(doc);
+  setDirty(false); if(!$('editor').classList.contains('hide')) renderOrder();
+  toast('💾 تم حفظ ' + fileName);
+}
+document.addEventListener('keydown', e => { if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s' && doc){ e.preventDefault(); save(); } });
+</script>
+</body>
+</html>

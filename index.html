@@ -608,6 +608,8 @@ function _fbFail(){
   <a data-perm="tailoring" onclick="showMeasurements();closeSb()">📐 القياسات</a>
   <a data-perm="tailoring" onclick="showModelStudio();closeSb()">🎨 استوديو الموديل</a>
   <a data-perm="tailoring" onclick="showNaseej();closeSb()">🧬 تصدير نسيج XML</a>
+  <a data-perm="tailoring" href="xml-orders.html" target="_blank" rel="noopener" onclick="closeSb()">🧾 محرر طلبات XML</a>
+  <a href="whiteboard-pdf.html" target="_blank" rel="noopener" onclick="closeSb()">🖊️ لوحة الشرح و PDF</a>
   <a data-perm="appointments" onclick="showAppointments();closeSb()">📅 المواعيد</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تطريز');closeSb()">🪡 التطريز</a>
   <a data-perm="tailoring" onclick="showTailorJobs('تعديل');closeSb()">🧷 التعديل</a>
@@ -9089,20 +9091,26 @@ function _kanbanBindDrag(board){
       if(e.button&&e.button!==0) return;
       const id=+card.dataset.kid;
       const sx=e.clientX, sy=e.clientY;
-      let ghost=null, dragging=false, holdTimer=null;
+      let ghost=null, dragging=false, holdTimer=null, ghostWidth=0;
       const isTouch=e.pointerType!=='mouse';
       const begin=()=>{ if(dragging) return; dragging=true;
         ghost=card.cloneNode(true);
-        ghost.style.cssText='position:fixed;z-index:9999;width:'+card.offsetWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);left:0;top:0';
+        ghostWidth=card.offsetWidth;
+        ghost.style.cssText='position:fixed;z-index:9999;width:'+ghostWidth+'px;pointer-events:none;opacity:.9;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);height:auto;max-height:500px;overflow:visible';
         document.body.appendChild(ghost);
         card.style.opacity='.35';
+        if(card.setPointerCapture) card.setPointerCapture(e.pointerId);
         mv(e); };
-      const colUnder=(x,y)=>{ if(ghost) ghost.style.display='none'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.display=''; return el?el.closest('.kcol[data-drop]'):null; };
+      const colUnder=(x,y)=>{ if(ghost) ghost.style.visibility='hidden'; const el=document.elementFromPoint(x,y); if(ghost) ghost.style.visibility='visible'; return el?el.closest('.kcol[data-drop]'):null; };
       const mv=ev=>{
         if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>(isTouch?12:5)){ if(isTouch&&holdTimer){ cleanup(); return; } begin(); } else return; }
         ev.preventDefault();
-        ghost.style.left=(ev.clientX-ghost.offsetWidth/2)+'px';
-        ghost.style.top=(ev.clientY-24)+'px';
+        let left=ev.clientX-ghostWidth/2;
+        let top=ev.clientY-24;
+        left=Math.max(0,Math.min(left,window.innerWidth-ghostWidth-20));
+        top=Math.max(0,Math.min(top,window.innerHeight-100));
+        ghost.style.left=left+'px';
+        ghost.style.top=top+'px';
         // تمرير اللوحة تلقائياً عند الاقتراب من حافتيها للوصول للأعمدة البعيدة
         const br=board.getBoundingClientRect();
         if(ev.clientX<br.left+70) board.scrollLeft-=16;
@@ -9122,7 +9130,7 @@ function _kanbanBindDrag(board){
           openProdPanel(id); // نقرة بلا سحب = فتح الأمر
         }
       };
-      const cleanup=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); };
+      const cleanup=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} if(card.releasePointerCapture) try{ card.releasePointerCapture(e.pointerId); } catch(err){} window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); };
       const cancel=()=>{ cleanup(); if(ghost) ghost.remove(); card.style.opacity=''; };
       if(isTouch) holdTimer=setTimeout(()=>{ holdTimer=null; begin(); }, 220); // لمس مطوّل يبدأ السحب — والتمرير العادي يبقى حراً
       window.addEventListener('pointermove',mv,{passive:false});
